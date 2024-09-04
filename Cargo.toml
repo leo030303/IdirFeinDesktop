@@ -1,0 +1,11 @@
+[package]
+name = "idirfein_desktop_iced"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+arboard = "3.4.0"
+iced = { version = "0.13.0-dev", git = "https://github.com/iced-rs/iced", features = ["markdown", "highlighter", "svg"]}
+keepass = { version = "0.7.21", features = ["save_kdbx4"] }
+rfd = "0.14.1"
+uuid = { version = "1.10.0", features = ["v4"] }
