@@ -61,6 +61,7 @@ pub enum NotesPageMessage {
     SetTextEditorContent(String),
     OpenFile(PathBuf),
     FilterNotesList(String),
+    OpenExtraToolsMenu,
 }
 
 impl NotesPage {
@@ -147,6 +148,7 @@ impl NotesPage {
                     markdown::parse(&self.editor_content.text()).collect();
                 self.is_loading_note = false;
             }
+            NotesPageMessage::OpenExtraToolsMenu => todo!(),
         }
         Task::none()
     }
@@ -302,6 +304,12 @@ impl NotesPage {
                 button(Svg::from_path("icons/add.svg"))
                     .on_press(Message::Notes(NotesPageMessage::OpenFilePicker)),
                 "New Note",
+                iced::widget::tooltip::Position::Bottom
+            ),
+            Tooltip::new(
+                button(Svg::from_path("icons/view-more.svg"))
+                    .on_press(Message::Notes(NotesPageMessage::OpenExtraToolsMenu)),
+                "More Tools",
                 iced::widget::tooltip::Position::Bottom
             ),
         ]

@@ -18,7 +18,6 @@ use crate::Message;
 // TODO allow create new kdbx file
 // TODO handle key files
 // TODO handle groups
-// TODO closed eye icon for password fields
 // TODO code cleanup
 
 #[derive(Debug, Clone)]
@@ -241,18 +240,26 @@ impl PasswordsPage {
                         )))
                         .width(Length::FillPortion(9)),
                     Tooltip::new(
-                        button(Svg::from_path("icons/eye.svg").height(Length::Fill))
-                            .on_press(Message::Passwords(
-                                PasswordsPageMessage::ToggleHideMasterPassword
-                            ))
-                            .width(Length::FillPortion(1))
-                            .height(Length::Fill)
-                            .style(if self.hide_master_password_entry {
-                                button::primary
-                            } else {
-                                button::secondary
-                            }),
-                        "Show/Hide",
+                        button(if self.hide_master_password_entry {
+                            Svg::from_path("icons/eye.svg").height(Length::Fill)
+                        } else {
+                            Svg::from_path("icons/eye-blocked.svg").height(Length::Fill)
+                        })
+                        .on_press(Message::Passwords(
+                            PasswordsPageMessage::ToggleHideMasterPassword
+                        ))
+                        .width(Length::FillPortion(1))
+                        .height(Length::Fill)
+                        .style(if self.hide_master_password_entry {
+                            button::primary
+                        } else {
+                            button::secondary
+                        }),
+                        if self.hide_master_password_entry {
+                            "Show Password"
+                        } else {
+                            "Hide Password"
+                        },
                         iced::widget::tooltip::Position::Bottom,
                     )
                 ]
@@ -418,18 +425,26 @@ impl PasswordsPage {
                         .secure(self.hide_current_password_entry)
                         .width(Length::FillPortion(8)),
                     Tooltip::new(
-                        button(Svg::from_path("icons/eye.svg").height(Length::Fill))
-                            .on_press(Message::Passwords(
-                                PasswordsPageMessage::ToggleHideCurrentPassword
-                            ))
-                            .width(Length::FillPortion(1))
-                            .height(Length::Fill)
-                            .style(if self.hide_current_password_entry {
-                                button::primary
-                            } else {
-                                button::secondary
-                            }),
-                        "Show/Hide",
+                        button(if self.hide_current_password_entry {
+                            Svg::from_path("icons/eye.svg").height(Length::Fill)
+                        } else {
+                            Svg::from_path("icons/eye-blocked.svg").height(Length::Fill)
+                        })
+                        .on_press(Message::Passwords(
+                            PasswordsPageMessage::ToggleHideCurrentPassword
+                        ))
+                        .width(Length::FillPortion(1))
+                        .height(Length::Fill)
+                        .style(if self.hide_current_password_entry {
+                            button::primary
+                        } else {
+                            button::secondary
+                        }),
+                        if self.hide_current_password_entry {
+                            "Show Password"
+                        } else {
+                            "Hide Password"
+                        },
                         iced::widget::tooltip::Position::Bottom,
                     ),
                     Tooltip::new(
