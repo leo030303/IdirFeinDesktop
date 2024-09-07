@@ -1,5 +1,5 @@
 use iced::widget::{row, text};
-use iced::{Element, Length};
+use iced::{Element, Length, Task};
 
 use crate::Message;
 
@@ -13,8 +13,9 @@ impl GalleryPage {
         Self {}
     }
 
-    pub fn update(&mut self, message: GalleryPageMessage) {
+    pub fn update(&mut self, message: GalleryPageMessage) -> Task<Message> {
         match message {}
+        Task::none()
     }
 
     pub fn view(&self) -> Element<Message> {

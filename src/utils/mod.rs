@@ -1,1 +1,2 @@
-pub mod passwords_handler;
+pub mod notes_utils;
+pub mod passwords_utils;

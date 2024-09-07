@@ -5,10 +5,10 @@ use std::path::PathBuf;
 use iced::alignment::{Horizontal, Vertical};
 use iced::widget::scrollable::{Direction, Scrollbar};
 use iced::widget::{button, column, container, row, text, text_input, Scrollable, Svg, Tooltip};
-use iced::Element;
+use iced::{Element, Task};
 use iced::{Font, Length};
 
-use crate::utils::passwords_handler::{get_passwords, save_database};
+use crate::utils::passwords_utils::{get_passwords, save_database};
 use crate::Message;
 
 // TODO dialog on close of if you'd like to save the database if you haven't already
@@ -93,7 +93,7 @@ impl PasswordsPage {
         }
     }
 
-    pub fn update(&mut self, message: PasswordsPageMessage) {
+    pub fn update(&mut self, message: PasswordsPageMessage) -> Task<Message> {
         match message {
             PasswordsPageMessage::UpdatePasswordEntry() => {
                 self.is_dirty = true;
@@ -204,6 +204,7 @@ impl PasswordsPage {
                 self.keepass_file_option = selected_file;
             }
         }
+        Task::none()
     }
 
     pub fn view(&self) -> Element<Message> {

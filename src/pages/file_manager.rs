@@ -1,5 +1,5 @@
 use iced::widget::{row, text};
-use iced::{Element, Length};
+use iced::{Element, Length, Task};
 
 use crate::Message;
 
@@ -13,8 +13,9 @@ impl FileManagerPage {
         Self {}
     }
 
-    pub fn update(&mut self, message: FileManagerPageMessage) {
+    pub fn update(&mut self, message: FileManagerPageMessage) -> Task<Message> {
         match message {}
+        Task::none()
     }
 
     pub fn view(&self) -> Element<Message> {

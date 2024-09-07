@@ -1,43 +1,36 @@
+use iced_aw::{badge, style};
 use std::fs;
-use std::os::linux::fs::MetadataExt;
 use std::path::PathBuf;
 
 use iced::alignment::Horizontal;
 use iced::widget::{
-    button, column, markdown, row, scrollable, text, text_editor, Scrollable, Svg, Tooltip,
+    button, column, markdown, row, scrollable, text, text_editor, text_input, Scrollable, Svg,
+    Tooltip,
 };
-use iced::{highlighter, Length};
+use iced::{highlighter, Length, Task};
 use iced::{Element, Fill, Font, Theme};
 use rfd::FileDialog;
 
+use crate::utils::notes_utils::{read_file_to_note, read_notes_from_folder};
 use crate::Message;
 
-// TODO Select folder in sidebar if none selected
-// TODO Async file load
-// TODO Async folder dir list
-// TODO List of all markdown files from folder in sidebar
+// TODO Add ability to set category for note
+// TODO Add ability to set category colours
+// TODO Add category filter
+// TODO Add word count
 // TODO Sync scrolling between editor and preview
-// TODO Filter files in sidebar
-// TODO Handles categorised, notes in folders
 // TODO Autosave file
 // TODO Rename file
+// TODO Export as PDF
+// TODO Lazy load notes list
 // TODO Handle links correctly, websites open browser, within file jumps to that section, files that are markdown opens that file, images??
 
-fn take_first_n_chars(input: &str, n: usize) -> String {
-    let end_index = input
-        .char_indices()
-        .map(|(i, _)| i)
-        .take(n)
-        .last()
-        .unwrap_or(input.len());
-
-    input[..end_index].to_string()
-}
-
-struct Note {
+#[derive(Debug, Clone)]
+pub struct Note {
     pub button_title: String,
+    pub category: Option<String>,
     pub file_path: PathBuf,
-    pub last_edited: i64,
+    pub last_edited: u64,
 }
 
 pub struct NotesPage {
@@ -50,6 +43,8 @@ pub struct NotesPage {
     notes_list: Vec<Note>,
     selected_folder: Option<PathBuf>,
     current_file: Option<PathBuf>,
+    notes_list_filter: String,
+    is_loading_note: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -62,7 +57,10 @@ pub enum NotesPageMessage {
     NewNote,
     SaveNote,
     OpenFilePicker,
+    LoadFolderAsNotesList(Vec<Note>),
+    SetTextEditorContent(String),
     OpenFile(PathBuf),
+    FilterNotesList(String),
 }
 
 impl NotesPage {
@@ -81,10 +79,12 @@ impl NotesPage {
             selected_folder: None,
             current_file: None,
             notes_list: vec![],
+            notes_list_filter: String::new(),
+            is_loading_note: false,
         }
     }
 
-    pub fn update(&mut self, message: NotesPageMessage) {
+    pub fn update(&mut self, message: NotesPageMessage) -> Task<Message> {
         match message {
             NotesPageMessage::Edit(action) => {
                 let is_edit = action.is_edit();
@@ -116,37 +116,39 @@ impl NotesPage {
                 let selected_folder = FileDialog::new().set_directory("/").pick_folder();
                 self.selected_folder = selected_folder.clone();
                 if let Some(selected_folder) = selected_folder {
-                    self.notes_list = fs::read_dir(selected_folder)
-                        .unwrap()
-                        .map(|file_path_option| {
-                            let file_path = file_path_option.unwrap();
-                            Note {
-                                button_title: take_first_n_chars(
-                                    file_path.path().file_stem().unwrap().to_str().unwrap(),
-                                    30,
-                                ),
-                                file_path: file_path.path().clone(),
-                                last_edited: file_path.metadata().unwrap().st_ctime(),
-                            }
-                        })
-                        .collect();
-                    self.notes_list
-                        .sort_unstable_by_key(|note| note.last_edited);
+                    return Task::perform(read_notes_from_folder(selected_folder), |notes_list| {
+                        Message::Notes(NotesPageMessage::LoadFolderAsNotesList(notes_list))
+                    });
                 }
             }
-            NotesPageMessage::OpenFile(path) => {
+            NotesPageMessage::OpenFile(new_filepath) => {
+                self.is_loading_note = true;
                 // Save current file content
-                if let Some(current_file) = &self.current_file {
-                    fs::write(current_file, self.editor_content.text()).unwrap();
-                };
-                self.editor_content =
-                    text_editor::Content::with_text(&fs::read_to_string(path.as_path()).unwrap());
-                self.markdown_preview_items =
-                    markdown::parse(&self.editor_content.text()).collect();
-                self.current_file = Some(path);
+                let old_filepath = self.current_file.take();
+                self.current_file = Some(new_filepath.clone());
+                return Task::perform(
+                    read_file_to_note(new_filepath, old_filepath, self.editor_content.text()),
+                    |new_content| {
+                        Message::Notes(NotesPageMessage::SetTextEditorContent(new_content))
+                    },
+                );
             }
             NotesPageMessage::ToggleEditor => self.show_editor = !self.show_editor,
+            NotesPageMessage::FilterNotesList(s) => self.notes_list_filter = s,
+            NotesPageMessage::LoadFolderAsNotesList(notes_list) => {
+                self.notes_list = notes_list;
+                self.notes_list
+                    .sort_unstable_by_key(|note| note.last_edited);
+                self.notes_list.reverse();
+            }
+            NotesPageMessage::SetTextEditorContent(new_content) => {
+                self.editor_content = text_editor::Content::with_text(&new_content);
+                self.markdown_preview_items =
+                    markdown::parse(&self.editor_content.text()).collect();
+                self.is_loading_note = false;
+            }
         }
+        Task::none()
     }
 
     pub fn view(&self) -> Element<Message> {
@@ -167,36 +169,64 @@ impl NotesPage {
 
         let sidebar: Element<Message> = if self.show_sidebar {
             if self.selected_folder.is_some() {
-                Scrollable::new(column(self.notes_list.iter().map(|note| {
-                    button(
-                        text(note.button_title.clone())
-                            .font(Font {
-                                weight: iced::font::Weight::Semibold,
-                                ..Default::default()
-                            })
-                            .width(Length::Fill)
-                            .align_x(Horizontal::Center),
+                column![
+                    text_input("Filter", &self.notes_list_filter)
+                        .on_input(|s| { Message::Notes(NotesPageMessage::FilterNotesList(s)) }),
+                    Scrollable::new(
+                        column(
+                            self.notes_list
+                                .iter()
+                                .filter(|note| {
+                                    note.button_title
+                                        .to_lowercase()
+                                        .contains(&self.notes_list_filter.to_lowercase())
+                                })
+                                .map(|note| {
+                                    button(column![
+                                        text(note.button_title.clone())
+                                            .font(Font {
+                                                weight: iced::font::Weight::Semibold,
+                                                ..Default::default()
+                                            })
+                                            .width(Length::Fill)
+                                            .align_x(Horizontal::Center),
+                                        if let Some(category) = &note.category {
+                                            std::convert::Into::<Element<Message>>::into(
+                                                badge(text(category)).style(style::badge::info),
+                                            )
+                                        } else {
+                                            column![].into()
+                                        }
+                                    ])
+                                    .on_press(Message::Notes(NotesPageMessage::OpenFile(
+                                        note.file_path.clone(),
+                                    )))
+                                    .style(if let Some(current_file) = &self.current_file {
+                                        if *current_file == note.file_path {
+                                            button::secondary
+                                        } else {
+                                            button::primary
+                                        }
+                                    } else {
+                                        button::primary
+                                    })
+                                    .width(Length::Fill)
+                                    .into()
+                                }),
+                        )
+                        .spacing(5)
                     )
-                    .on_press(Message::Notes(NotesPageMessage::OpenFile(
-                        note.file_path.clone(),
-                    )))
-                    .style(if let Some(current_file) = &self.current_file {
-                        if *current_file == note.file_path {
-                            button::secondary
-                        } else {
-                            button::primary
-                        }
-                    } else {
-                        button::primary
-                    })
-                    .width(Length::Fill)
-                    .into()
-                })))
+                ]
                 .into()
             } else {
-                button("Select Notes Folder")
-                    .on_press(Message::Notes(NotesPageMessage::OpenFilePicker))
-                    .into()
+                button(
+                    text("Select Notes Folder")
+                        .width(Length::Fill)
+                        .align_x(Horizontal::Center),
+                )
+                .on_press(Message::Notes(NotesPageMessage::OpenFilePicker))
+                .width(Length::Fill)
+                .into()
             }
         } else {
             column![].into()
@@ -204,12 +234,26 @@ impl NotesPage {
         row![
             sidebar,
             if self.show_editor {
-                column![editor]
+                if self.is_loading_note {
+                    column![text("Loading Note").size(24).width(Length::Fill),]
+                        .spacing(20)
+                        .height(Length::Shrink)
+                } else {
+                    column![editor]
+                }
             } else {
                 column![]
             },
             if self.show_markdown {
-                scrollable(preview).spacing(10).height(Fill)
+                if self.is_loading_note {
+                    scrollable(
+                        column![text("Loading Preview").size(24).width(Length::Fill),]
+                            .spacing(20)
+                            .height(Length::Shrink),
+                    )
+                } else {
+                    scrollable(preview).spacing(10).height(Fill)
+                }
             } else {
                 scrollable(column![])
             }

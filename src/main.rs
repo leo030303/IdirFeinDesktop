@@ -56,16 +56,17 @@ impl AppState {
         )
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ChangePage(new_page) => self.current_page = new_page,
-            Message::Passwords(m) => self.passwords_page.update(m),
-            Message::Notes(m) => self.notes_page.update(m),
-            Message::Tasks(m) => self.tasks_page.update(m),
-            Message::Gallery(m) => self.gallery_page.update(m),
-            Message::FileManager(m) => self.file_manager_page.update(m),
-            Message::Settings(m) => self.settings_page.update(m),
+            Message::Passwords(m) => return self.passwords_page.update(m),
+            Message::Notes(m) => return self.notes_page.update(m),
+            Message::Tasks(m) => return self.tasks_page.update(m),
+            Message::Gallery(m) => return self.gallery_page.update(m),
+            Message::FileManager(m) => return self.file_manager_page.update(m),
+            Message::Settings(m) => return self.settings_page.update(m),
         }
+        Task::none()
     }
 
     fn view(&self) -> iced::Element<Message> {

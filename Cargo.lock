@@ -1650,6 +1650,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "iced_aw"
+version = "0.9.4"
+source = "git+https://github.com/iced-rs/iced_aw#8c0f4c18a1c121d6b64b46923e07531ebe5397c0"
+dependencies = [
+ "cfg-if",
+ "iced",
+]
+
+[[package]]
 name = "iced_core"
 version = "0.13.0-dev"
 source = "git+https://github.com/iced-rs/iced#043f0302142e46bf1d7ba2015f83261813280fec"
@@ -1812,9 +1821,11 @@ version = "0.1.0"
 dependencies = [
  "arboard",
  "iced",
+ "iced_aw",
  "keepass",
  "rfd",
  "uuid",
+ "walkdir",
 ]
 
 [[package]]
