@@ -6,15 +6,15 @@ use std::{fs::File, path::PathBuf};
 
 use super::page::Password;
 
-pub fn get_passwords(
+pub async fn get_passwords(
     keepass_file_path: PathBuf,
-    master_password_attempt: Option<&str>,
+    master_password_attempt: Option<String>,
     keyfile_option: Option<PathBuf>,
 ) -> Option<Vec<Password>> {
     let mut file = File::open(keepass_file_path).unwrap();
     let mut key = DatabaseKey::new();
     if let Some(master_password) = master_password_attempt {
-        key = key.with_password(master_password);
+        key = key.with_password(&master_password);
     };
     if let Some(keyfile) = keyfile_option {
         key = key.with_keyfile(&mut File::open(keyfile).unwrap()).unwrap();

@@ -46,6 +46,7 @@ pub enum PasswordsPageMessage {
     DeletePasswordEntry(uuid::Uuid),
     TryUnlock,
     Lock,
+    RetrievedPasswordsList(Option<Vec<Password>>),
     SelectPassword(Option<Password>),
     UpdateMasterPasswordField(String),
     UpdateCurrentTitleText(String),

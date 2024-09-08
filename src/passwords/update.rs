@@ -58,23 +58,31 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
                 let password = if state.master_password_field_text.is_empty() {
                     None
                 } else {
-                    Some(state.master_password_field_text.as_str())
+                    Some(state.master_password_field_text.clone())
                 };
-                if let Some(passwords_list) =
-                    get_passwords(keepass_file_path, password, state.selected_key_file.clone())
-                {
-                    state.is_unlocked = true;
-                    state.passwords_list = passwords_list;
-                    state.incorrect_password_entered = false;
-                } else {
-                    state.passwords_list = vec![];
-                    state.is_unlocked = false;
-                    state.incorrect_password_entered = true;
-                }
+                return Task::perform(
+                    get_passwords(keepass_file_path, password, state.selected_key_file.clone()),
+                    |passwords_list_option| {
+                        Message::Passwords(PasswordsPageMessage::RetrievedPasswordsList(
+                            passwords_list_option,
+                        ))
+                    },
+                );
             } else {
                 state.passwords_list = vec![];
                 state.is_unlocked = false;
             };
+        }
+        PasswordsPageMessage::RetrievedPasswordsList(passwords_list_option) => {
+            if let Some(passwords_list) = passwords_list_option {
+                state.is_unlocked = true;
+                state.passwords_list = passwords_list;
+                state.incorrect_password_entered = false;
+            } else {
+                state.passwords_list = vec![];
+                state.is_unlocked = false;
+                state.incorrect_password_entered = true;
+            }
         }
         PasswordsPageMessage::UpdateMasterPasswordField(s) => state.master_password_field_text = s,
         PasswordsPageMessage::SelectPassword(password) => {
@@ -194,7 +202,7 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
         }
         PasswordsPageMessage::GeneratePassword => {
             let mut rng = thread_rng();
-            state.current_password_text = (0..20)
+            state.current_password_text = (0..30)
                 .map(|_| rng.gen_range(33u8..127u8) as char) // ASCII range for printable characters
                 .collect();
         }
