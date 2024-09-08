@@ -4,7 +4,7 @@ use keepass::{
 };
 use std::{fs::File, path::PathBuf};
 
-use crate::pages::passwords::Password;
+use super::page::Password;
 
 pub fn get_passwords(
     keepass_file_path: PathBuf,

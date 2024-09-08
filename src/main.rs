@@ -7,8 +7,9 @@ use iced::{
 use idirfein_desktop_iced::{
     pages::{
         file_manager::FileManagerPage, gallery::GalleryPage, notes::NotesPage,
-        passwords::PasswordsPage, settings::SettingsPage, tasks::TasksPage,
+        settings::SettingsPage, tasks::TasksPage,
     },
+    passwords::page::PasswordsPage,
     Message, Page,
 };
 

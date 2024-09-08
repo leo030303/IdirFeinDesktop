@@ -1,9 +1,11 @@
 use pages::{
     file_manager::FileManagerPageMessage, gallery::GalleryPageMessage, notes::NotesPageMessage,
-    passwords::PasswordsPageMessage, settings::SettingsPageMessage, tasks::TasksPageMessage,
+    settings::SettingsPageMessage, tasks::TasksPageMessage,
 };
+use passwords::page::PasswordsPageMessage;
 
 pub mod pages;
+pub mod passwords;
 pub mod utils;
 
 #[derive(Debug, Clone)]
