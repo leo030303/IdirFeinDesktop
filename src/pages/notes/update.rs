@@ -73,7 +73,17 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             state.markdown_preview_items = markdown::parse(&state.editor_content.text()).collect();
             state.is_loading_note = false;
         }
-        NotesPageMessage::OpenExtraToolsMenu => todo!(),
+        NotesPageMessage::ToggleExtraToolsMenu => {
+            state.show_extra_tools_menu = !state.show_extra_tools_menu
+        }
+        NotesPageMessage::ExportPDF => todo!(),
+        NotesPageMessage::ExportToWebsite => todo!(),
+        NotesPageMessage::ToggleDocumentStatisticsView => {
+            state.show_document_statistics_view = !state.show_document_statistics_view
+        }
+        NotesPageMessage::ToggleRenameNoteView => {
+            state.show_rename_note_view = !state.show_rename_note_view
+        }
     }
     Task::none()
 }

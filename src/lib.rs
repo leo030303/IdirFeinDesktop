@@ -28,7 +28,7 @@ pub enum SettingsSubpage {
     General,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Page {
     Settings,
     Passwords,

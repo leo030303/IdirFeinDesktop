@@ -12,9 +12,14 @@ use idirfein_desktop_iced::{
     Message, Page,
 };
 
-fn navbar_button(page: Page) -> iced::Element<'static, Message> {
+fn navbar_button(page: Page, selected: bool) -> iced::Element<'static, Message> {
     Tooltip::new(
         button(Svg::from_path(page.icon_path()).content_fit(ContentFit::ScaleDown))
+            .style(if selected {
+                button::secondary
+            } else {
+                button::primary
+            })
             .on_press(Message::ChangePage(page.clone())),
         page.name(),
         Position::Bottom,
@@ -98,12 +103,12 @@ impl AppState {
 
     fn view(&self) -> iced::Element<Message> {
         let nav_bar = row![
-            navbar_button(Page::Notes),
-            navbar_button(Page::Tasks),
-            navbar_button(Page::Passwords),
-            navbar_button(Page::FileManager),
-            navbar_button(Page::Gallery),
-            navbar_button(Page::Settings),
+            navbar_button(Page::Notes, self.current_page == Page::Notes),
+            navbar_button(Page::Tasks, self.current_page == Page::Tasks),
+            navbar_button(Page::Passwords, self.current_page == Page::Passwords),
+            navbar_button(Page::FileManager, self.current_page == Page::FileManager),
+            navbar_button(Page::Gallery, self.current_page == Page::Gallery),
+            navbar_button(Page::Settings, self.current_page == Page::Settings),
         ]
         .width(Length::FillPortion(1));
 

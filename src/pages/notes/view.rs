@@ -1,4 +1,5 @@
-use iced_aw::{badge, style};
+use iced::Alignment::Center;
+use iced_aw::{badge, drop_down, style, DropDown};
 
 use iced::alignment::Horizontal;
 use iced::widget::{
@@ -14,33 +15,62 @@ use super::page::{NotesPage, NotesPageMessage};
 
 pub fn main_view(state: &NotesPage) -> Element<Message> {
     row![
-        if state.show_sidebar {
-            if state.selected_folder.is_some() {
+        column![if state.show_sidebar {
+            column![if state.selected_folder.is_some() {
                 sidebar_with_selected_folder(state)
             } else {
                 sidebar_without_selected_folder(state)
-            }
+            }]
+            .width(Length::FillPortion(1))
         } else {
-            column![].into()
-        },
-        if state.show_editor {
-            if state.is_loading_note {
-                loading_editor_view(state)
-            } else {
-                editor_view(state)
-            }
-        } else {
-            column![].into()
-        },
-        if state.show_markdown {
-            if state.is_loading_note {
-                loading_preview_view(state)
-            } else {
-                preview_view(state)
-            }
-        } else {
-            column![].into()
-        }
+            column![]
+        }],
+        column![
+            row![
+                if state.show_document_statistics_view {
+                    if state.is_loading_note {
+                        loading_note_view(state)
+                    } else {
+                        document_statistics_view(state)
+                    }
+                } else {
+                    column![].into()
+                },
+                if state.show_rename_note_view {
+                    if state.is_loading_note {
+                        loading_note_view(state)
+                    } else {
+                        rename_note_view(state)
+                    }
+                } else {
+                    column![].into()
+                },
+            ]
+            .spacing(10),
+            row![
+                if state.show_editor {
+                    if state.is_loading_note {
+                        loading_note_view(state)
+                    } else {
+                        editor_view(state)
+                    }
+                } else {
+                    column![].into()
+                },
+                if state.show_markdown {
+                    if state.is_loading_note {
+                        loading_preview_view(state)
+                    } else {
+                        preview_view(state)
+                    }
+                } else {
+                    column![].into()
+                }
+            ]
+            .spacing(10)
+        ]
+        .spacing(10)
+        .width(Length::FillPortion(2))
     ]
     .spacing(10)
     .padding(10)
@@ -111,7 +141,7 @@ fn sidebar_without_selected_folder(_state: &NotesPage) -> Element<Message> {
     .into()
 }
 
-fn loading_editor_view(_state: &NotesPage) -> Element<Message> {
+fn loading_note_view(_state: &NotesPage) -> Element<Message> {
     column![text("Loading Note").size(24).width(Length::Fill),]
         .spacing(20)
         .height(Length::Shrink)
@@ -150,7 +180,43 @@ fn preview_view(state: &NotesPage) -> Element<Message> {
     .into()
 }
 
+fn document_statistics_view(_state: &NotesPage) -> Element<Message> {
+    column![text("Document Statistics").width(Length::Fill).size(24)].into()
+}
+
+fn rename_note_view(_state: &NotesPage) -> Element<Message> {
+    column![text("Rename Note").width(Length::Fill).size(24)].into()
+}
+
 pub fn tool_view(state: &NotesPage) -> Element<Message> {
+    let underlay = Tooltip::new(
+        button(Svg::from_path("icons/view-more.svg"))
+            .on_press(Message::Notes(NotesPageMessage::ToggleExtraToolsMenu)),
+        "More Tools",
+        iced::widget::tooltip::Position::Bottom,
+    );
+    let overlay = column![
+        button(text("Export PDF").width(Length::Fill).align_x(Center))
+            .on_press(Message::Notes(NotesPageMessage::ExportPDF))
+            .width(Length::Fill),
+        button(text("Post to website").width(Length::Fill).align_x(Center))
+            .on_press(Message::Notes(NotesPageMessage::ExportToWebsite))
+            .width(Length::Fill),
+        button(text("Show statistics").width(Length::Fill).align_x(Center))
+            .on_press(Message::Notes(
+                NotesPageMessage::ToggleDocumentStatisticsView
+            ))
+            .width(Length::Fill),
+        button(text("Rename Note").width(Length::Fill).align_x(Center))
+            .on_press(Message::Notes(NotesPageMessage::ToggleRenameNoteView))
+            .width(Length::Fill)
+    ]
+    .width(Length::Fixed(200.0));
+
+    let drop_down = DropDown::new(underlay, overlay, state.show_extra_tools_menu)
+        .on_dismiss(Message::Notes(NotesPageMessage::ToggleExtraToolsMenu))
+        .width(Length::Fill)
+        .alignment(drop_down::Alignment::Bottom);
     row![
         Tooltip::new(
             button(Svg::from_path("icons/toggle-sidebar.svg"))
@@ -191,12 +257,7 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
             "New Note",
             iced::widget::tooltip::Position::Bottom
         ),
-        Tooltip::new(
-            button(Svg::from_path("icons/view-more.svg"))
-                .on_press(Message::Notes(NotesPageMessage::OpenExtraToolsMenu)),
-            "More Tools",
-            iced::widget::tooltip::Position::Bottom
-        ),
+        drop_down
     ]
     .width(Length::FillPortion(1))
     .into()

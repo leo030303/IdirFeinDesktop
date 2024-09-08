@@ -17,6 +17,7 @@ use super::view::{main_view, tool_view};
 // TODO Autosave file
 // TODO Rename file
 // TODO Export as PDF
+// TODO Export as HTML and add to website
 // TODO Lazy load notes list
 // TODO Handle links correctly, websites open browser, within file jumps to that section, files that are markdown opens that file, images??
 
@@ -40,6 +41,9 @@ pub struct NotesPage {
     pub(crate) current_file: Option<PathBuf>,
     pub(crate) notes_list_filter: String,
     pub(crate) is_loading_note: bool,
+    pub(crate) show_extra_tools_menu: bool,
+    pub(crate) show_document_statistics_view: bool,
+    pub(crate) show_rename_note_view: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -56,7 +60,11 @@ pub enum NotesPageMessage {
     SetTextEditorContent(String),
     OpenFile(PathBuf),
     FilterNotesList(String),
-    OpenExtraToolsMenu,
+    ToggleExtraToolsMenu,
+    ExportPDF,
+    ExportToWebsite,
+    ToggleDocumentStatisticsView,
+    ToggleRenameNoteView,
 }
 
 impl NotesPage {
@@ -77,6 +85,9 @@ impl NotesPage {
             notes_list: vec![],
             notes_list_filter: String::new(),
             is_loading_note: false,
+            show_extra_tools_menu: false,
+            show_document_statistics_view: false,
+            show_rename_note_view: false,
         }
     }
 
