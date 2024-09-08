@@ -6,7 +6,7 @@ use crate::Message;
 
 use super::passwords_utils::save_database;
 use super::update::update;
-use super::view::{tool_view, view};
+use super::view::{main_view, tool_view};
 
 #[derive(Debug, Clone)]
 pub struct Password {
@@ -122,7 +122,7 @@ impl PasswordsPage {
     }
 
     pub fn view(&self) -> Element<Message> {
-        view(self)
+        main_view(self)
     }
 
     pub fn tool_view(&self) -> Element<Message> {
