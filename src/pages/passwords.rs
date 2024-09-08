@@ -14,7 +14,6 @@ use iced::{Font, Length};
 use crate::utils::passwords_utils::{get_passwords, save_database};
 use crate::Message;
 
-// TODO autosave database on close
 // TODO allow edit of all database fields, database name, master password
 // TODO support all entry fields, notes, expiry, tags
 // TODO handle groups
@@ -110,7 +109,24 @@ impl PasswordsPage {
 
     pub fn closing_task(&mut self) -> Task<Message> {
         println!("Closing task from passwords");
-        Task::none()
+        if self.is_dirty {
+            let password = if self.master_password_field_text.is_empty() {
+                None
+            } else {
+                Some(self.master_password_field_text.clone())
+            };
+            Task::perform(
+                save_database(
+                    self.keepass_file_option.clone(),
+                    password,
+                    self.key_file_option.clone(),
+                    self.passwords_list.clone(),
+                ),
+                |_| Message::None,
+            )
+        } else {
+            Task::none()
+        }
     }
 
     pub fn update(&mut self, message: PasswordsPageMessage) -> Task<Message> {
@@ -206,19 +222,41 @@ impl PasswordsPage {
                 let password = if self.master_password_field_text.is_empty() {
                     None
                 } else {
-                    Some(self.master_password_field_text.as_str())
+                    Some(self.master_password_field_text.clone())
                 };
-                save_database(
-                    self.keepass_file_option.clone().unwrap(),
-                    password,
-                    self.key_file_option.clone(),
-                    self.passwords_list.clone(),
-                )
+                return Task::perform(
+                    save_database(
+                        self.keepass_file_option.clone(),
+                        password,
+                        self.key_file_option.clone(),
+                        self.passwords_list.clone(),
+                    ),
+                    |_| Message::None,
+                );
             }
             PasswordsPageMessage::Lock => {
                 self.is_unlocked = false;
-                self.master_password_field_text = String::new();
-                self.key_file_option = None;
+                if self.is_dirty {
+                    let master_password_field_text = self.master_password_field_text.clone();
+                    let key_file_option = self.key_file_option.clone();
+                    self.master_password_field_text = String::new();
+                    self.key_file_option = None;
+                    let password = if master_password_field_text.is_empty() {
+                        None
+                    } else {
+                        Some(master_password_field_text)
+                    };
+                    self.is_dirty = false;
+                    return Task::perform(
+                        save_database(
+                            self.keepass_file_option.clone(),
+                            password,
+                            key_file_option,
+                            self.passwords_list.clone(),
+                        ),
+                        |_| Message::None,
+                    );
+                }
             }
             PasswordsPageMessage::ToggleSidebar => self.show_sidebar = !self.show_sidebar,
             PasswordsPageMessage::ToggleHideMasterPassword => {
