@@ -6,10 +6,9 @@ use iced::{
 };
 use idirfein_desktop_iced::{
     pages::{
-        file_manager::FileManagerPage, gallery::GalleryPage, notes::NotesPage,
-        settings::SettingsPage, tasks::TasksPage,
+        file_manager::page::FileManagerPage, gallery::page::GalleryPage, notes::page::NotesPage,
+        passwords::page::PasswordsPage, settings::page::SettingsPage, tasks::page::TasksPage,
     },
-    passwords::page::PasswordsPage,
     Message, Page,
 };
 

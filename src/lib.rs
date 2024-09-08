@@ -1,11 +1,11 @@
-use pages::{
-    file_manager::FileManagerPageMessage, gallery::GalleryPageMessage, notes::NotesPageMessage,
-    settings::SettingsPageMessage, tasks::TasksPageMessage,
-};
-use passwords::page::PasswordsPageMessage;
+use crate::pages::file_manager::page::FileManagerPageMessage;
+use crate::pages::gallery::page::GalleryPageMessage;
+use crate::pages::notes::page::NotesPageMessage;
+use crate::pages::passwords::page::PasswordsPageMessage;
+use crate::pages::settings::page::SettingsPageMessage;
+use crate::pages::tasks::page::TasksPageMessage;
 
 pub mod pages;
-pub mod passwords;
 pub mod utils;
 
 #[derive(Debug, Clone)]

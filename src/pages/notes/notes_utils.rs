@@ -6,7 +6,7 @@ use std::{
 
 use walkdir::WalkDir;
 
-use crate::pages::notes::Note;
+use super::page::Note;
 
 pub async fn read_file_to_note(
     new_filepath: PathBuf,

@@ -1,7 +1,9 @@
-use iced::widget::{row, text};
-use iced::{Element, Length, Task};
+use iced::{Element, Task};
 
 use crate::Message;
+
+use super::update::update;
+use super::view::{main_view, tool_view};
 
 pub struct SettingsPage {}
 
@@ -19,16 +21,15 @@ impl SettingsPage {
     }
 
     pub fn update(&mut self, message: SettingsPageMessage) -> Task<Message> {
-        match message {}
-        Task::none()
+        update(self, message)
     }
 
     pub fn view(&self) -> Element<Message> {
-        text("Settings Page").size(24).into()
+        main_view(self)
     }
 
     pub fn tool_view(&self) -> Element<Message> {
-        row![].width(Length::FillPortion(1)).into()
+        tool_view(self)
     }
 }
 
