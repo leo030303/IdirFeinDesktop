@@ -12,9 +12,9 @@ use super::{
 
 pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<Message> {
     match message {
-        PasswordsPageMessage::UpdatePasswordEntry() => {
+        PasswordsPageMessage::UpdatePasswordEntry => {
             state.is_dirty = true;
-            if let Some(selected_password) = &state.selected_password {
+            if let Some(selected_password) = &state.selected_password_entry {
                 if let Some(password_index) = state
                     .passwords_list
                     .iter()
@@ -50,18 +50,18 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
             {
                 state.passwords_list.remove(password_index);
                 state.is_dirty = true;
-                state.selected_password = None;
+                state.selected_password_entry = None;
             }
         }
         PasswordsPageMessage::TryUnlock => {
-            if let Some(keepass_file_path) = state.keepass_file_option.clone() {
+            if let Some(keepass_file_path) = state.selected_keepass_file.clone() {
                 let password = if state.master_password_field_text.is_empty() {
                     None
                 } else {
                     Some(state.master_password_field_text.as_str())
                 };
                 if let Some(passwords_list) =
-                    get_passwords(keepass_file_path, password, state.key_file_option.clone())
+                    get_passwords(keepass_file_path, password, state.selected_key_file.clone())
                 {
                     state.is_unlocked = true;
                     state.passwords_list = passwords_list;
@@ -78,7 +78,7 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
         }
         PasswordsPageMessage::UpdateMasterPasswordField(s) => state.master_password_field_text = s,
         PasswordsPageMessage::SelectPassword(password) => {
-            state.selected_password = password.clone();
+            state.selected_password_entry = password.clone();
             state.current_title_text = password
                 .clone()
                 .map_or(String::new(), |password| password.title);
@@ -95,8 +95,10 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
         PasswordsPageMessage::UpdateCurrentUrlText(s) => state.current_url_text = s,
         PasswordsPageMessage::UpdateCurrentUsernameText(s) => state.current_username_text = s,
         PasswordsPageMessage::UpdateCurrentPasswordText(s) => state.current_password_text = s,
-        PasswordsPageMessage::FilterPasswords(filter) => state.current_filter = filter,
-        PasswordsPageMessage::SaveDatabase => {
+        PasswordsPageMessage::UpdatePasswordsFilter(filter) => {
+            state.current_passwords_list_filter = filter
+        }
+        PasswordsPageMessage::SaveDatabaseToFile => {
             state.is_dirty = false;
             let password = if state.master_password_field_text.is_empty() {
                 None
@@ -105,9 +107,9 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
             };
             return Task::perform(
                 save_database(
-                    state.keepass_file_option.clone(),
+                    state.selected_keepass_file.clone(),
                     password,
-                    state.key_file_option.clone(),
+                    state.selected_key_file.clone(),
                     state.passwords_list.clone(),
                 ),
                 |_| Message::None,
@@ -117,9 +119,9 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
             state.is_unlocked = false;
             if state.is_dirty {
                 let master_password_field_text = state.master_password_field_text.clone();
-                let key_file_option = state.key_file_option.clone();
+                let key_file_option = state.selected_key_file.clone();
                 state.master_password_field_text = String::new();
-                state.key_file_option = None;
+                state.selected_key_file = None;
                 let password = if master_password_field_text.is_empty() {
                     None
                 } else {
@@ -128,7 +130,7 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
                 state.is_dirty = false;
                 return Task::perform(
                     save_database(
-                        state.keepass_file_option.clone(),
+                        state.selected_keepass_file.clone(),
                         password,
                         key_file_option,
                         state.passwords_list.clone(),
@@ -137,26 +139,30 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
                 );
             }
         }
-        PasswordsPageMessage::ToggleSidebar => state.show_sidebar = !state.show_sidebar,
+        PasswordsPageMessage::ToggleShowSidebar => state.show_sidebar = !state.show_sidebar,
         PasswordsPageMessage::ToggleHideMasterPassword => {
             state.hide_master_password_entry = !state.hide_master_password_entry
         }
         PasswordsPageMessage::ToggleHideCurrentPassword => {
             state.hide_current_password_entry = !state.hide_current_password_entry
         }
-        PasswordsPageMessage::CopyValue(s) => Clipboard::new().unwrap().set_text(s).unwrap(),
+        PasswordsPageMessage::CopyValueToClipboard(s) => {
+            Clipboard::new().unwrap().set_text(s).unwrap()
+        }
         PasswordsPageMessage::PickDatabaseFile => {
             let selected_file = FileDialog::new()
                 .add_filter("keepass", &["kdbx"])
                 .pick_file();
-            state.keepass_file_option = selected_file;
+            state.selected_keepass_file = selected_file;
         }
-        PasswordsPageMessage::StartCreatingNewKeepassFile => state.creating_new_keepass_file = true,
+        PasswordsPageMessage::StartCreatingNewKeepassFile => {
+            state.is_creating_new_keepass_file = true
+        }
         PasswordsPageMessage::PickNewDatabasePath => {
             let selected_file = FileDialog::new()
                 .add_filter("keepass", &["kdbx"])
                 .save_file();
-            state.keepass_file_option = selected_file;
+            state.selected_keepass_file = selected_file;
         }
         PasswordsPageMessage::UpdateMasterPasswordReentryField(s) => {
             state.master_password_reentry_field_text = s
@@ -167,24 +173,24 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
         PasswordsPageMessage::CreateDatabase => {
             if (!state.master_password_field_text.is_empty()
                 && state.master_password_field_text == state.master_password_reentry_field_text)
-                || state.key_file_option.is_some()
+                || state.selected_key_file.is_some()
             {
                 state.is_unlocked = true;
                 state.passwords_dont_match = false;
-                state.creating_new_keepass_file = false;
+                state.is_creating_new_keepass_file = false;
             } else if state.master_password_field_text != state.master_password_reentry_field_text {
                 state.passwords_dont_match = true;
             }
         }
-        PasswordsPageMessage::CloseDatabase => state.keepass_file_option = None,
+        PasswordsPageMessage::CloseDatabase => state.selected_keepass_file = None,
         PasswordsPageMessage::PickKeyFile => {
             let selected_file = FileDialog::new().pick_file();
-            state.key_file_option = selected_file;
+            state.selected_key_file = selected_file;
         }
-        PasswordsPageMessage::ResetView => {
-            state.keepass_file_option = None;
+        PasswordsPageMessage::LockAndDeselectDatabase => {
+            state.selected_keepass_file = None;
             state.is_unlocked = false;
-            state.creating_new_keepass_file = false;
+            state.is_creating_new_keepass_file = false;
         }
         PasswordsPageMessage::GeneratePassword => {
             let mut rng = thread_rng();

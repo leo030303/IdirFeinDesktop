@@ -11,9 +11,9 @@ use crate::Message;
 use super::page::{PasswordsPage, PasswordsPageMessage};
 
 pub fn view(state: &PasswordsPage) -> Element<Message> {
-    if state.creating_new_keepass_file {
+    if state.is_creating_new_keepass_file {
         // Creating new database
-        if state.keepass_file_option.is_none() {
+        if state.selected_keepass_file.is_none() {
             column![
                 text("Choose File Path")
                     .size(24)
@@ -122,7 +122,7 @@ pub fn view(state: &PasswordsPage) -> Element<Message> {
                 .width(Length::Fill)
                 .align_x(Horizontal::Center),
                 container(
-                    button(text(if let Some(keyfile) = &state.key_file_option {
+                    button(text(if let Some(keyfile) = &state.selected_key_file {
                         format!("Selected keyfile: {}", keyfile.as_path().to_str().unwrap())
                     } else {
                         String::from("Select Keyfile")
@@ -147,8 +147,8 @@ pub fn view(state: &PasswordsPage) -> Element<Message> {
         row![
             if state.show_sidebar {
                 column![
-                    text_input("Filter", &state.current_filter).on_input(|s| {
-                        Message::Passwords(PasswordsPageMessage::FilterPasswords(s))
+                    text_input("Filter", &state.current_passwords_list_filter).on_input(|s| {
+                        Message::Passwords(PasswordsPageMessage::UpdatePasswordsFilter(s))
                     }),
                     Scrollable::new(column(
                         state
@@ -157,7 +157,7 @@ pub fn view(state: &PasswordsPage) -> Element<Message> {
                             .filter(|password| password
                                 .title
                                 .to_lowercase()
-                                .contains(&state.current_filter.to_lowercase()))
+                                .contains(&state.current_passwords_list_filter.to_lowercase()))
                             .map(|password| {
                                 button(
                                     text(if !password.title.is_empty() {
@@ -175,15 +175,18 @@ pub fn view(state: &PasswordsPage) -> Element<Message> {
                                 .on_press(Message::Passwords(PasswordsPageMessage::SelectPassword(
                                     Some(password.clone()),
                                 )))
-                                .style(if let Some(selected_password) = &state.selected_password {
-                                    if selected_password.id == password.id {
-                                        button::secondary
+                                .style(
+                                    if let Some(selected_password) = &state.selected_password_entry
+                                    {
+                                        if selected_password.id == password.id {
+                                            button::secondary
+                                        } else {
+                                            button::primary
+                                        }
                                     } else {
                                         button::primary
-                                    }
-                                } else {
-                                    button::primary
-                                })
+                                    },
+                                )
                                 .width(Length::Fill)
                                 .into()
                             })
@@ -197,7 +200,7 @@ pub fn view(state: &PasswordsPage) -> Element<Message> {
                 column![]
             },
             column![
-                if state.selected_password.is_none() {
+                if state.selected_password_entry.is_none() {
                     row![text("New Entry")
                         .size(24)
                         .align_x(Horizontal::Center)
@@ -214,7 +217,7 @@ pub fn view(state: &PasswordsPage) -> Element<Message> {
                             .width(Length::FillPortion(1))
                             .on_press(Message::Passwords(
                                 PasswordsPageMessage::DeletePasswordEntry(
-                                    state.selected_password.clone().unwrap().id
+                                    state.selected_password_entry.clone().unwrap().id
                                 )
                             ))
                     ]
@@ -229,9 +232,11 @@ pub fn view(state: &PasswordsPage) -> Element<Message> {
                         .width(Length::FillPortion(9)),
                     Tooltip::new(
                         button(Svg::from_path("icons/copy.svg").height(Length::Fill))
-                            .on_press(Message::Passwords(PasswordsPageMessage::CopyValue(
-                                state.current_title_text.clone()
-                            )))
+                            .on_press(Message::Passwords(
+                                PasswordsPageMessage::CopyValueToClipboard(
+                                    state.current_title_text.clone()
+                                )
+                            ))
                             .width(Length::FillPortion(1)),
                         "Copy",
                         iced::widget::tooltip::Position::Bottom,
@@ -247,9 +252,11 @@ pub fn view(state: &PasswordsPage) -> Element<Message> {
                         .width(Length::FillPortion(9)),
                     Tooltip::new(
                         button(Svg::from_path("icons/copy.svg").height(Length::Fill))
-                            .on_press(Message::Passwords(PasswordsPageMessage::CopyValue(
-                                state.current_url_text.clone()
-                            )))
+                            .on_press(Message::Passwords(
+                                PasswordsPageMessage::CopyValueToClipboard(
+                                    state.current_url_text.clone()
+                                )
+                            ))
                             .width(Length::FillPortion(1)),
                         "Copy",
                         iced::widget::tooltip::Position::Bottom,
@@ -265,9 +272,11 @@ pub fn view(state: &PasswordsPage) -> Element<Message> {
                         .width(Length::FillPortion(9)),
                     Tooltip::new(
                         button(Svg::from_path("icons/copy.svg").height(Length::Fill))
-                            .on_press(Message::Passwords(PasswordsPageMessage::CopyValue(
-                                state.current_username_text.clone()
-                            )))
+                            .on_press(Message::Passwords(
+                                PasswordsPageMessage::CopyValueToClipboard(
+                                    state.current_username_text.clone()
+                                )
+                            ))
                             .width(Length::FillPortion(1)),
                         "Copy",
                         iced::widget::tooltip::Position::Bottom,
@@ -305,7 +314,7 @@ pub fn view(state: &PasswordsPage) -> Element<Message> {
                         },
                         iced::widget::tooltip::Position::Bottom,
                     ),
-                    if state.selected_password.is_none() {
+                    if state.selected_password_entry.is_none() {
                         column![Tooltip::new(
                             button(
                                 Svg::from_path("icons/generate-password.svg").height(Length::Fill)
@@ -320,22 +329,24 @@ pub fn view(state: &PasswordsPage) -> Element<Message> {
                     },
                     Tooltip::new(
                         button(Svg::from_path("icons/copy.svg").height(Length::Fill))
-                            .on_press(Message::Passwords(PasswordsPageMessage::CopyValue(
-                                state.current_password_text.clone()
-                            )))
+                            .on_press(Message::Passwords(
+                                PasswordsPageMessage::CopyValueToClipboard(
+                                    state.current_password_text.clone()
+                                )
+                            ))
                             .width(Length::FillPortion(1)),
                         "Copy",
                         iced::widget::tooltip::Position::Bottom,
                     )
                 ]
                 .height(Length::Shrink),
-                button(if state.selected_password.is_none() {
+                button(if state.selected_password_entry.is_none() {
                     "Add Entry"
                 } else {
                     "Update Entry"
                 })
                 .on_press(Message::Passwords(
-                    PasswordsPageMessage::UpdatePasswordEntry()
+                    PasswordsPageMessage::UpdatePasswordEntry
                 ))
             ]
             .spacing(10)
@@ -346,13 +357,13 @@ pub fn view(state: &PasswordsPage) -> Element<Message> {
         .into()
     } else {
         // Locked
-        if state.keepass_file_option.is_some() {
+        if state.selected_keepass_file.is_some() {
             column![
                 container(
                     button(text(format!(
                         "Selected file: {}",
                         state
-                            .keepass_file_option
+                            .selected_keepass_file
                             .clone()
                             .unwrap_or_default()
                             .to_str()
@@ -414,7 +425,7 @@ pub fn view(state: &PasswordsPage) -> Element<Message> {
                 .width(Length::Fill)
                 .align_x(Horizontal::Center),
                 container(
-                    button(text(if let Some(keyfile) = &state.key_file_option {
+                    button(text(if let Some(keyfile) = &state.selected_key_file {
                         format!("Selected keyfile: {}", keyfile.as_path().to_str().unwrap())
                     } else {
                         String::from("Select Keyfile")
@@ -480,7 +491,7 @@ pub fn tool_view(state: &PasswordsPage) -> Element<Message> {
         row![
             Tooltip::new(
                 button(Svg::from_path("icons/toggle-sidebar.svg"))
-                    .on_press(Message::Passwords(PasswordsPageMessage::ToggleSidebar))
+                    .on_press(Message::Passwords(PasswordsPageMessage::ToggleShowSidebar))
                     .style(if state.show_sidebar {
                         button::secondary
                     } else {
@@ -504,7 +515,7 @@ pub fn tool_view(state: &PasswordsPage) -> Element<Message> {
             ),
             Tooltip::new(
                 button(Svg::from_path("icons/ok.svg"))
-                    .on_press(Message::Passwords(PasswordsPageMessage::SaveDatabase))
+                    .on_press(Message::Passwords(PasswordsPageMessage::SaveDatabaseToFile))
                     .style(if state.is_dirty {
                         button::success
                     } else {
@@ -516,10 +527,11 @@ pub fn tool_view(state: &PasswordsPage) -> Element<Message> {
         ]
         .width(Length::FillPortion(1))
         .into()
-    } else if state.creating_new_keepass_file || state.keepass_file_option.is_some() {
+    } else if state.is_creating_new_keepass_file || state.selected_keepass_file.is_some() {
         row![Tooltip::new(
-            button(Svg::from_path("icons/back.svg"))
-                .on_press(Message::Passwords(PasswordsPageMessage::ResetView)),
+            button(Svg::from_path("icons/back.svg")).on_press(Message::Passwords(
+                PasswordsPageMessage::LockAndDeselectDatabase
+            )),
             "Back",
             iced::widget::tooltip::Position::Bottom,
         )]
