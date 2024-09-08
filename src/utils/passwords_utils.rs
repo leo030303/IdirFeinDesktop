@@ -8,10 +8,17 @@ use crate::pages::passwords::Password;
 
 pub fn get_passwords(
     keepass_file_path: PathBuf,
-    master_password_attempt: &str,
+    master_password_attempt: Option<&str>,
+    keyfile_option: Option<PathBuf>,
 ) -> Option<Vec<Password>> {
     let mut file = File::open(keepass_file_path).unwrap();
-    let key = DatabaseKey::new().with_password(master_password_attempt);
+    let mut key = DatabaseKey::new();
+    if let Some(master_password) = master_password_attempt {
+        key = key.with_password(master_password);
+    };
+    if let Some(keyfile) = keyfile_option {
+        key = key.with_keyfile(&mut File::open(keyfile).unwrap()).unwrap();
+    }
     if let Ok(db) = Database::open(&mut file, key) {
         Some(
             db.root
@@ -32,11 +39,17 @@ pub fn get_passwords(
                 .collect::<Vec<Password>>(),
         )
     } else {
+        println!("Error with opening");
         None
     }
 }
 
-pub fn save_database(database_path: PathBuf, master_password: &str, passwords: Vec<Password>) {
+pub fn save_database(
+    database_path: PathBuf,
+    master_password_option: Option<&str>,
+    keyfile_option: Option<PathBuf>,
+    passwords: Vec<Password>,
+) {
     let mut db = Database::new(Default::default());
     db.meta.database_name = Some("Passwords Database".to_string());
     passwords.into_iter().for_each(|password| {
@@ -57,9 +70,14 @@ pub fn save_database(database_path: PathBuf, master_password: &str, passwords: V
         );
         db.root.add_child(entry);
     });
-    db.save(
-        &mut File::create(database_path).unwrap(),
-        DatabaseKey::new().with_password(master_password),
-    )
-    .unwrap();
+    let mut key = DatabaseKey::new();
+    if let Some(master_password) = master_password_option {
+        key = key.with_password(master_password);
+    };
+    if let Some(keyfile) = keyfile_option {
+        key = key.with_keyfile(&mut File::open(keyfile).unwrap()).unwrap();
+    }
+
+    db.save(&mut File::create(database_path).unwrap(), key)
+        .unwrap();
 }

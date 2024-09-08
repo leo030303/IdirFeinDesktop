@@ -13,10 +13,9 @@ use crate::utils::passwords_utils::{get_passwords, save_database};
 use crate::Message;
 
 // TODO dialog on close of if you'd like to save the database if you haven't already
-// TODO toast on database save/lock
+// TODO Generate strong password button
 // TODO allow edit of all database fields, database name, master password
 // TODO support all entry fields, notes, expiry, tags
-// TODO handle key files
 // TODO handle groups
 // TODO code cleanup
 
@@ -49,13 +48,14 @@ pub struct PasswordsPage {
     hide_master_password_reentry_entry: bool,
     passwords_dont_match: bool,
     master_password_reentry_field_text: String,
+    key_file_option: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone)]
 pub enum PasswordsPageMessage {
     UpdatePasswordEntry(),
     DeletePasswordEntry(uuid::Uuid),
-    TryUnlock(String),
+    TryUnlock,
     Lock,
     SelectPassword(Option<Password>),
     UpdateMasterPasswordField(String),
@@ -69,13 +69,15 @@ pub enum PasswordsPageMessage {
     ToggleHideMasterPassword,
     ToggleHideCurrentPassword,
     CopyValue(String),
-    OpenFilePicker,
+    PickDatabaseFile,
     StartCreatingNewKeepassFile,
     PickNewDatabasePath,
     UpdateMasterPasswordReentryField(String),
     ToggleHideMasterPasswordReentry,
     CreateDatabase,
     CloseDatabase,
+    PickKeyFile,
+    ResetView,
 }
 
 impl PasswordsPage {
@@ -100,6 +102,7 @@ impl PasswordsPage {
             hide_master_password_reentry_entry: true,
             passwords_dont_match: false,
             master_password_reentry_field_text: String::new(),
+            key_file_option: None,
         }
     }
 
@@ -146,10 +149,15 @@ impl PasswordsPage {
                     self.selected_password = None;
                 }
             }
-            PasswordsPageMessage::TryUnlock(password_attempt) => {
+            PasswordsPageMessage::TryUnlock => {
                 if let Some(keepass_file_path) = self.keepass_file_option.clone() {
+                    let password = if self.master_password_field_text.is_empty() {
+                        None
+                    } else {
+                        Some(self.master_password_field_text.as_str())
+                    };
                     if let Some(passwords_list) =
-                        get_passwords(keepass_file_path, &password_attempt)
+                        get_passwords(keepass_file_path, password, self.key_file_option.clone())
                     {
                         self.is_unlocked = true;
                         self.passwords_list = passwords_list;
@@ -188,15 +196,22 @@ impl PasswordsPage {
             PasswordsPageMessage::FilterPasswords(filter) => self.current_filter = filter,
             PasswordsPageMessage::SaveDatabase => {
                 self.is_dirty = false;
+                let password = if self.master_password_field_text.is_empty() {
+                    None
+                } else {
+                    Some(self.master_password_field_text.as_str())
+                };
                 save_database(
                     self.keepass_file_option.clone().unwrap(),
-                    &self.master_password_field_text,
+                    password,
+                    self.key_file_option.clone(),
                     self.passwords_list.clone(),
                 )
             }
             PasswordsPageMessage::Lock => {
                 self.is_unlocked = false;
                 self.master_password_field_text = String::new();
+                self.key_file_option = None;
             }
             PasswordsPageMessage::ToggleSidebar => self.show_sidebar = !self.show_sidebar,
             PasswordsPageMessage::ToggleHideMasterPassword => {
@@ -206,7 +221,7 @@ impl PasswordsPage {
                 self.hide_current_password_entry = !self.hide_current_password_entry
             }
             PasswordsPageMessage::CopyValue(s) => Clipboard::new().unwrap().set_text(s).unwrap(),
-            PasswordsPageMessage::OpenFilePicker => {
+            PasswordsPageMessage::PickDatabaseFile => {
                 let selected_file = FileDialog::new()
                     .add_filter("keepass", &["kdbx"])
                     .pick_file();
@@ -228,8 +243,9 @@ impl PasswordsPage {
                 self.hide_master_password_reentry_entry = !self.hide_master_password_reentry_entry
             }
             PasswordsPageMessage::CreateDatabase => {
-                if !self.master_password_field_text.is_empty()
-                    && self.master_password_field_text == self.master_password_reentry_field_text
+                if (!self.master_password_field_text.is_empty()
+                    && self.master_password_field_text == self.master_password_reentry_field_text)
+                    || self.key_file_option.is_some()
                 {
                     self.is_unlocked = true;
                     self.passwords_dont_match = false;
@@ -240,6 +256,15 @@ impl PasswordsPage {
                 }
             }
             PasswordsPageMessage::CloseDatabase => self.keepass_file_option = None,
+            PasswordsPageMessage::PickKeyFile => {
+                let selected_file = FileDialog::new().pick_file();
+                self.key_file_option = selected_file;
+            }
+            PasswordsPageMessage::ResetView => {
+                self.keepass_file_option = None;
+                self.is_unlocked = false;
+                self.creating_new_keepass_file = false;
+            }
         }
         Task::none()
     }
@@ -266,7 +291,7 @@ impl PasswordsPage {
                 .into()
             } else {
                 column![
-                    text("Set Password")
+                    text("Set Password And/Or Keyfile")
                         .size(24)
                         .width(Length::Fill)
                         .align_x(Horizontal::Center),
@@ -350,17 +375,27 @@ impl PasswordsPage {
                         )
                     ]
                     .height(Length::Shrink),
-                    container(
-                        button(text("Create Database"))
-                            .on_press(Message::Passwords(PasswordsPageMessage::CreateDatabase))
-                    )
-                    .width(Length::Fill)
-                    .align_x(Horizontal::Center),
                     text(if self.passwords_dont_match {
                         "Incorrect master password, try again."
                     } else {
                         ""
                     })
+                    .width(Length::Fill)
+                    .align_x(Horizontal::Center),
+                    container(
+                        button(text(if let Some(keyfile) = &self.key_file_option {
+                            format!("Selected keyfile: {}", keyfile.as_path().to_str().unwrap())
+                        } else {
+                            String::from("Select Keyfile")
+                        }))
+                        .on_press(Message::Passwords(PasswordsPageMessage::PickKeyFile))
+                    )
+                    .width(Length::Fill)
+                    .align_x(Horizontal::Center),
+                    container(
+                        button(text("Create Database"))
+                            .on_press(Message::Passwords(PasswordsPageMessage::CreateDatabase))
+                    )
                     .width(Length::Fill)
                     .align_x(Horizontal::Center),
                 ]
@@ -579,12 +614,16 @@ impl PasswordsPage {
                                 .to_str()
                                 .unwrap_or_default()
                         )))
-                        .on_press(Message::Passwords(PasswordsPageMessage::OpenFilePicker))
+                        .on_press(Message::Passwords(PasswordsPageMessage::PickDatabaseFile))
                     )
                     .width(Length::Fill)
                     .align_x(Horizontal::Center),
                     text("Password Vault is Locked")
                         .size(24)
+                        .width(Length::Fill)
+                        .align_x(Horizontal::Center),
+                    text("Enter Password And/Or Keyfile")
+                        .size(18)
                         .width(Length::Fill)
                         .align_x(Horizontal::Center),
                     text("Enter the master password:")
@@ -596,9 +635,7 @@ impl PasswordsPage {
                             .on_input(|s| Message::Passwords(
                                 PasswordsPageMessage::UpdateMasterPasswordField(s)
                             ))
-                            .on_submit(Message::Passwords(PasswordsPageMessage::TryUnlock(
-                                self.master_password_field_text.clone()
-                            )))
+                            .on_submit(Message::Passwords(PasswordsPageMessage::TryUnlock))
                             .width(Length::FillPortion(9)),
                         Tooltip::new(
                             button(if self.hide_master_password_entry {
@@ -635,8 +672,26 @@ impl PasswordsPage {
                     .width(Length::Fill)
                     .align_x(Horizontal::Center),
                     container(
+                        button(text(if let Some(keyfile) = &self.key_file_option {
+                            format!("Selected keyfile: {}", keyfile.as_path().to_str().unwrap())
+                        } else {
+                            String::from("Select Keyfile")
+                        }))
+                        .on_press(Message::Passwords(PasswordsPageMessage::PickKeyFile))
+                    )
+                    .width(Length::Fill)
+                    .align_x(Horizontal::Center),
+                    container(
+                        button(text("Open Database"))
+                            .on_press(Message::Passwords(PasswordsPageMessage::TryUnlock))
+                            .style(button::success)
+                    )
+                    .width(Length::Fill)
+                    .align_x(Horizontal::Center),
+                    container(
                         button(text("Close Database"))
                             .on_press(Message::Passwords(PasswordsPageMessage::CloseDatabase))
+                            .style(button::danger)
                     )
                     .width(Length::Fill)
                     .align_x(Horizontal::Center),
@@ -652,7 +707,7 @@ impl PasswordsPage {
                                 .width(Length::Fill)
                                 .align_x(Center)
                         )
-                        .on_press(Message::Passwords(PasswordsPageMessage::OpenFilePicker))
+                        .on_press(Message::Passwords(PasswordsPageMessage::PickDatabaseFile))
                         .width(Length::Fill),
                         button(
                             text("Create New Keepass File")
@@ -717,6 +772,15 @@ impl PasswordsPage {
                     iced::widget::tooltip::Position::Bottom,
                 )
             ]
+            .width(Length::FillPortion(1))
+            .into()
+        } else if self.creating_new_keepass_file || self.keepass_file_option.is_some() {
+            row![Tooltip::new(
+                button(Svg::from_path("icons/back.svg"))
+                    .on_press(Message::Passwords(PasswordsPageMessage::ResetView)),
+                "Back",
+                iced::widget::tooltip::Position::Bottom,
+            )]
             .width(Length::FillPortion(1))
             .into()
         } else {
