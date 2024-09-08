@@ -1,7 +1,8 @@
 use iced::{
     alignment::Horizontal,
+    event,
     widget::{self, button, column, row, text, tooltip::Position, Space, Svg, Tooltip},
-    ContentFit, Length, Task, Theme,
+    window, ContentFit, Event, Length, Subscription, Task, Theme,
 };
 use idirfein_desktop_iced::{
     pages::{
@@ -24,11 +25,14 @@ fn navbar_button(page: Page) -> iced::Element<'static, Message> {
 pub fn main() -> iced::Result {
     iced::application("IdirFéin Desktop", AppState::update, AppState::view)
         .theme(AppState::theme)
+        .exit_on_close_request(false)
+        .subscription(AppState::subscription)
         .run_with(AppState::new)
 }
 
 struct AppState {
     theme: Theme,
+    is_closing: bool,
     current_page: Page,
     notes_page: NotesPage,
     passwords_page: PasswordsPage,
@@ -45,6 +49,7 @@ impl AppState {
             Self {
                 current_page: Page::Notes,
                 theme,
+                is_closing: false,
                 notes_page: NotesPage::new(),
                 passwords_page: PasswordsPage::new(),
                 tasks_page: TasksPage::new(),
@@ -65,8 +70,30 @@ impl AppState {
             Message::Gallery(m) => return self.gallery_page.update(m),
             Message::FileManager(m) => return self.file_manager_page.update(m),
             Message::Settings(m) => return self.settings_page.update(m),
+            Message::CloseWindowRequest => {
+                self.is_closing = true;
+                return Task::batch([
+                    self.passwords_page.closing_task(),
+                    self.notes_page.closing_task(),
+                    self.gallery_page.closing_task(),
+                    self.tasks_page.closing_task(),
+                    self.file_manager_page.closing_task(),
+                    self.settings_page.closing_task(),
+                ])
+                .chain(window::get_latest().and_then(window::close));
+            }
+            Message::None => (),
         }
         Task::none()
+    }
+    fn subscription(&self) -> Subscription<Message> {
+        event::listen().map(|event| {
+            if let Event::Window(window::Event::CloseRequested) = event {
+                Message::CloseWindowRequest
+            } else {
+                Message::None
+            }
+        })
     }
 
     fn view(&self) -> iced::Element<Message> {
@@ -97,20 +124,27 @@ impl AppState {
             Page::Notes => self.notes_page.view(),
             Page::Tasks => self.tasks_page.view(),
         };
-
-        column![
-            row![
-                tool_view,
-                text(self.current_page.name())
-                    .size(24)
-                    .width(Length::FillPortion(1))
-                    .align_x(Horizontal::Center),
-                nav_bar,
-            ],
-            Space::with_height(20),
-            main_view
-        ]
-        .into()
+        if !self.is_closing {
+            column![
+                row![
+                    tool_view,
+                    text(self.current_page.name())
+                        .size(24)
+                        .width(Length::FillPortion(1))
+                        .align_x(Horizontal::Center),
+                    nav_bar,
+                ],
+                Space::with_height(20),
+                main_view
+            ]
+            .into()
+        } else {
+            text("Finishing up, please wait")
+                .size(24)
+                .width(Length::Fill)
+                .align_x(Horizontal::Center)
+                .into()
+        }
     }
     pub fn theme(&self) -> Theme {
         self.theme.clone()

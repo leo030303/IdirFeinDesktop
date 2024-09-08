@@ -13,6 +13,11 @@ impl SettingsPage {
         Self {}
     }
 
+    pub fn closing_task(&mut self) -> Task<Message> {
+        println!("Closing task from settings");
+        Task::none()
+    }
+
     pub fn update(&mut self, message: SettingsPageMessage) -> Task<Message> {
         match message {}
         Task::none()

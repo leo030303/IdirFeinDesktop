@@ -9,6 +9,8 @@ pub mod utils;
 #[derive(Debug, Clone)]
 pub enum Message {
     ChangePage(Page),
+    CloseWindowRequest,
+    None,
     Passwords(PasswordsPageMessage),
     Notes(NotesPageMessage),
     Tasks(TasksPageMessage),

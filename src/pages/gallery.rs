@@ -13,6 +13,11 @@ impl GalleryPage {
         Self {}
     }
 
+    pub fn closing_task(&mut self) -> Task<Message> {
+        println!("Closing task from gallery");
+        Task::none()
+    }
+
     pub fn update(&mut self, message: GalleryPageMessage) -> Task<Message> {
         match message {}
         Task::none()

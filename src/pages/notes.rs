@@ -85,6 +85,11 @@ impl NotesPage {
         }
     }
 
+    pub fn closing_task(&mut self) -> Task<Message> {
+        println!("Closing task from notes");
+        Task::none()
+    }
+
     pub fn update(&mut self, message: NotesPageMessage) -> Task<Message> {
         match message {
             NotesPageMessage::Edit(action) => {

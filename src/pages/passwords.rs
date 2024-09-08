@@ -1,5 +1,7 @@
 use arboard::Clipboard;
 use iced::Alignment::Center;
+use rand::thread_rng;
+use rand::Rng;
 use rfd::FileDialog;
 use std::path::PathBuf;
 
@@ -12,8 +14,7 @@ use iced::{Font, Length};
 use crate::utils::passwords_utils::{get_passwords, save_database};
 use crate::Message;
 
-// TODO dialog on close of if you'd like to save the database if you haven't already
-// TODO Generate strong password button
+// TODO autosave database on close
 // TODO allow edit of all database fields, database name, master password
 // TODO support all entry fields, notes, expiry, tags
 // TODO handle groups
@@ -78,6 +79,7 @@ pub enum PasswordsPageMessage {
     CloseDatabase,
     PickKeyFile,
     ResetView,
+    GeneratePassword,
 }
 
 impl PasswordsPage {
@@ -104,6 +106,11 @@ impl PasswordsPage {
             master_password_reentry_field_text: String::new(),
             key_file_option: None,
         }
+    }
+
+    pub fn closing_task(&mut self) -> Task<Message> {
+        println!("Closing task from passwords");
+        Task::none()
     }
 
     pub fn update(&mut self, message: PasswordsPageMessage) -> Task<Message> {
@@ -265,6 +272,12 @@ impl PasswordsPage {
                 self.is_unlocked = false;
                 self.creating_new_keepass_file = false;
             }
+            PasswordsPageMessage::GeneratePassword => {
+                let mut rng = thread_rng();
+                self.current_password_text = (0..20)
+                    .map(|_| rng.gen_range(33u8..127u8) as char) // ASCII range for printable characters
+                    .collect();
+            }
         }
         Task::none()
     }
@@ -376,7 +389,7 @@ impl PasswordsPage {
                     ]
                     .height(Length::Shrink),
                     text(if self.passwords_dont_match {
-                        "Incorrect master password, try again."
+                        "Passwords don't match"
                     } else {
                         ""
                     })
@@ -575,6 +588,22 @@ impl PasswordsPage {
                             },
                             iced::widget::tooltip::Position::Bottom,
                         ),
+                        if self.selected_password.is_none() {
+                            column![Tooltip::new(
+                                button(
+                                    Svg::from_path("icons/generate-password.svg")
+                                        .height(Length::Fill)
+                                )
+                                .on_press(Message::Passwords(
+                                    PasswordsPageMessage::GeneratePassword
+                                ))
+                                .width(Length::FillPortion(1)),
+                                "Generate Password",
+                                iced::widget::tooltip::Position::Bottom,
+                            ),]
+                        } else {
+                            column![]
+                        },
                         Tooltip::new(
                             button(Svg::from_path("icons/copy.svg").height(Length::Fill))
                                 .on_press(Message::Passwords(PasswordsPageMessage::CopyValue(
@@ -665,7 +694,7 @@ impl PasswordsPage {
                     ]
                     .height(Length::Shrink),
                     text(if self.incorrect_password_entered {
-                        "Incorrect master password, try again."
+                        "Incorrect master password/keyfile, try again."
                     } else {
                         ""
                     })

@@ -13,6 +13,11 @@ impl TasksPage {
         Self {}
     }
 
+    pub fn closing_task(&mut self) -> Task<Message> {
+        println!("Closing task from tasks");
+        Task::none()
+    }
+
     pub fn update(&mut self, message: TasksPageMessage) -> Task<Message> {
         match message {}
         Task::none()
