@@ -8,6 +8,8 @@ use super::passwords_utils::save_database;
 use super::update::update;
 use super::view::{main_view, tool_view};
 
+/// CODE FINISHED, TODO: comment the code where necessary, create tests for each update function and util function
+
 #[derive(Debug, Clone)]
 pub struct Password {
     pub id: uuid::Uuid,
