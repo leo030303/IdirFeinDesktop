@@ -4,7 +4,6 @@ use iced::{
 };
 use rfd::FileDialog;
 use std::fs;
-use url::Url;
 
 use crate::Message;
 
