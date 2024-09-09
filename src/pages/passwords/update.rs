@@ -120,7 +120,7 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
                     state.selected_key_file.clone(),
                     state.passwords_list.clone(),
                 ),
-                |_| Message::None,
+                |(is_success, content)| Message::ShowToast(is_success, content),
             );
         }
         PasswordsPageMessage::Lock => {

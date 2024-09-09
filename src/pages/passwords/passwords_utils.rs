@@ -49,7 +49,7 @@ pub async fn save_database(
     master_password_option: Option<String>,
     keyfile_option: Option<PathBuf>,
     passwords: Vec<Password>,
-) {
+) -> (bool, String) {
     if let Some(database_path) = database_path {
         let mut db = Database::new(Default::default());
         db.meta.database_name = Some("Passwords Database".to_string());
@@ -76,13 +76,28 @@ pub async fn save_database(
             key = key.with_password(&master_password);
         };
         if let Some(keyfile) = keyfile_option {
-            key = key.with_keyfile(&mut File::open(keyfile).unwrap()).unwrap();
+            match (|| key.with_keyfile(&mut File::open(keyfile)?))() {
+                Ok(keyfile_unwrapped) => {
+                    key = keyfile_unwrapped;
+                }
+                Err(err) => {
+                    return (
+                        false,
+                        format!("Failed to save database due to issue with keyfile: {err}"),
+                    );
+                }
+            }
         }
 
-        if let Err(error) = db.save(&mut File::create(database_path).unwrap(), key) {
-            println!("Failed to save database: {error}");
+        if let Err(error) = db.save(&mut File::create(&database_path).unwrap(), key) {
+            (false, format!("Failed to save database: {error}"))
+        } else {
+            (
+                true,
+                format!("Successfully saved database to {database_path:?}"),
+            )
         }
     } else {
-        println!("Database path was None");
+        (false, String::from("Database path was None"))
     }
 }

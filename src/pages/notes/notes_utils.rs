@@ -1,3 +1,4 @@
+use shiva::core::TransformerTrait;
 use std::{
     fs,
     path::{Component, Path, PathBuf},
@@ -7,6 +8,13 @@ use std::{
 use walkdir::WalkDir;
 
 use super::page::Note;
+
+#[derive(Debug, Clone)]
+pub struct NoteStatistics {
+    pub char_count: u64,
+    pub word_count: u64,
+    pub reading_time_in_mins: u64,
+}
 
 pub async fn read_file_to_note(
     new_filepath: PathBuf,
@@ -78,4 +86,54 @@ pub fn find_nested_folder_name(original_folder: &PathBuf, file_path: &Path) -> O
     }
 
     None
+}
+
+pub async fn export_pdf(text_to_convert: String, md_file_path: Option<PathBuf>) -> (bool, String) {
+    let input_bytes = bytes::Bytes::from(text_to_convert);
+    match shiva::markdown::Transformer::parse(&input_bytes) {
+        Ok(document) => match shiva::pdf::Transformer::generate(&document) {
+            Ok(output_bytes) => {
+                let export_path = md_file_path
+                    .unwrap_or(PathBuf::from("export.md"))
+                    .with_extension("pdf");
+                match std::fs::write(export_path.clone(), output_bytes) {
+                    Ok(_) => (
+                        true,
+                        format!("PDF successfully exported to {export_path:?}"),
+                    ),
+                    Err(err) => (false, format!("PDF export failed: {err:?}")),
+                }
+            }
+            Err(err) => (false, format!("PDF export failed: {err:?}")),
+        },
+        Err(err) => (false, format!("PDF export failed: {err:?}")),
+    }
+}
+
+pub async fn export_to_website(
+    text_to_convert: String,
+    md_file_path: Option<PathBuf>,
+) -> (bool, String) {
+    let input_bytes = bytes::Bytes::from(text_to_convert);
+    match shiva::markdown::Transformer::parse(&input_bytes) {
+        Ok(document) => match shiva::html::Transformer::generate(&document) {
+            Ok(output_bytes) => {
+                let export_path = md_file_path
+                    .unwrap_or(PathBuf::from("export.md"))
+                    .with_extension("html");
+                match std::fs::write(export_path.clone(), output_bytes) {
+                    Ok(_) => {
+                        todo!();
+                        (
+                            true,
+                            format!("HTML successfully exported to {export_path:?}"),
+                        )
+                    }
+                    Err(err) => (false, format!("HTML export failed: {err:?}")),
+                }
+            }
+            Err(err) => (false, format!("HTML export failed: {err:?}")),
+        },
+        Err(err) => (false, format!("HTML export failed: {err:?}")),
+    }
 }

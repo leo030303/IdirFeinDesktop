@@ -1,7 +1,9 @@
+use std::time::Duration;
+
 use iced::{
     alignment::Horizontal,
     event,
-    widget::{self, button, column, row, text, tooltip::Position, Space, Svg, Tooltip},
+    widget::{self, button, column, container, row, text, tooltip::Position, Svg, Tooltip},
     window, ContentFit, Event, Length, Subscription, Task, Theme,
 };
 use idirfein_desktop_iced::{
@@ -45,6 +47,9 @@ struct AppState {
     settings_page: SettingsPage,
     file_manager_page: FileManagerPage,
     gallery_page: GalleryPage,
+    show_toast: bool,
+    is_good_toast: bool,
+    toast_text: String,
 }
 
 impl AppState {
@@ -61,6 +66,9 @@ impl AppState {
                 settings_page: SettingsPage::new(),
                 file_manager_page: FileManagerPage::new(),
                 gallery_page: GalleryPage::new(),
+                show_toast: false,
+                is_good_toast: true,
+                toast_text: String::new(),
             },
             widget::focus_next(),
         )
@@ -75,6 +83,20 @@ impl AppState {
             Message::Gallery(m) => return self.gallery_page.update(m),
             Message::FileManager(m) => return self.file_manager_page.update(m),
             Message::Settings(m) => return self.settings_page.update(m),
+            Message::ShowToast(is_good_toast, content) => {
+                self.show_toast = true;
+                self.is_good_toast = is_good_toast;
+                self.toast_text = content;
+                return Task::perform(
+                    async { std::thread::sleep(Duration::from_millis(5000)) },
+                    |_| Message::ToastExpired,
+                );
+            }
+            Message::ToastExpired => {
+                self.show_toast = false;
+                self.is_good_toast = true;
+                self.toast_text = String::new();
+            }
             Message::CloseWindowRequest => {
                 self.is_closing = true;
                 return Task::batch([
@@ -139,7 +161,20 @@ impl AppState {
                         .align_x(Horizontal::Center),
                     nav_bar,
                 ],
-                Space::with_height(20),
+                if self.show_toast {
+                    container(row![
+                        // TODO Fix toast layout
+                        text(&self.toast_text).width(Length::Fill),
+                        button(Svg::from_path("icons/close.svg").content_fit(ContentFit::Contain))
+                            .width(Length::Fixed(50.0))
+                            .height(Length::Fill)
+                            .on_press(Message::ToastExpired)
+                    ])
+                    .height(50)
+                    .style(container::bordered_box) // TODO Add good/bad style
+                } else {
+                    container(row![]).height(10)
+                },
                 main_view
             ]
             .into()

@@ -180,8 +180,41 @@ fn preview_view(state: &NotesPage) -> Element<Message> {
     .into()
 }
 
-fn document_statistics_view(_state: &NotesPage) -> Element<Message> {
-    column![text("Document Statistics").width(Length::Fill).size(24)].into()
+fn document_statistics_view(state: &NotesPage) -> Element<Message> {
+    column![
+        row![
+            text("Document Statistics").width(Length::Fill).size(24),
+            Tooltip::new(
+                button(Svg::from_path("icons/close.svg"))
+                    .on_press(Message::Notes(
+                        NotesPageMessage::ToggleDocumentStatisticsView
+                    ))
+                    .width(Length::Fixed(50.0)),
+                "Close Statistics",
+                iced::widget::tooltip::Position::Bottom
+            ),
+        ],
+        text(format!(
+            "Character Count: {}",
+            state.current_note_statistics.char_count
+        )),
+        text(format!(
+            "Word Count: {}",
+            state.current_note_statistics.word_count
+        )),
+        text(format!(
+            "Reading Time: {} minutes",
+            state.current_note_statistics.reading_time_in_mins
+        )),
+        Tooltip::new(
+            button(Svg::from_path("icons/refresh.svg"))
+                .on_press(Message::Notes(NotesPageMessage::CalculateNoteStatistics))
+                .width(Length::Fill),
+            "Refresh Statistics",
+            iced::widget::tooltip::Position::Bottom
+        ),
+    ]
+    .into()
 }
 
 fn rename_note_view(_state: &NotesPage) -> Element<Message> {
@@ -202,14 +235,30 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
         button(text("Post to website").width(Length::Fill).align_x(Center))
             .on_press(Message::Notes(NotesPageMessage::ExportToWebsite))
             .width(Length::Fill),
-        button(text("Show statistics").width(Length::Fill).align_x(Center))
-            .on_press(Message::Notes(
-                NotesPageMessage::ToggleDocumentStatisticsView
-            ))
-            .width(Length::Fill),
-        button(text("Rename Note").width(Length::Fill).align_x(Center))
-            .on_press(Message::Notes(NotesPageMessage::ToggleRenameNoteView))
+        button(
+            text(if !state.show_document_statistics_view {
+                "Show statistics"
+            } else {
+                "Hide Statistics"
+            })
             .width(Length::Fill)
+            .align_x(Center)
+        )
+        .on_press(Message::Notes(
+            NotesPageMessage::ToggleDocumentStatisticsView
+        ))
+        .width(Length::Fill),
+        button(
+            text(if !state.show_rename_note_view {
+                "Rename Note"
+            } else {
+                "Hide Rename Panel"
+            })
+            .width(Length::Fill)
+            .align_x(Center)
+        )
+        .on_press(Message::Notes(NotesPageMessage::ToggleRenameNoteView))
+        .width(Length::Fill)
     ]
     .width(Length::Fixed(200.0));
 

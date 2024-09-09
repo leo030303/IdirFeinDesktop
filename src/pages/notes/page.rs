@@ -6,17 +6,17 @@ use iced::{Element, Theme};
 
 use crate::Message;
 
+use super::notes_utils::NoteStatistics;
 use super::update::update;
 use super::view::{main_view, tool_view};
 
+// TODO Make it all look nice
 // TODO Add ability to set category for note
 // TODO Add ability to set category colours
 // TODO Add category filter
-// TODO Add word count
 // TODO Sync scrolling between editor and preview
 // TODO Autosave file
 // TODO Rename file
-// TODO Export as PDF
 // TODO Export as HTML and add to website
 // TODO Lazy load notes list
 
@@ -43,6 +43,7 @@ pub struct NotesPage {
     pub(crate) show_extra_tools_menu: bool,
     pub(crate) show_document_statistics_view: bool,
     pub(crate) show_rename_note_view: bool,
+    pub(crate) current_note_statistics: NoteStatistics,
 }
 
 #[derive(Debug, Clone)]
@@ -64,6 +65,8 @@ pub enum NotesPageMessage {
     ExportToWebsite,
     ToggleDocumentStatisticsView,
     ToggleRenameNoteView,
+    CalculateNoteStatistics,
+    SetNoteStatistics(NoteStatistics),
 }
 
 impl NotesPage {
@@ -87,6 +90,11 @@ impl NotesPage {
             show_extra_tools_menu: false,
             show_document_statistics_view: false,
             show_rename_note_view: false,
+            current_note_statistics: NoteStatistics {
+                char_count: 0,
+                word_count: 0,
+                reading_time_in_mins: 0,
+            },
         }
     }
 

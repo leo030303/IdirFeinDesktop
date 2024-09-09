@@ -8,7 +8,7 @@ use std::fs;
 use crate::Message;
 
 use super::{
-    notes_utils::{read_file_to_note, read_notes_from_folder},
+    notes_utils::{export_pdf, read_file_to_note, read_notes_from_folder, NoteStatistics},
     page::{NotesPage, NotesPageMessage},
 };
 
@@ -75,13 +75,42 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         NotesPageMessage::ToggleExtraToolsMenu => {
             state.show_extra_tools_menu = !state.show_extra_tools_menu
         }
-        NotesPageMessage::ExportPDF => todo!(),
+        NotesPageMessage::ExportPDF => {
+            return Task::perform(
+                export_pdf(state.editor_content.text(), state.current_file.clone()),
+                |(success, content)| Message::ShowToast(success, content),
+            );
+        }
         NotesPageMessage::ExportToWebsite => todo!(),
         NotesPageMessage::ToggleDocumentStatisticsView => {
-            state.show_document_statistics_view = !state.show_document_statistics_view
+            state.show_document_statistics_view = !state.show_document_statistics_view;
+            if state.show_document_statistics_view {
+                return Task::done(Message::Notes(NotesPageMessage::CalculateNoteStatistics));
+            }
         }
         NotesPageMessage::ToggleRenameNoteView => {
             state.show_rename_note_view = !state.show_rename_note_view
+        }
+        NotesPageMessage::CalculateNoteStatistics => {
+            let note_text = state.editor_content.text();
+            return Task::perform(
+                async move {
+                    let char_count = note_text.chars().count() as u64;
+                    let word_count = note_text.split(' ').count() as u64;
+                    let reading_time_in_mins = word_count / 200;
+                    NoteStatistics {
+                        char_count,
+                        word_count,
+                        reading_time_in_mins,
+                    }
+                },
+                |note_statistics| {
+                    Message::Notes(NotesPageMessage::SetNoteStatistics(note_statistics))
+                },
+            );
+        }
+        NotesPageMessage::SetNoteStatistics(note_statistics) => {
+            state.current_note_statistics = note_statistics;
         }
     }
     Task::none()

@@ -19,6 +19,8 @@ pub enum Message {
     Gallery(GalleryPageMessage),
     FileManager(FileManagerPageMessage),
     Settings(SettingsPageMessage),
+    ShowToast(bool, String),
+    ToastExpired,
 }
 
 #[derive(Debug, Clone)]
