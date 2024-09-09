@@ -19,7 +19,6 @@ use super::view::{main_view, tool_view};
 // TODO Export as PDF
 // TODO Export as HTML and add to website
 // TODO Lazy load notes list
-// TODO Handle links correctly, websites open browser, within file jumps to that section, files that are markdown opens that file, images??
 
 #[derive(Debug, Clone)]
 pub struct Note {

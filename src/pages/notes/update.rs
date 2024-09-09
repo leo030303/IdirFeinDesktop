@@ -1,10 +1,10 @@
-use std::fs;
-
 use iced::{
     widget::{markdown, text_editor},
     Task,
 };
 use rfd::FileDialog;
+use std::fs;
+use url::Url;
 
 use crate::Message;
 
@@ -26,7 +26,7 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             }
         }
         NotesPageMessage::LinkClicked(link) => {
-            println!("{link}");
+            opener::open(link.as_str()).unwrap();
         }
         NotesPageMessage::ToggleSidebar => state.show_sidebar = !state.show_sidebar,
         NotesPageMessage::ToggleMarkdown => state.show_markdown = !state.show_markdown,
