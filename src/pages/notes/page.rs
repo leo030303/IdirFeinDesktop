@@ -4,13 +4,14 @@ use iced::widget::{markdown, text_editor};
 use iced::Task;
 use iced::{Element, Theme};
 
-use crate::Message;
+use crate::app::Message;
 
 use super::notes_utils::NoteStatistics;
 use super::update::update;
 use super::view::{main_view, tool_view};
 
 // TODO Make it all look nice
+// TODO Format shortcut bar to insert markdown items
 // TODO Add ability to set category for note
 // TODO Add ability to set category colours
 // TODO Add category filter

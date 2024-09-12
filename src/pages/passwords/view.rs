@@ -6,7 +6,7 @@ use iced::widget::{button, column, container, row, text, text_input, Scrollable,
 use iced::Element;
 use iced::{Font, Length};
 
-use crate::Message;
+use crate::app::Message;
 
 use super::page::{PasswordsPage, PasswordsPageMessage};
 

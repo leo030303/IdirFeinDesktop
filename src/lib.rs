@@ -1,36 +1,11 @@
-use crate::pages::file_manager::page::FileManagerPageMessage;
-use crate::pages::gallery::page::GalleryPageMessage;
-use crate::pages::notes::page::NotesPageMessage;
-use crate::pages::passwords::page::PasswordsPageMessage;
-use crate::pages::settings::page::SettingsPageMessage;
-use crate::pages::tasks::page::TasksPageMessage;
+use serde::{Deserialize, Serialize};
 
+pub mod app;
+pub mod config;
 pub mod pages;
 pub mod utils;
 
-#[derive(Debug, Clone)]
-pub enum Message {
-    ChangePage(Page),
-    CloseWindowRequest,
-    None,
-    Passwords(PasswordsPageMessage),
-    Notes(NotesPageMessage),
-    Tasks(TasksPageMessage),
-    Gallery(GalleryPageMessage),
-    FileManager(FileManagerPageMessage),
-    Settings(SettingsPageMessage),
-    ShowToast(bool, String),
-    ToastExpired,
-}
-
-#[derive(Debug, Clone)]
-pub enum SettingsSubpage {
-    Sync,
-    Config,
-    General,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum Page {
     Settings,
     Passwords,

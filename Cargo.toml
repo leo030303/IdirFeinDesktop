@@ -7,11 +7,13 @@ edition = "2021"
 arboard = "3.4.0"
 bytes = "1.7.1"
 iced = { version = "0.13.0-dev", git = "https://github.com/iced-rs/iced", features = ["markdown", "highlighter", "svg", "tokio"]}
-iced_aw = { git = "https://github.com/iced-rs/iced_aw", default-features = false, features = ["badge", "drop_down"] }
+iced_aw = { git = "https://github.com/iced-rs/iced_aw", default-features = false, features = ["badge", "drop_down", "spinner"] }
 keepass = { version = "0.7.21", features = ["save_kdbx4"] }
 opener = "0.7.2"
 rand = "0.8.5"
 rfd = "0.14.1"
+serde = "1.0.210"
+serde_json = "1.0.128"
 shiva = { version="1.2.0", default-features = false, features = ["html", "markdown", "pdf"] }
 uuid = { version = "1.10.0", features = ["v4"] }
 walkdir = "2.5.0"

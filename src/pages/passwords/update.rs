@@ -3,7 +3,7 @@ use iced::Task;
 use rand::{thread_rng, Rng};
 use rfd::FileDialog;
 
-use crate::Message;
+use crate::app::Message;
 
 use super::{
     page::{Password, PasswordsPage, PasswordsPageMessage},

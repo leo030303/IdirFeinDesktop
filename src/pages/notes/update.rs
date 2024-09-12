@@ -5,7 +5,7 @@ use iced::{
 use rfd::FileDialog;
 use std::fs;
 
-use crate::Message;
+use crate::app::Message;
 
 use super::{
     notes_utils::{export_pdf, read_file_to_note, read_notes_from_folder, NoteStatistics},

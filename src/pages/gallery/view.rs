@@ -3,7 +3,7 @@ use iced::{
     Element, Length,
 };
 
-use crate::Message;
+use crate::app::Message;
 
 use super::page::GalleryPage;
 

@@ -1,6 +1,6 @@
 use iced::{Element, Task};
 
-use crate::Message;
+use crate::app::Message;
 
 use super::update::update;
 use super::view::{main_view, tool_view};

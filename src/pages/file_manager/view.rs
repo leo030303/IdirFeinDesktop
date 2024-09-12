@@ -1,14 +1,14 @@
 use iced::{
-    widget::{row, text},
+    widget::{column, row, text},
     Element, Length,
 };
 
-use crate::Message;
+use crate::app::Message;
 
 use super::page::FileManagerPage;
 
 pub fn main_view(_state: &FileManagerPage) -> Element<Message> {
-    text("File Manager Page").size(24).into()
+    column![text("File Manager Page").size(24),].into()
 }
 
 pub fn tool_view(_state: &FileManagerPage) -> Element<Message> {

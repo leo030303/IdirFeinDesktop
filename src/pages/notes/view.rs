@@ -9,7 +9,7 @@ use iced::widget::{
 use iced::{highlighter, Length};
 use iced::{Element, Fill, Font};
 
-use crate::Message;
+use crate::app::Message;
 
 use super::page::{NotesPage, NotesPageMessage};
 

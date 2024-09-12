@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use iced::{Element, Task};
 
-use crate::Message;
+use crate::app::Message;
 
 use super::passwords_utils::save_database;
 use super::update::update;

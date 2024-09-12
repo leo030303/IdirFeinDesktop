@@ -1,18 +1,46 @@
-use iced::{Element, Task};
+use iced::{Element, Task, Theme};
 
-use crate::Message;
+use crate::app::Message;
+use crate::config::AppConfig;
 
 use super::update::update;
 use super::view::{main_view, tool_view};
 
-pub struct SettingsPage {}
+#[derive(Debug, Clone)]
+pub enum SettingsTab {
+    General,
+    Sync,
+    FileManager,
+    Gallery,
+    Passwords,
+    Notes,
+    Tasks,
+}
 
 #[derive(Debug, Clone)]
-pub enum SettingsPageMessage {}
+pub struct SettingsPage {
+    pub(crate) is_saving: bool,
+    pub(crate) save_was_successful: bool,
+    pub(crate) save_message: String,
+    pub(crate) current_tab: SettingsTab,
+}
+
+#[derive(Debug, Clone)]
+pub enum SettingsPageMessage {
+    SetTheme(Theme),
+    ChangeTab(SettingsTab),
+    StartSaving,
+    ResultFromSave((bool, String)),
+}
 
 impl SettingsPage {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            is_saving: false,
+            save_was_successful: true,
+            current_tab: SettingsTab::General,
+            save_message: String::from("Settings saved"),
+        }
     }
 
     pub fn closing_task(&mut self) -> Task<Message> {
@@ -20,12 +48,16 @@ impl SettingsPage {
         Task::none()
     }
 
-    pub fn update(&mut self, message: SettingsPageMessage) -> Task<Message> {
-        update(self, message)
+    pub fn update(
+        &mut self,
+        message: SettingsPageMessage,
+        app_config: &mut AppConfig,
+    ) -> Task<Message> {
+        update(self, message, app_config)
     }
 
-    pub fn view(&self) -> Element<Message> {
-        main_view(self)
+    pub fn view<'a>(&'a self, app_config: &'a AppConfig) -> Element<'a, Message> {
+        main_view(self, app_config)
     }
 
     pub fn tool_view(&self) -> Element<Message> {
