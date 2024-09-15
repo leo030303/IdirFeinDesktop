@@ -229,6 +229,12 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
         iced::widget::tooltip::Position::Bottom,
     );
     let overlay = column![
+        button(
+            text("Select Notes Folder")
+                .width(Length::Fill)
+                .align_x(Center),
+        )
+        .on_press(Message::Notes(NotesPageMessage::OpenFilePicker)),
         button(text("Export PDF").width(Length::Fill).align_x(Center))
             .on_press(Message::Notes(NotesPageMessage::ExportPDF))
             .width(Length::Fill),
