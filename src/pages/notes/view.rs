@@ -6,7 +6,7 @@ use iced::widget::{
     button, column, markdown, row, scrollable, text, text_editor, text_input, Scrollable, Svg,
     Tooltip,
 };
-use iced::{highlighter, Length};
+use iced::{highlighter, ContentFit, Length};
 use iced::{Element, Fill, Font};
 
 use crate::app::Message;
@@ -218,25 +218,45 @@ fn document_statistics_view(state: &NotesPage) -> Element<Message> {
 }
 
 fn rename_note_view(state: &NotesPage) -> Element<Message> {
-    column![
-        text("Rename Note").width(Length::Fill).size(24),
-        text_input(
-            &format!(
-                "New name for {}",
-                state
-                    .current_file
-                    .as_ref()
-                    .map(|note_path| note_path
-                        .file_name()
-                        .map(|os_str| os_str.to_str().unwrap_or("Unnamed"))
-                        .unwrap_or("Unnamed"))
-                    .unwrap_or("Unnamed")
-            ),
-            &state.current_rename_note_text
-        )
-        .on_input(|s| Message::Notes(NotesPageMessage::UpdateRenameNoteText(s)))
-        .on_submit(Message::Notes(NotesPageMessage::RenameCurrentNote))
+    row![
+        column![
+            text(if state.current_file.is_some() {
+                "Rename Note"
+            } else {
+                "Set Note Title"
+            })
+            .width(Length::Fill)
+            .size(24),
+            text_input(
+                &format!(
+                    "New name for {}",
+                    state
+                        .current_file
+                        .as_ref()
+                        .map(|note_path| note_path
+                            .file_name()
+                            .map(|os_str| os_str.to_str().unwrap_or("Unnamed"))
+                            .unwrap_or("Unnamed"))
+                        .unwrap_or("Unnamed")
+                ),
+                &state.current_rename_note_text
+            )
+            .on_input(|s| Message::Notes(NotesPageMessage::UpdateRenameNoteText(s)))
+            .on_submit(Message::Notes(NotesPageMessage::RenameCurrentNote))
+        ],
+        if state.current_file.is_some() {
+            column![
+                button(Svg::from_path("icons/close.svg").content_fit(ContentFit::Contain))
+                    .width(Length::Fixed(40.0))
+                    .on_press(Message::Notes(NotesPageMessage::ToggleRenameNoteView))
+                    .height(Length::Fixed(40.0))
+                    .padding(10)
+            ]
+        } else {
+            column![]
+        }
     ]
+    .spacing(10)
     .into()
 }
 
@@ -283,7 +303,11 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
             .align_x(Center)
         )
         .on_press(Message::Notes(NotesPageMessage::ToggleRenameNoteView))
-        .width(Length::Fill)
+        .width(Length::Fill),
+        button(text("Delete Note").width(Length::Fill).align_x(Center))
+            .on_press(Message::Notes(NotesPageMessage::DeleteCurrentFile))
+            .width(Length::Fill)
+            .style(button::danger),
     ]
     .width(Length::Fixed(200.0));
 

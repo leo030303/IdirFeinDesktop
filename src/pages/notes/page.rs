@@ -92,6 +92,7 @@ pub enum NotesPageMessage {
     LoadFolderAsNotesList,
     UpdateRenameNoteText(String),
     RenameCurrentNote,
+    DeleteCurrentFile,
 }
 
 impl NotesPage {

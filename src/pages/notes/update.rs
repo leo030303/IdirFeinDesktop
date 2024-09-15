@@ -146,12 +146,16 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                     new_path.set_extension("md");
                     fs::rename(current_file, &new_path).unwrap();
                     state.current_file = Some(new_path);
+                    state.current_rename_note_text = String::new();
+                    state.show_rename_note_view = false;
                     return Task::done(Message::Notes(NotesPageMessage::SaveNote));
                 } else {
                     let mut new_path = selected_folder.clone();
                     new_path.push(&state.current_rename_note_text);
                     new_path.set_extension("md");
                     state.current_file = Some(new_path);
+                    state.current_rename_note_text = String::new();
+                    state.show_rename_note_view = false;
                     return Task::done(Message::Notes(NotesPageMessage::SaveNote));
                 }
             } else {
@@ -159,6 +163,17 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                     false,
                     String::from("No selected folder to save note into"),
                 ));
+            }
+        }
+        NotesPageMessage::DeleteCurrentFile => {
+            state.editor_content = text_editor::Content::new();
+            state.markdown_preview_items = markdown::parse(&state.editor_content.text()).collect();
+            if let Some(current_file) = state.current_file.as_ref() {
+                fs::remove_file(current_file).unwrap();
+                state.current_file = None;
+                return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList)).chain(
+                    Task::done(Message::ShowToast(true, String::from("Note deleted"))),
+                );
             }
         }
     }
