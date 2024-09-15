@@ -72,19 +72,16 @@ impl AppState {
                 is_good_toast: true,
                 toast_text: String::new(),
             },
-            widget::focus_next(),
+            Task::batch([
+                widget::focus_next(),
+                Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList)),
+            ]),
         )
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::ChangePage(new_page) => {
-                if new_page == Page::Notes {
-                    self.current_page = new_page;
-                    return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList));
-                }
-                self.current_page = new_page;
-            }
+            Message::ChangePage(new_page) => self.current_page = new_page,
             Message::Passwords(m) => return self.passwords_page.update(m),
             Message::Notes(m) => return self.notes_page.update(m),
             Message::Tasks(m) => return self.tasks_page.update(m),
