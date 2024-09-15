@@ -36,11 +36,20 @@ pub fn main_view(state: &NotesPage) -> Element<Message> {
                 } else {
                     column![].into()
                 },
-                if state.show_rename_note_view || state.current_file.is_none() {
+                if state.show_edit_note_details_view || state.current_file.is_none() {
                     if state.is_loading_note {
                         loading_note_view(state)
                     } else {
-                        rename_note_view(state)
+                        edit_note_details_view(state)
+                    }
+                } else {
+                    column![].into()
+                },
+                if state.show_manage_categories_view {
+                    if state.is_loading_note {
+                        loading_note_view(state)
+                    } else {
+                        manage_categories_view(state)
                     }
                 } else {
                     column![].into()
@@ -217,7 +226,7 @@ fn document_statistics_view(state: &NotesPage) -> Element<Message> {
     .into()
 }
 
-fn rename_note_view(state: &NotesPage) -> Element<Message> {
+fn edit_note_details_view(state: &NotesPage) -> Element<Message> {
     column![
         row![
             text(if state.current_file.is_some() {
@@ -230,7 +239,7 @@ fn rename_note_view(state: &NotesPage) -> Element<Message> {
             if state.current_file.is_some() {
                 column![Tooltip::new(
                     button(Svg::from_path("icons/close.svg"))
-                        .on_press(Message::Notes(NotesPageMessage::ToggleRenameNoteView))
+                        .on_press(Message::Notes(NotesPageMessage::ToggleEditNoteDetailsView))
                         .width(Length::Fixed(50.0)),
                     "Close Rename Panel",
                     iced::widget::tooltip::Position::Bottom
@@ -256,6 +265,20 @@ fn rename_note_view(state: &NotesPage) -> Element<Message> {
         .on_input(|s| Message::Notes(NotesPageMessage::UpdateRenameNoteText(s)))
         .on_submit(Message::Notes(NotesPageMessage::RenameCurrentNote))
     ]
+    .into()
+}
+
+fn manage_categories_view(_state: &NotesPage) -> Element<Message> {
+    column![row![
+        text("Manage Categories").width(Length::Fill).size(24),
+        Tooltip::new(
+            button(Svg::from_path("icons/close.svg"))
+                .on_press(Message::Notes(NotesPageMessage::ToggleManageCategoriesView))
+                .width(Length::Fixed(50.0)),
+            "Close Categories Manager",
+            iced::widget::tooltip::Position::Bottom
+        ),
+    ],]
     .into()
 }
 
@@ -293,7 +316,18 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
         ))
         .width(Length::Fill),
         button(
-            text(if !state.show_rename_note_view {
+            text(if !state.show_manage_categories_view {
+                "Manage Categories"
+            } else {
+                "Hide Categories Manager"
+            })
+            .width(Length::Fill)
+            .align_x(Center)
+        )
+        .on_press(Message::Notes(NotesPageMessage::ToggleManageCategoriesView))
+        .width(Length::Fill),
+        button(
+            text(if !state.show_edit_note_details_view {
                 "Rename Note"
             } else {
                 "Hide Rename Panel"
@@ -301,7 +335,7 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
             .width(Length::Fill)
             .align_x(Center)
         )
-        .on_press(Message::Notes(NotesPageMessage::ToggleRenameNoteView))
+        .on_press(Message::Notes(NotesPageMessage::ToggleEditNoteDetailsView))
         .width(Length::Fill),
         button(text("Delete Note").width(Length::Fill).align_x(Center))
             .on_press(Message::Notes(NotesPageMessage::DeleteCurrentFile))

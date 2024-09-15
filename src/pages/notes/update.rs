@@ -114,8 +114,11 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                 return Task::done(Message::Notes(NotesPageMessage::CalculateNoteStatistics));
             }
         }
-        NotesPageMessage::ToggleRenameNoteView => {
-            state.show_rename_note_view = !state.show_rename_note_view
+        NotesPageMessage::ToggleEditNoteDetailsView => {
+            state.show_edit_note_details_view = !state.show_edit_note_details_view
+        }
+        NotesPageMessage::ToggleManageCategoriesView => {
+            state.show_manage_categories_view = !state.show_manage_categories_view
         }
         NotesPageMessage::CalculateNoteStatistics => {
             let note_text = state.editor_content.text();
@@ -147,7 +150,7 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                     fs::rename(current_file, &new_path).unwrap();
                     state.current_file = Some(new_path);
                     state.current_rename_note_text = String::new();
-                    state.show_rename_note_view = false;
+                    state.show_edit_note_details_view = false;
                     return Task::done(Message::Notes(NotesPageMessage::SaveNote));
                 } else {
                     let mut new_path = selected_folder.clone();
@@ -155,7 +158,7 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                     new_path.set_extension("md");
                     state.current_file = Some(new_path);
                     state.current_rename_note_text = String::new();
-                    state.show_rename_note_view = false;
+                    state.show_edit_note_details_view = false;
                     return Task::done(Message::Notes(NotesPageMessage::SaveNote));
                 }
             } else {

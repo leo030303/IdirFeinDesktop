@@ -61,7 +61,8 @@ pub struct NotesPage {
     pub(crate) is_loading_note: bool,
     pub(crate) show_extra_tools_menu: bool,
     pub(crate) show_document_statistics_view: bool,
-    pub(crate) show_rename_note_view: bool,
+    pub(crate) show_edit_note_details_view: bool,
+    pub(crate) show_manage_categories_view: bool,
     pub(crate) current_note_statistics: NoteStatistics,
     pub(crate) current_rename_note_text: String,
 }
@@ -84,7 +85,8 @@ pub enum NotesPageMessage {
     ExportPDF,
     ExportToWebsite,
     ToggleDocumentStatisticsView,
-    ToggleRenameNoteView,
+    ToggleEditNoteDetailsView,
+    ToggleManageCategoriesView,
     CalculateNoteStatistics,
     SetNoteStatistics(NoteStatistics),
     LoadFolderAsNotesList,
@@ -111,13 +113,14 @@ impl NotesPage {
             is_loading_note: false,
             show_extra_tools_menu: false,
             show_document_statistics_view: false,
-            show_rename_note_view: false,
+            show_edit_note_details_view: false,
             current_note_statistics: NoteStatistics {
                 char_count: 0,
                 word_count: 0,
                 reading_time_in_mins: 0,
             },
             current_rename_note_text: String::new(),
+            show_manage_categories_view: false,
         }
     }
 
