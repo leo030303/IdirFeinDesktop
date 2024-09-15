@@ -121,6 +121,10 @@ impl PasswordsPage {
         }
     }
 
+    pub fn opening_task() -> Task<Message> {
+        Task::none()
+    }
+
     pub fn closing_task(&mut self) -> Task<Message> {
         if self.is_dirty {
             let password = if self.master_password_field_text.is_empty() {

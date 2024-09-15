@@ -19,6 +19,10 @@ impl FileManagerPage {
         Self {}
     }
 
+    pub fn opening_task() -> Task<Message> {
+        Task::none()
+    }
+
     pub fn closing_task(&mut self) -> Task<Message> {
         println!("Closing task from files");
         Task::none()

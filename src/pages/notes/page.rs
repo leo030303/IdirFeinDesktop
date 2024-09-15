@@ -65,6 +65,7 @@ pub struct NotesPage {
     pub(crate) show_document_statistics_view: bool,
     pub(crate) show_rename_note_view: bool,
     pub(crate) current_note_statistics: NoteStatistics,
+    pub(crate) current_rename_note_text: String,
 }
 
 #[derive(Debug, Clone)]
@@ -89,6 +90,8 @@ pub enum NotesPageMessage {
     CalculateNoteStatistics,
     SetNoteStatistics(NoteStatistics),
     LoadFolderAsNotesList,
+    UpdateRenameNoteText(String),
+    RenameCurrentNote,
 }
 
 impl NotesPage {
@@ -115,7 +118,12 @@ impl NotesPage {
                 word_count: 0,
                 reading_time_in_mins: 0,
             },
+            current_rename_note_text: String::new(),
         }
+    }
+
+    pub fn opening_task() -> Task<Message> {
+        Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList))
     }
 
     pub fn closing_task(&mut self) -> Task<Message> {

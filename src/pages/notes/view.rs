@@ -36,7 +36,7 @@ pub fn main_view(state: &NotesPage) -> Element<Message> {
                 } else {
                     column![].into()
                 },
-                if state.show_rename_note_view {
+                if state.show_rename_note_view || state.current_file.is_none() {
                     if state.is_loading_note {
                         loading_note_view(state)
                     } else {
@@ -217,8 +217,27 @@ fn document_statistics_view(state: &NotesPage) -> Element<Message> {
     .into()
 }
 
-fn rename_note_view(_state: &NotesPage) -> Element<Message> {
-    column![text("Rename Note").width(Length::Fill).size(24)].into()
+fn rename_note_view(state: &NotesPage) -> Element<Message> {
+    column![
+        text("Rename Note").width(Length::Fill).size(24),
+        text_input(
+            &format!(
+                "New name for {}",
+                state
+                    .current_file
+                    .as_ref()
+                    .map(|note_path| note_path
+                        .file_name()
+                        .map(|os_str| os_str.to_str().unwrap_or("Unnamed"))
+                        .unwrap_or("Unnamed"))
+                    .unwrap_or("Unnamed")
+            ),
+            &state.current_rename_note_text
+        )
+        .on_input(|s| Message::Notes(NotesPageMessage::UpdateRenameNoteText(s)))
+        .on_submit(Message::Notes(NotesPageMessage::RenameCurrentNote))
+    ]
+    .into()
 }
 
 pub fn tool_view(state: &NotesPage) -> Element<Message> {

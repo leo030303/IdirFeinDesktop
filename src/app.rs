@@ -4,7 +4,7 @@ use iced::{
     alignment::Horizontal,
     event,
     widget::{self, button, column, container, row, text, tooltip::Position, Svg, Tooltip},
-    window, Alignment, ContentFit, Event, Length, Padding, Subscription, Task, Theme,
+    window, Alignment, ContentFit, Event, Length, Subscription, Task, Theme,
 };
 
 use crate::{
@@ -74,7 +74,12 @@ impl AppState {
             },
             Task::batch([
                 widget::focus_next(),
-                Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList)),
+                NotesPage::opening_task(),
+                TasksPage::opening_task(),
+                PasswordsPage::opening_task(),
+                SettingsPage::opening_task(),
+                GalleryPage::opening_task(),
+                FileManagerPage::opening_task(),
             ]),
         )
     }

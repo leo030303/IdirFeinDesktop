@@ -45,7 +45,23 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             state.editor_content = text_editor::Content::new();
             state.markdown_preview_items = markdown::parse(&state.editor_content.text()).collect();
         }
-        NotesPageMessage::SaveNote => todo!(),
+        NotesPageMessage::SaveNote => {
+            if let Some(current_file) = state.current_file.clone() {
+                let note_text = state.editor_content.text();
+                return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList)).chain(
+                    Task::perform(async { fs::write(current_file, note_text) }, |result| {
+                        match result {
+                            Ok(_) => Message::ShowToast(true, String::from("Saved note")),
+                            Err(err) => {
+                                Message::ShowToast(false, format!("Failed to save note: {err:?}"))
+                            }
+                        }
+                    }),
+                );
+            } else {
+                return Task::done(Message::ShowToast(false, String::from("Saving failed, no filepath set, set one using the rename button in the dropdown")));
+            }
+        }
         NotesPageMessage::OpenFilePicker => {
             let selected_folder = FileDialog::new().set_directory("/").pick_folder();
             state.selected_folder = selected_folder;
@@ -121,6 +137,29 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         }
         NotesPageMessage::SetNoteStatistics(note_statistics) => {
             state.current_note_statistics = note_statistics;
+        }
+        NotesPageMessage::UpdateRenameNoteText(s) => state.current_rename_note_text = s,
+        NotesPageMessage::RenameCurrentNote => {
+            if let Some(selected_folder) = state.selected_folder.as_ref() {
+                if let Some(current_file) = state.current_file.as_ref() {
+                    let mut new_path = current_file.with_file_name(&state.current_rename_note_text);
+                    new_path.set_extension("md");
+                    fs::rename(current_file, &new_path).unwrap();
+                    state.current_file = Some(new_path);
+                    return Task::done(Message::Notes(NotesPageMessage::SaveNote));
+                } else {
+                    let mut new_path = selected_folder.clone();
+                    new_path.push(&state.current_rename_note_text);
+                    new_path.set_extension("md");
+                    state.current_file = Some(new_path);
+                    return Task::done(Message::Notes(NotesPageMessage::SaveNote));
+                }
+            } else {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("No selected folder to save note into"),
+                ));
+            }
         }
     }
     Task::none()
