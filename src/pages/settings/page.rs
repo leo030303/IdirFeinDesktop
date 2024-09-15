@@ -62,6 +62,7 @@ pub enum SettingsPageMessage {
     NotesSetShowEditorOnStart(bool),
     NotesSetShowMarkdownOnStart(bool),
     PasswordsSetDefaultDatabase,
+    PasswordsSetShowSidebarOnStart(bool),
 }
 
 impl SettingsPage {

@@ -59,6 +59,10 @@ pub fn update(
             app_config.passwords_config.default_database = selected_file;
             return Task::done(Message::SaveConfig);
         }
+        SettingsPageMessage::PasswordsSetShowSidebarOnStart(b) => {
+            app_config.passwords_config.show_sidebar_on_start = b;
+            return Task::done(Message::SaveConfig);
+        }
     }
     Task::none()
 }

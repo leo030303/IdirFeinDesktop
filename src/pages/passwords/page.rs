@@ -26,9 +26,19 @@ pub struct Password {
     pub password: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PasswordPageConfig {
     pub default_database: Option<PathBuf>,
+    pub show_sidebar_on_start: bool,
+}
+
+impl Default for PasswordPageConfig {
+    fn default() -> Self {
+        Self {
+            default_database: None,
+            show_sidebar_on_start: true,
+        }
+    }
 }
 
 pub struct PasswordsPage {
@@ -100,7 +110,7 @@ impl PasswordsPage {
             current_password_text: String::new(),
             current_passwords_list_filter: String::new(),
             is_dirty: false,
-            show_sidebar: true,
+            show_sidebar: config.show_sidebar_on_start,
             hide_master_password_entry: true,
             hide_current_password_entry: true,
             is_creating_new_keepass_file: false,

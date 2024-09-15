@@ -119,27 +119,34 @@ fn notes_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<
 fn passwords_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
     scrollable(
         container(
-            column![row![
-                text(
-                    app_config
-                        .passwords_config
-                        .default_database
-                        .as_ref()
-                        .map(|value| format!("Default Database: {value:?}"))
-                        .unwrap_or(String::from("No Default Database Selected"))
-                )
-                .align_x(Alignment::Center)
+            column![
+                row![
+                    text(
+                        app_config
+                            .passwords_config
+                            .default_database
+                            .as_ref()
+                            .map(|value| format!("Default Database: {value:?}"))
+                            .unwrap_or(String::from("No Default Database Selected"))
+                    )
+                    .align_x(Alignment::Center)
+                    .width(Length::Fill),
+                    button(
+                        text("Select Default Database")
+                            .width(Length::Fill)
+                            .align_x(Alignment::Center)
+                    )
+                    .on_press(Message::Settings(
+                        SettingsPageMessage::PasswordsSetDefaultDatabase
+                    ))
+                ]
                 .width(Length::Fill),
-                button(
-                    text("Select Default Database")
-                        .width(Length::Fill)
-                        .align_x(Alignment::Center)
-                )
-                .on_press(Message::Settings(
-                    SettingsPageMessage::PasswordsSetDefaultDatabase
-                ))
+                toggler(
+                    Some("Show sidebar on startup".to_string()),
+                    app_config.passwords_config.show_sidebar_on_start,
+                    |b| Message::Settings(SettingsPageMessage::PasswordsSetShowSidebarOnStart(b))
+                ),
             ]
-            .width(Length::Fill),]
             .padding(20)
             .spacing(30),
         )
