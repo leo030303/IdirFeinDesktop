@@ -308,7 +308,7 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
         ),
         Tooltip::new(
             button(Svg::from_path("icons/add.svg"))
-                .on_press(Message::Notes(NotesPageMessage::OpenFilePicker)),
+                .on_press(Message::Notes(NotesPageMessage::NewNote)),
             "New Note",
             iced::widget::tooltip::Position::Bottom
         ),

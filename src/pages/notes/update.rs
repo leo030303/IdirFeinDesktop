@@ -19,7 +19,7 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
 
             state.editor_content.perform(action);
 
-            if is_edit {
+            if is_edit && state.show_markdown {
                 state.markdown_preview_items =
                     markdown::parse(&state.editor_content.text()).collect();
             }
@@ -28,12 +28,19 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             opener::open(link.as_str()).unwrap();
         }
         NotesPageMessage::ToggleSidebar => state.show_sidebar = !state.show_sidebar,
-        NotesPageMessage::ToggleMarkdown => state.show_markdown = !state.show_markdown,
+        NotesPageMessage::ToggleMarkdown => {
+            state.show_markdown = !state.show_markdown;
+            if state.show_markdown {
+                state.markdown_preview_items =
+                    markdown::parse(&state.editor_content.text()).collect();
+            }
+        }
         NotesPageMessage::NewNote => {
             // Save current file content
             if let Some(current_file) = &state.current_file {
                 fs::write(current_file, state.editor_content.text()).unwrap();
             };
+            // TODO default new note name
             state.current_file = None;
             state.editor_content = text_editor::Content::new();
             state.markdown_preview_items = markdown::parse(&state.editor_content.text()).collect();
