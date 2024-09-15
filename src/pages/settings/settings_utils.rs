@@ -25,7 +25,7 @@ pub fn load_settings_from_file() -> AppConfig {
     // TODO Make config save path platform specific
     let config_file_path = "/home/leoring/.config/idirfein_desktop/config.json";
     if let Ok(config_json) = fs::read_to_string(config_file_path) {
-        let app_config: AppConfig = serde_json::from_str(&config_json).unwrap();
+        let app_config: AppConfig = serde_json::from_str(&config_json).unwrap_or_default();
         app_config
     } else {
         AppConfig::default()

@@ -41,10 +41,13 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         NotesPageMessage::SaveNote => todo!(),
         NotesPageMessage::OpenFilePicker => {
             let selected_folder = FileDialog::new().set_directory("/").pick_folder();
-            state.selected_folder = selected_folder.clone();
-            if let Some(selected_folder) = selected_folder {
+            state.selected_folder = selected_folder;
+            return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList));
+        }
+        NotesPageMessage::LoadFolderAsNotesList => {
+            if let Some(selected_folder) = state.selected_folder.clone() {
                 return Task::perform(read_notes_from_folder(selected_folder), |notes_list| {
-                    Message::Notes(NotesPageMessage::LoadFolderAsNotesList(notes_list))
+                    Message::Notes(NotesPageMessage::SetNotesList(notes_list))
                 });
             }
         }
@@ -60,7 +63,7 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         }
         NotesPageMessage::ToggleEditor => state.show_editor = !state.show_editor,
         NotesPageMessage::FilterNotesList(s) => state.notes_list_filter = s,
-        NotesPageMessage::LoadFolderAsNotesList(notes_list) => {
+        NotesPageMessage::SetNotesList(notes_list) => {
             state.notes_list = notes_list;
             state
                 .notes_list

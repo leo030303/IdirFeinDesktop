@@ -1,12 +1,24 @@
 use iced::Theme;
 use serde::{Deserialize, Serialize};
 
-use crate::Page;
+use crate::{
+    pages::{
+        file_manager::page::FileManagerPageConfig, gallery::page::GalleryPageConfig,
+        notes::page::NotesPageConfig, passwords::page::PasswordPageConfig,
+        tasks::page::TaskPageConfig,
+    },
+    Page,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     theme_string: String,
-    default_page_on_open: Page,
+    pub default_page_on_open: Page,
+    pub notes_config: NotesPageConfig,
+    pub passwords_config: PasswordPageConfig,
+    pub gallery_config: GalleryPageConfig,
+    pub tasks_config: TaskPageConfig,
+    pub file_manager_config: FileManagerPageConfig,
 }
 
 impl Default for AppConfig {
@@ -14,6 +26,11 @@ impl Default for AppConfig {
         Self {
             theme_string: Self::get_string_from_theme(Theme::Light),
             default_page_on_open: Page::FileManager,
+            notes_config: NotesPageConfig::default(),
+            passwords_config: PasswordPageConfig::default(),
+            gallery_config: GalleryPageConfig::default(),
+            tasks_config: TaskPageConfig::default(),
+            file_manager_config: FileManagerPageConfig::default(),
         }
     }
 }

@@ -1,9 +1,13 @@
 use iced::{Element, Task};
+use serde::{Deserialize, Serialize};
 
 use crate::app::Message;
 
 use super::update::update;
 use super::view::{main_view, tool_view};
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FileManagerPageConfig {}
 
 pub struct FileManagerPage {}
 
@@ -11,7 +15,7 @@ pub struct FileManagerPage {}
 pub enum FileManagerPageMessage {}
 
 impl FileManagerPage {
-    pub fn new() -> Self {
+    pub fn new(_config: &FileManagerPageConfig) -> Self {
         Self {}
     }
 
@@ -30,11 +34,5 @@ impl FileManagerPage {
 
     pub fn tool_view(&self) -> Element<Message> {
         tool_view(self)
-    }
-}
-
-impl Default for FileManagerPage {
-    fn default() -> Self {
-        Self::new()
     }
 }

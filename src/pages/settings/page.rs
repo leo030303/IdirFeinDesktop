@@ -6,7 +6,7 @@ use crate::config::AppConfig;
 use super::update::update;
 use super::view::{main_view, tool_view};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SettingsTab {
     General,
     Sync,
@@ -15,6 +15,31 @@ pub enum SettingsTab {
     Passwords,
     Notes,
     Tasks,
+}
+
+impl SettingsTab {
+    pub fn get_all() -> [SettingsTab; 7] {
+        [
+            SettingsTab::General,
+            SettingsTab::Sync,
+            SettingsTab::FileManager,
+            SettingsTab::Gallery,
+            SettingsTab::Passwords,
+            SettingsTab::Notes,
+            SettingsTab::Tasks,
+        ]
+    }
+    pub fn name(&self) -> &'static str {
+        match self {
+            SettingsTab::General => "General",
+            SettingsTab::Sync => "Sync",
+            SettingsTab::FileManager => "File Manager",
+            SettingsTab::Gallery => "Gallery",
+            SettingsTab::Passwords => "Passwords",
+            SettingsTab::Notes => "Notes",
+            SettingsTab::Tasks => "Tasks",
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -31,6 +56,12 @@ pub enum SettingsPageMessage {
     ChangeTab(SettingsTab),
     StartSaving,
     ResultFromSave((bool, String)),
+    SetDefaultPageOnOpen(&'static str),
+    NotesSetDefaultFolder,
+    NotesSetShowSidebarOnStart(bool),
+    NotesSetShowEditorOnStart(bool),
+    NotesSetShowMarkdownOnStart(bool),
+    PasswordsSetDefaultDatabase,
 }
 
 impl SettingsPage {

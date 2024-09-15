@@ -4,7 +4,7 @@ use iced::{
     alignment::Horizontal,
     event,
     widget::{self, button, column, container, row, text, tooltip::Position, Svg, Tooltip},
-    window, Alignment, ContentFit, Event, Length, Subscription, Task, Theme,
+    window, Alignment, ContentFit, Event, Length, Padding, Subscription, Task, Theme,
 };
 
 use crate::{
@@ -59,18 +59,18 @@ impl AppState {
         let config = load_settings_from_file();
         (
             Self {
-                current_page: Page::Notes,
+                config: config.clone(),
+                current_page: config.default_page_on_open,
                 is_closing: false,
-                notes_page: NotesPage::new(),
-                passwords_page: PasswordsPage::new(),
-                tasks_page: TasksPage::new(),
+                notes_page: NotesPage::new(&config.notes_config),
+                passwords_page: PasswordsPage::new(&config.passwords_config),
+                tasks_page: TasksPage::new(&config.tasks_config),
                 settings_page: SettingsPage::new(),
-                file_manager_page: FileManagerPage::new(),
-                gallery_page: GalleryPage::new(),
+                file_manager_page: FileManagerPage::new(&config.file_manager_config),
+                gallery_page: GalleryPage::new(&config.gallery_config),
                 show_toast: false,
                 is_good_toast: true,
                 toast_text: String::new(),
-                config,
             },
             widget::focus_next(),
         )
@@ -78,7 +78,13 @@ impl AppState {
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::ChangePage(new_page) => self.current_page = new_page,
+            Message::ChangePage(new_page) => {
+                if new_page == Page::Notes {
+                    self.current_page = new_page;
+                    return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList));
+                }
+                self.current_page = new_page;
+            }
             Message::Passwords(m) => return self.passwords_page.update(m),
             Message::Notes(m) => return self.notes_page.update(m),
             Message::Tasks(m) => return self.tasks_page.update(m),

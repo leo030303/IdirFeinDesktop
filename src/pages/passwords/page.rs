@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use iced::{Element, Task};
+use serde::{Deserialize, Serialize};
 
 use crate::app::Message;
 
@@ -23,6 +24,11 @@ pub struct Password {
     pub username: String,
     pub url: String,
     pub password: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PasswordPageConfig {
+    pub default_database: Option<PathBuf>,
 }
 
 pub struct PasswordsPage {
@@ -80,10 +86,10 @@ pub enum PasswordsPageMessage {
 }
 
 impl PasswordsPage {
-    pub fn new() -> Self {
+    pub fn new(config: &PasswordPageConfig) -> Self {
         Self {
             passwords_list: vec![],
-            selected_keepass_file: None,
+            selected_keepass_file: config.default_database.clone(),
             is_unlocked: false,
             incorrect_password_entered: false,
             master_password_field_text: String::new(),
@@ -136,11 +142,5 @@ impl PasswordsPage {
 
     pub fn tool_view(&self) -> Element<Message> {
         tool_view(self)
-    }
-}
-
-impl Default for PasswordsPage {
-    fn default() -> Self {
-        Self::new()
     }
 }

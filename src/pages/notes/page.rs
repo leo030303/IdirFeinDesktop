@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use iced::widget::{markdown, text_editor};
 use iced::Task;
 use iced::{Element, Theme};
+use serde::{Deserialize, Serialize};
 
 use crate::app::Message;
 
@@ -27,6 +28,25 @@ pub struct Note {
     pub category: Option<String>,
     pub file_path: PathBuf,
     pub last_edited: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NotesPageConfig {
+    pub default_folder: Option<PathBuf>,
+    pub show_sidebar_on_start: bool,
+    pub show_markdown_on_start: bool,
+    pub show_editor_on_start: bool,
+}
+
+impl Default for NotesPageConfig {
+    fn default() -> Self {
+        Self {
+            default_folder: None,
+            show_sidebar_on_start: true,
+            show_markdown_on_start: true,
+            show_editor_on_start: true,
+        }
+    }
 }
 
 pub struct NotesPage {
@@ -57,7 +77,7 @@ pub enum NotesPageMessage {
     NewNote,
     SaveNote,
     OpenFilePicker,
-    LoadFolderAsNotesList(Vec<Note>),
+    SetNotesList(Vec<Note>),
     SetTextEditorContent(String),
     OpenFile(PathBuf),
     FilterNotesList(String),
@@ -68,22 +88,21 @@ pub enum NotesPageMessage {
     ToggleRenameNoteView,
     CalculateNoteStatistics,
     SetNoteStatistics(NoteStatistics),
+    LoadFolderAsNotesList,
 }
 
 impl NotesPage {
-    pub fn new() -> Self {
-        const INITIAL_CONTENT: &str = include_str!("../../../overview.md");
-
+    pub fn new(config: &NotesPageConfig) -> Self {
         let theme = Theme::TokyoNight;
 
         Self {
-            editor_content: text_editor::Content::with_text(INITIAL_CONTENT),
-            markdown_preview_items: markdown::parse(INITIAL_CONTENT).collect(),
+            editor_content: text_editor::Content::with_text(""),
+            markdown_preview_items: markdown::parse("").collect(),
             theme,
-            show_sidebar: true,
-            show_markdown: true,
-            show_editor: true,
-            selected_folder: None,
+            show_sidebar: config.show_sidebar_on_start,
+            show_markdown: config.show_markdown_on_start,
+            show_editor: config.show_editor_on_start,
+            selected_folder: config.default_folder.clone(),
             current_file: None,
             notes_list: vec![],
             notes_list_filter: String::new(),
@@ -114,11 +133,5 @@ impl NotesPage {
 
     pub fn tool_view(&self) -> Element<Message> {
         tool_view(self)
-    }
-}
-
-impl Default for NotesPage {
-    fn default() -> Self {
-        Self::new()
     }
 }

@@ -1,9 +1,13 @@
 use iced::{Element, Task};
+use serde::{Deserialize, Serialize};
 
 use crate::app::Message;
 
 use super::update::update;
 use super::view::{main_view, tool_view};
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct TaskPageConfig {}
 
 pub struct TasksPage {}
 
@@ -11,7 +15,7 @@ pub struct TasksPage {}
 pub enum TasksPageMessage {}
 
 impl TasksPage {
-    pub fn new() -> Self {
+    pub fn new(_config: &TaskPageConfig) -> Self {
         Self {}
     }
 
@@ -30,11 +34,5 @@ impl TasksPage {
 
     pub fn tool_view(&self) -> Element<Message> {
         tool_view(self)
-    }
-}
-
-impl Default for TasksPage {
-    fn default() -> Self {
-        Self::new()
     }
 }
