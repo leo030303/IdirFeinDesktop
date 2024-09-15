@@ -18,9 +18,7 @@ use super::view::{main_view, tool_view};
 // TODO Add category filter
 // TODO Sync scrolling between editor and preview
 // TODO Autosave file
-// TODO Rename file
 // TODO Export as HTML and add to website
-// TODO Lazy load notes list
 
 #[derive(Debug, Clone)]
 pub struct Note {
