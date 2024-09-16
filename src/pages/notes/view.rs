@@ -27,6 +27,15 @@ pub fn main_view(state: &NotesPage) -> Element<Message> {
         }],
         column![
             row![
+                if state.show_confirm_delete_note_view {
+                    if state.is_loading_note {
+                        loading_note_view(state)
+                    } else {
+                        confirm_delete_view(state)
+                    }
+                } else {
+                    column![].into()
+                },
                 if state.show_document_statistics_view {
                     if state.is_loading_note {
                         loading_note_view(state)
@@ -281,6 +290,22 @@ fn manage_categories_view(_state: &NotesPage) -> Element<Message> {
     ],]
     .into()
 }
+fn confirm_delete_view(state: &NotesPage) -> Element<Message> {
+    column![
+        text("Delete This Note").width(Length::Fill).size(24),
+        row![
+            button(text("Delete").align_x(Center).width(Length::Fill))
+                .width(Length::Fill)
+                .style(button::danger)
+                .on_press(Message::Notes(NotesPageMessage::DeleteCurrentFile)),
+            button(text("Cancel").align_x(Center).width(Length::Fill))
+                .width(Length::Fill)
+                .on_press(Message::Notes(NotesPageMessage::ToggleConfirmDeleteView))
+        ]
+        .spacing(20)
+    ]
+    .into()
+}
 
 pub fn tool_view(state: &NotesPage) -> Element<Message> {
     let underlay = Tooltip::new(
@@ -338,7 +363,11 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
         .on_press(Message::Notes(NotesPageMessage::ToggleEditNoteDetailsView))
         .width(Length::Fill),
         button(text("Delete Note").width(Length::Fill).align_x(Center))
-            .on_press(Message::Notes(NotesPageMessage::DeleteCurrentFile))
+            .on_press(if state.confirm_before_delete_note {
+                Message::Notes(NotesPageMessage::ToggleConfirmDeleteView)
+            } else {
+                Message::Notes(NotesPageMessage::DeleteCurrentFile)
+            })
             .width(Length::Fill)
             .style(button::danger),
     ]

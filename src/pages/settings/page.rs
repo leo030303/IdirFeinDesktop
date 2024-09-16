@@ -61,6 +61,7 @@ pub enum SettingsPageMessage {
     NotesSetShowSidebarOnStart(bool),
     NotesSetShowEditorOnStart(bool),
     NotesSetShowMarkdownOnStart(bool),
+    NotesSetShowConfirmDelete(bool),
     PasswordsSetDefaultDatabase,
     PasswordsSetShowSidebarOnStart(bool),
 }

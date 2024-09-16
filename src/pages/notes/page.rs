@@ -34,6 +34,7 @@ pub struct NotesPageConfig {
     pub show_sidebar_on_start: bool,
     pub show_markdown_on_start: bool,
     pub show_editor_on_start: bool,
+    pub confirm_before_delete: bool,
 }
 
 impl Default for NotesPageConfig {
@@ -43,6 +44,7 @@ impl Default for NotesPageConfig {
             show_sidebar_on_start: true,
             show_markdown_on_start: true,
             show_editor_on_start: true,
+            confirm_before_delete: true,
         }
     }
 }
@@ -63,8 +65,10 @@ pub struct NotesPage {
     pub(crate) show_document_statistics_view: bool,
     pub(crate) show_edit_note_details_view: bool,
     pub(crate) show_manage_categories_view: bool,
+    pub(crate) show_confirm_delete_note_view: bool,
     pub(crate) current_note_statistics: NoteStatistics,
     pub(crate) current_rename_note_text: String,
+    pub(crate) confirm_before_delete_note: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -87,6 +91,7 @@ pub enum NotesPageMessage {
     ToggleDocumentStatisticsView,
     ToggleEditNoteDetailsView,
     ToggleManageCategoriesView,
+    ToggleConfirmDeleteView,
     CalculateNoteStatistics,
     SetNoteStatistics(NoteStatistics),
     LoadFolderAsNotesList,
@@ -121,6 +126,8 @@ impl NotesPage {
             },
             current_rename_note_text: String::new(),
             show_manage_categories_view: false,
+            show_confirm_delete_note_view: false,
+            confirm_before_delete_note: config.confirm_before_delete,
         }
     }
 

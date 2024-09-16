@@ -106,6 +106,11 @@ fn notes_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<
                     app_config.notes_config.show_markdown_on_start,
                     |b| Message::Settings(SettingsPageMessage::NotesSetShowMarkdownOnStart(b))
                 ),
+                toggler(
+                    Some("Confirm before deleting a note".to_string()),
+                    app_config.notes_config.confirm_before_delete,
+                    |b| Message::Settings(SettingsPageMessage::NotesSetShowConfirmDelete(b))
+                ),
             ]
             .padding(20)
             .spacing(30),

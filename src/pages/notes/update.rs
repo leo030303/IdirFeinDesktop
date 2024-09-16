@@ -171,12 +171,18 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         NotesPageMessage::DeleteCurrentFile => {
             state.editor_content = text_editor::Content::new();
             state.markdown_preview_items = markdown::parse(&state.editor_content.text()).collect();
+            state.show_confirm_delete_note_view = false;
             if let Some(current_file) = state.current_file.as_ref() {
                 fs::remove_file(current_file).unwrap();
                 state.current_file = None;
                 return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList)).chain(
                     Task::done(Message::ShowToast(true, String::from("Note deleted"))),
                 );
+            }
+        }
+        NotesPageMessage::ToggleConfirmDeleteView => {
+            if state.current_file.is_some() {
+                state.show_confirm_delete_note_view = !state.show_confirm_delete_note_view
             }
         }
     }
