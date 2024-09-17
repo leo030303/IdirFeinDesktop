@@ -1,7 +1,8 @@
 use std::path::PathBuf;
+use std::time::Duration;
 
 use iced::widget::{markdown, text_editor};
-use iced::Task;
+use iced::{time, Task};
 use iced::{Element, Theme};
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +18,6 @@ use super::view::{main_view, tool_view};
 // TODO Add ability to set category colours
 // TODO Add category filter
 // TODO Sync scrolling between editor and preview
-// TODO Autosave file
 // TODO Export as HTML and add to website
 
 #[derive(Debug, Clone)]
@@ -69,6 +69,7 @@ pub struct NotesPage {
     pub(crate) current_note_statistics: NoteStatistics,
     pub(crate) current_rename_note_text: String,
     pub(crate) confirm_before_delete_note: bool,
+    pub(crate) note_is_dirty: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -128,6 +129,7 @@ impl NotesPage {
             show_manage_categories_view: false,
             show_confirm_delete_note_view: false,
             confirm_before_delete_note: config.confirm_before_delete,
+            note_is_dirty: false,
         }
     }
 
@@ -137,7 +139,7 @@ impl NotesPage {
 
     pub fn closing_task(&mut self) -> Task<Message> {
         println!("Closing task from notes");
-        Task::none()
+        Task::done(Message::Notes(NotesPageMessage::SaveNote))
     }
 
     pub fn update(&mut self, message: NotesPageMessage) -> Task<Message> {
@@ -146,6 +148,10 @@ impl NotesPage {
 
     pub fn view(&self) -> Element<Message> {
         main_view(self)
+    }
+
+    pub fn subscription() -> iced::Subscription<Message> {
+        time::every(Duration::from_secs(3)).map(|_| Message::Notes(NotesPageMessage::SaveNote))
     }
 
     pub fn tool_view(&self) -> Element<Message> {

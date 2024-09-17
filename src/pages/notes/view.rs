@@ -3,8 +3,8 @@ use iced_aw::{badge, drop_down, style, DropDown};
 
 use iced::alignment::Horizontal;
 use iced::widget::{
-    button, column, markdown, row, scrollable, text, text_editor, text_input, Scrollable, Svg,
-    Tooltip,
+    button, column, container, markdown, row, scrollable, text, text_editor, text_input,
+    Scrollable, Svg, Tooltip,
 };
 use iced::{highlighter, Length};
 use iced::{Element, Fill, Font};
@@ -83,6 +83,11 @@ pub fn main_view(state: &NotesPage) -> Element<Message> {
                     }
                 } else {
                     column![].into()
+                },
+                if !state.show_markdown && !state.show_editor {
+                    column![text("Use the buttons in the top left of the screen to open the editor or preview").size(24).width(Length::Fill).height(Length::Fill)]
+                } else {
+                    column![]
                 }
             ]
             .spacing(10)

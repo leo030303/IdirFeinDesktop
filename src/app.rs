@@ -129,13 +129,16 @@ impl AppState {
         Task::none()
     }
     pub fn subscription(&self) -> Subscription<Message> {
-        event::listen().map(|event| {
-            if let Event::Window(window::Event::CloseRequested) = event {
-                Message::CloseWindowRequest
-            } else {
-                Message::None
-            }
-        })
+        Subscription::batch([
+            event::listen().map(|event| {
+                if let Event::Window(window::Event::CloseRequested) = event {
+                    Message::CloseWindowRequest
+                } else {
+                    Message::None
+                }
+            }),
+            NotesPage::subscription(),
+        ])
     }
 
     pub fn view(&self) -> iced::Element<Message> {

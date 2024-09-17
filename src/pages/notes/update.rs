@@ -20,6 +20,7 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             state.editor_content.perform(action);
 
             if is_edit && state.show_markdown {
+                state.note_is_dirty = true;
                 state.markdown_preview_items =
                     markdown::parse(&state.editor_content.text()).collect();
             }
@@ -40,26 +41,27 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             if let Some(current_file) = &state.current_file {
                 fs::write(current_file, state.editor_content.text()).unwrap();
             };
-            // TODO default new note name
+            state.note_is_dirty = false;
             state.current_file = None;
             state.editor_content = text_editor::Content::new();
             state.markdown_preview_items = markdown::parse(&state.editor_content.text()).collect();
         }
         NotesPageMessage::SaveNote => {
-            if let Some(current_file) = state.current_file.clone() {
-                let note_text = state.editor_content.text();
-                return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList)).chain(
-                    Task::perform(async { fs::write(current_file, note_text) }, |result| {
-                        match result {
-                            Ok(_) => Message::ShowToast(true, String::from("Saved note")),
-                            Err(err) => {
-                                Message::ShowToast(false, format!("Failed to save note: {err:?}"))
-                            }
-                        }
-                    }),
-                );
-            } else {
-                return Task::done(Message::ShowToast(false, String::from("Saving failed, no filepath set, set one using the rename button in the dropdown")));
+            if state.note_is_dirty {
+                if let Some(current_file) = state.current_file.clone() {
+                    let note_text = state.editor_content.text();
+                    return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList))
+                        .chain(Task::perform(
+                            async { fs::write(current_file, note_text) },
+                            |result| match result {
+                                Ok(_) => Message::None,
+                                Err(err) => Message::ShowToast(
+                                    false,
+                                    format!("Failed to save note: {err:?}"),
+                                ),
+                            },
+                        ));
+                }
             }
         }
         NotesPageMessage::OpenFilePicker => {
