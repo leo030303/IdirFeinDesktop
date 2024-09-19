@@ -56,6 +56,12 @@ pub fn update(
         SettingsPageMessage::NotesSetShowConfirmDelete(b) => {
             app_config.notes_config.confirm_before_delete = b;
         }
+        SettingsPageMessage::NotesSetShowFormatToolbar(b) => {
+            app_config.notes_config.show_format_toolbar = b;
+        }
+        SettingsPageMessage::NotesSetAutocompleteLists(b) => {
+            app_config.notes_config.autocomplete_lists = b;
+        }
         SettingsPageMessage::PasswordsSetDefaultDatabase => {
             let selected_file = FileDialog::new()
                 .add_filter("keepass", &["kdbx"])

@@ -111,6 +111,16 @@ fn notes_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<
                     app_config.notes_config.confirm_before_delete,
                     |b| Message::Settings(SettingsPageMessage::NotesSetShowConfirmDelete(b))
                 ),
+                toggler(
+                    Some("Show formatting toolbar".to_string()),
+                    app_config.notes_config.show_format_toolbar,
+                    |b| Message::Settings(SettingsPageMessage::NotesSetShowFormatToolbar(b))
+                ),
+                toggler(
+                    Some("Autocomplete lists".to_string()),
+                    app_config.notes_config.autocomplete_lists,
+                    |b| Message::Settings(SettingsPageMessage::NotesSetAutocompleteLists(b))
+                ),
             ]
             .padding(20)
             .spacing(30),

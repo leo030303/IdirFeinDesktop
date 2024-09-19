@@ -7,7 +7,7 @@ use std::{
 
 use walkdir::WalkDir;
 
-use super::page::Note;
+use super::page::{Note, NotesPage};
 
 #[derive(Debug, Clone)]
 pub struct NoteStatistics {
@@ -25,6 +25,47 @@ pub async fn read_file_to_note(
         fs::write(old_filepath, old_content).unwrap();
     };
     fs::read_to_string(new_filepath.as_path()).unwrap()
+}
+
+#[derive(Debug, Clone)]
+pub enum ListAction {
+    NoAction,
+    AddUnorderedListItem(char),
+    DeleteUnorderedListItem,
+}
+
+pub fn parse_markdown_lists(state: &mut NotesPage) -> ListAction {
+    if state
+        .editor_content
+        .line(state.editor_content.cursor_position().0)
+        .is_some_and(|current_line| current_line.starts_with("* "))
+    {
+        if state
+            .editor_content
+            .line(state.editor_content.cursor_position().0)
+            .is_some_and(|current_line| *current_line != *"* ")
+        {
+            ListAction::AddUnorderedListItem('*')
+        } else {
+            ListAction::DeleteUnorderedListItem
+        }
+    } else if state
+        .editor_content
+        .line(state.editor_content.cursor_position().0)
+        .is_some_and(|current_line| current_line.starts_with("- "))
+    {
+        if state
+            .editor_content
+            .line(state.editor_content.cursor_position().0)
+            .is_some_and(|current_line| *current_line != *"- ")
+        {
+            ListAction::AddUnorderedListItem('-')
+        } else {
+            ListAction::DeleteUnorderedListItem
+        }
+    } else {
+        ListAction::NoAction
+    }
 }
 
 pub async fn read_notes_from_folder(selected_folder: PathBuf) -> Vec<Note> {

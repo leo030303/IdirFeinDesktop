@@ -35,6 +35,8 @@ pub struct NotesPageConfig {
     pub show_markdown_on_start: bool,
     pub show_editor_on_start: bool,
     pub confirm_before_delete: bool,
+    pub show_format_toolbar: bool,
+    pub autocomplete_lists: bool,
 }
 
 impl Default for NotesPageConfig {
@@ -45,6 +47,8 @@ impl Default for NotesPageConfig {
             show_markdown_on_start: true,
             show_editor_on_start: true,
             confirm_before_delete: true,
+            show_format_toolbar: true,
+            autocomplete_lists: true,
         }
     }
 }
@@ -70,6 +74,8 @@ pub struct NotesPage {
     pub(crate) current_rename_note_text: String,
     pub(crate) confirm_before_delete_note: bool,
     pub(crate) note_is_dirty: bool,
+    pub(crate) autocomplete_lists: bool,
+    pub(crate) show_format_toolbar: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -99,6 +105,7 @@ pub enum NotesPageMessage {
     UpdateRenameNoteText(String),
     RenameCurrentNote,
     DeleteCurrentFile,
+    InsertTitle,
 }
 
 impl NotesPage {
@@ -130,6 +137,8 @@ impl NotesPage {
             show_confirm_delete_note_view: false,
             confirm_before_delete_note: config.confirm_before_delete,
             note_is_dirty: false,
+            show_format_toolbar: config.show_format_toolbar,
+            autocomplete_lists: config.autocomplete_lists,
         }
     }
 

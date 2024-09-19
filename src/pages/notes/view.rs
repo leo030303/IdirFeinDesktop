@@ -172,14 +172,27 @@ fn loading_note_view(_state: &NotesPage) -> Element<Message> {
 }
 
 fn editor_view(state: &NotesPage) -> Element<Message> {
-    text_editor(&state.editor_content)
-        .placeholder("Type your Markdown here...")
-        .on_action(|action| Message::Notes(NotesPageMessage::Edit(action)))
-        .height(Fill)
-        .padding(10)
-        .font(Font::MONOSPACE)
-        .highlight("markdown", highlighter::Theme::Base16Ocean)
-        .into()
+    column![
+        if state.show_format_toolbar {
+            row![Tooltip::new(
+                button(Svg::from_path("icons/header1.svg"))
+                    .on_press(Message::Notes(NotesPageMessage::InsertTitle)),
+                "Insert Title",
+                iced::widget::tooltip::Position::Bottom
+            ),]
+            .height(Length::Fixed(30.0))
+        } else {
+            row![]
+        },
+        text_editor(&state.editor_content)
+            .placeholder("Type your Markdown here...")
+            .on_action(|action| Message::Notes(NotesPageMessage::Edit(action)))
+            .height(Fill)
+            .padding(10)
+            .font(Font::MONOSPACE)
+            .highlight("markdown", highlighter::Theme::Base16Ocean)
+    ]
+    .into()
 }
 
 fn loading_preview_view(_state: &NotesPage) -> Element<Message> {

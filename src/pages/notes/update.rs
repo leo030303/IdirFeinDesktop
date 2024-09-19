@@ -5,7 +5,7 @@ use iced::{
 use rfd::FileDialog;
 use std::fs;
 
-use crate::app::Message;
+use crate::{app::Message, pages::notes::notes_utils::parse_markdown_lists};
 
 use super::{
     notes_utils::{export_pdf, read_file_to_note, read_notes_from_folder, NoteStatistics},
@@ -17,10 +17,50 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         NotesPageMessage::Edit(action) => {
             let is_edit = action.is_edit();
 
-            state.editor_content.perform(action);
+            if state.autocomplete_lists {
+                if let text_editor::Action::Edit(text_editor::Edit::Enter) = action {
+                    let list_action = parse_markdown_lists(state);
+                    match list_action {
+                        crate::pages::notes::notes_utils::ListAction::NoAction => {
+                            state
+                                .editor_content
+                                .perform(text_editor::Action::Edit(text_editor::Edit::Enter));
+                        }
+                        crate::pages::notes::notes_utils::ListAction::AddUnorderedListItem(
+                            list_char,
+                        ) => {
+                            state
+                                .editor_content
+                                .perform(text_editor::Action::Edit(text_editor::Edit::Enter));
+                            state.editor_content.perform(text_editor::Action::Edit(
+                                text_editor::Edit::Insert(list_char),
+                            ));
+                            state
+                                .editor_content
+                                .perform(text_editor::Action::Edit(text_editor::Edit::Insert(' ')));
+                        }
+                        crate::pages::notes::notes_utils::ListAction::DeleteUnorderedListItem => {
+                            state
+                                .editor_content
+                                .perform(text_editor::Action::Edit(text_editor::Edit::Backspace));
+                            state
+                                .editor_content
+                                .perform(text_editor::Action::Edit(text_editor::Edit::Backspace));
+                            state
+                                .editor_content
+                                .perform(text_editor::Action::Edit(text_editor::Edit::Enter));
+                        }
+                    }
+                } else {
+                    state.editor_content.perform(action);
+                }
+            } else {
+                state.editor_content.perform(action);
+            }
 
-            if is_edit && state.show_markdown {
+            if is_edit {
                 state.note_is_dirty = true;
+
                 state.markdown_preview_items =
                     markdown::parse(&state.editor_content.text()).collect();
             }
@@ -186,6 +226,18 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             if state.current_file.is_some() {
                 state.show_confirm_delete_note_view = !state.show_confirm_delete_note_view
             }
+        }
+        NotesPageMessage::InsertTitle => {
+            state.note_is_dirty = true;
+            state
+                .editor_content
+                .perform(text_editor::Action::Edit(text_editor::Edit::Enter));
+            state
+                .editor_content
+                .perform(text_editor::Action::Edit(text_editor::Edit::Insert('#')));
+            state
+                .editor_content
+                .perform(text_editor::Action::Edit(text_editor::Edit::Insert(' ')));
         }
     }
     Task::none()
