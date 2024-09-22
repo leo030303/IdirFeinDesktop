@@ -2,7 +2,9 @@ use iced::Alignment::Center;
 
 use iced::alignment::{Horizontal, Vertical};
 use iced::widget::scrollable::{Direction, Scrollbar};
-use iced::widget::{button, column, container, row, text, text_input, Scrollable, Svg, Tooltip};
+use iced::widget::{
+    button, column, container, row, text, text_input, Scrollable, Space, Svg, Tooltip,
+};
 use iced::Element;
 use iced::{Font, Length};
 
@@ -136,9 +138,11 @@ fn new_database_set_password_view(state: &PasswordsPage) -> Element<Message> {
         )
         .width(Length::Fill)
         .align_x(Horizontal::Center),
+        Space::with_height(20),
         container(
             button(text("Create Database"))
                 .on_press(Message::Passwords(PasswordsPageMessage::CreateDatabase))
+                .style(button::success)
         )
         .width(Length::Fill)
         .align_x(Horizontal::Center),
@@ -373,31 +377,36 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
 
 fn existing_database_selected_and_locked_view(state: &PasswordsPage) -> Element<Message> {
     column![
-        container(
-            button(text(format!(
-                "Selected file: {}",
-                state
-                    .selected_keepass_file
-                    .clone()
-                    .unwrap_or_default()
-                    .to_str()
-                    .unwrap_or_default()
-            )))
-            .on_press(Message::Passwords(PasswordsPageMessage::PickDatabaseFile))
-        )
-        .width(Length::Fill)
-        .align_x(Horizontal::Center),
-        text("Password Vault is Locked")
+        text("Password Vault is Locked: Enter Password And/Or Keyfile")
             .size(24)
             .width(Length::Fill)
             .align_x(Horizontal::Center),
-        text("Enter Password And/Or Keyfile")
-            .size(18)
-            .width(Length::Fill)
-            .align_x(Horizontal::Center),
+        container(
+            row![
+                button(text(format!(
+                    "Selected file: {}",
+                    state
+                        .selected_keepass_file
+                        .clone()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or_default()
+                )))
+                .on_press(Message::Passwords(PasswordsPageMessage::PickDatabaseFile)),
+                button(text(if let Some(keyfile) = &state.selected_key_file {
+                    format!("Selected keyfile: {}", keyfile.as_path().to_str().unwrap())
+                } else {
+                    String::from("Select Keyfile")
+                }))
+                .on_press(Message::Passwords(PasswordsPageMessage::PickKeyFile))
+            ]
+            .spacing(20)
+        )
+        .width(Length::Fill)
+        .align_x(Horizontal::Center),
         text("Enter the master password:")
             .width(Length::Fill)
-            .align_x(Horizontal::Center),
+            .align_x(Horizontal::Left),
         row![
             text_input("Master Password", &state.master_password_field_text)
                 .secure(state.hide_master_password_entry)
@@ -439,26 +448,15 @@ fn existing_database_selected_and_locked_view(state: &PasswordsPage) -> Element<
         .width(Length::Fill)
         .align_x(Horizontal::Center),
         container(
-            button(text(if let Some(keyfile) = &state.selected_key_file {
-                format!("Selected keyfile: {}", keyfile.as_path().to_str().unwrap())
-            } else {
-                String::from("Select Keyfile")
-            }))
-            .on_press(Message::Passwords(PasswordsPageMessage::PickKeyFile))
-        )
-        .width(Length::Fill)
-        .align_x(Horizontal::Center),
-        container(
-            button(text("Open Database"))
-                .on_press(Message::Passwords(PasswordsPageMessage::TryUnlock))
-                .style(button::success)
-        )
-        .width(Length::Fill)
-        .align_x(Horizontal::Center),
-        container(
-            button(text("Close Database"))
-                .on_press(Message::Passwords(PasswordsPageMessage::CloseDatabase))
-                .style(button::danger)
+            row![
+                button(text("Close Database"))
+                    .on_press(Message::Passwords(PasswordsPageMessage::CloseDatabase))
+                    .style(button::danger),
+                button(text("Open Database"))
+                    .on_press(Message::Passwords(PasswordsPageMessage::TryUnlock))
+                    .style(button::success)
+            ]
+            .spacing(20)
         )
         .width(Length::Fill)
         .align_x(Horizontal::Center),
