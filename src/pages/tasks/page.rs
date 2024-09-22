@@ -69,8 +69,8 @@ pub struct TasksPage {
     pub(crate) selected_folder: Option<PathBuf>,
     pub(crate) current_project_file: Option<PathBuf>,
     pub(crate) task_view_type: TaskViewType,
-    pub(crate) projects_list: Option<Vec<PathBuf>>,
-    pub(crate) tasks_list: Option<Vec<TaskData>>,
+    pub(crate) projects_list: Vec<PathBuf>,
+    pub(crate) tasks_list: Vec<TaskData>,
     pub(crate) show_sidebar: bool,
     pub(crate) show_task_edit_dialog: bool,
     pub(crate) current_task_title_text: String,
@@ -79,6 +79,7 @@ pub struct TasksPage {
     pub(crate) confirm_before_delete: bool,
     pub(crate) show_confirm_before_delete_dialog: bool,
     pub(crate) compact_task_view: bool,
+    pub(crate) is_dirty: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -89,9 +90,9 @@ pub enum TasksPageMessage {
     ToggleConfirmBeforeDeleteDialog,
     SetTaskViewType(TaskViewType),
     PickTasksFolder,
-    PickProjectFile,
-    SetProjectsList(Option<Vec<PathBuf>>),
-    SetTasksList(Option<Vec<TaskData>>),
+    PickProjectFile(PathBuf),
+    SetProjectsList(Vec<PathBuf>),
+    SetTasksList(Vec<TaskData>),
     SelectTaskToEdit(Option<Uuid>),
     DeleteTask(Uuid),
     SetTaskCompletionState((Uuid, TaskCompletionState)),
@@ -106,8 +107,8 @@ impl TasksPage {
             selected_folder: config.default_folder.clone(),
             current_project_file: config.default_project_file.clone(),
             task_view_type: config.default_task_view_type.clone(),
-            tasks_list: None,
-            projects_list: None,
+            tasks_list: vec![],
+            projects_list: vec![],
             show_sidebar: config.show_sidebar_on_start,
             confirm_before_delete: config.confirm_before_delete,
             show_confirm_before_delete_dialog: false,
@@ -116,6 +117,7 @@ impl TasksPage {
             current_task_description_text: String::new(),
             compact_task_view: config.compact_task_view,
             current_task_id: None,
+            is_dirty: false,
         }
     }
 
