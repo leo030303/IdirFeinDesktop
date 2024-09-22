@@ -1,6 +1,7 @@
 use shiva::core::TransformerTrait;
 use std::{
     fs,
+    os::linux::fs::MetadataExt,
     path::{Component, Path, PathBuf},
     time::SystemTime,
 };
@@ -34,6 +35,7 @@ pub enum ListAction {
     DeleteUnorderedListItem,
 }
 
+// TODO Get this working for ordered lists
 pub fn parse_markdown_lists(state: &mut NotesPage) -> ListAction {
     if state
         .editor_content
@@ -90,14 +92,7 @@ pub async fn read_notes_from_folder(selected_folder: PathBuf) -> Vec<Note> {
                 ),
                 category: find_nested_folder_name(&selected_folder, file_path.path()),
                 file_path: file_path.path().to_path_buf(),
-                last_edited: file_path
-                    .metadata()
-                    .unwrap()
-                    .accessed()
-                    .unwrap()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs(),
+                last_edited: file_path.metadata().unwrap().st_mtime() as u64,
             }
         })
         .collect();
