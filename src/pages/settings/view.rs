@@ -58,15 +58,15 @@ fn general_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Elemen
     .into()
 }
 
-fn sync_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
+fn sync_tab<'a>(_state: &'a SettingsPage, _app_configg: &'a AppConfig) -> Element<'a, Message> {
     text("sync tab").into()
 }
 
-fn tasks_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
+fn tasks_tab<'a>(_state: &'a SettingsPage, _app_config: &'a AppConfig) -> Element<'a, Message> {
     text("tasks tab").into()
 }
 
-fn notes_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
+fn notes_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
     scrollable(
         container(
             column![
@@ -131,7 +131,7 @@ fn notes_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<
     .into()
 }
 
-fn passwords_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
+fn passwords_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
     scrollable(
         container(
             column![
@@ -171,13 +171,13 @@ fn passwords_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Elem
     .into()
 }
 
-fn gallery_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
+fn gallery_tab<'a>(_state: &'a SettingsPage, _app_configg: &'a AppConfig) -> Element<'a, Message> {
     text("gallery tab").into()
 }
 
 fn file_manager_tab<'a>(
-    state: &'a SettingsPage,
-    app_config: &'a AppConfig,
+    _state: &'a SettingsPage,
+    _app_config: &'a AppConfig,
 ) -> Element<'a, Message> {
     text("file manager tab").into()
 }

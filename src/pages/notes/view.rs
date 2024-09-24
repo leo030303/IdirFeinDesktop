@@ -3,8 +3,8 @@ use iced_aw::{badge, drop_down, style, DropDown};
 
 use iced::alignment::Horizontal;
 use iced::widget::{
-    button, column, container, markdown, row, scrollable, text, text_editor, text_input,
-    Scrollable, Svg, Tooltip,
+    button, column, markdown, row, scrollable, text, text_editor, text_input, Scrollable, Svg,
+    Tooltip,
 };
 use iced::{highlighter, Length};
 use iced::{Element, Fill, Font};
@@ -308,7 +308,7 @@ fn manage_categories_view(_state: &NotesPage) -> Element<Message> {
     ],]
     .into()
 }
-fn confirm_delete_view(state: &NotesPage) -> Element<Message> {
+fn confirm_delete_view(_state: &NotesPage) -> Element<Message> {
     column![
         text("Delete This Note").width(Length::Fill).size(24),
         row![

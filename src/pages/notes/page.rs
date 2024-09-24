@@ -147,7 +147,6 @@ impl NotesPage {
     }
 
     pub fn closing_task(&mut self) -> Task<Message> {
-        println!("Closing task from notes");
         Task::done(Message::Notes(NotesPageMessage::SaveNote))
     }
 

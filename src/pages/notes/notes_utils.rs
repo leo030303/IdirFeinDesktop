@@ -3,7 +3,6 @@ use std::{
     fs,
     os::linux::fs::MetadataExt,
     path::{Component, Path, PathBuf},
-    time::SystemTime,
 };
 
 use walkdir::WalkDir;
