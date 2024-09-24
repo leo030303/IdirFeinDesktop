@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use iced::widget::text_editor;
 use iced::{Element, Task};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -74,7 +75,7 @@ pub struct TasksPage {
     pub(crate) show_sidebar: bool,
     pub(crate) show_task_edit_dialog: bool,
     pub(crate) current_task_title_text: String,
-    pub(crate) current_task_description_text: String,
+    pub(crate) current_task_description_content: text_editor::Content,
     pub(crate) current_task_id: Option<Uuid>,
     pub(crate) confirm_before_delete: bool,
     pub(crate) show_confirm_before_delete_dialog: bool,
@@ -90,15 +91,20 @@ pub enum TasksPageMessage {
     ToggleConfirmBeforeDeleteDialog,
     SetTaskViewType(TaskViewType),
     PickTasksFolder,
+    LoadProjectsList,
     PickProjectFile(PathBuf),
     SetProjectsList(Vec<PathBuf>),
     SetTasksList(Vec<TaskData>),
     SelectTaskToEdit(Option<Uuid>),
     DeleteTask(Uuid),
+    DeleteTaskWithConfirmationCheck(Uuid),
+    UpdateTaskTitle(String),
+    EditTaskDescription(text_editor::Action),
     SetTaskCompletionState((Uuid, TaskCompletionState)),
-    CreateNewTask,
-    UpdateTaskContent,
+    UpdateCurrentTask,
     SaveProject,
+    StartCreatingNewTask,
+    ClearAndCloseTaskEditDialog,
 }
 
 impl TasksPage {
@@ -114,7 +120,7 @@ impl TasksPage {
             show_confirm_before_delete_dialog: false,
             show_task_edit_dialog: false,
             current_task_title_text: String::new(),
-            current_task_description_text: String::new(),
+            current_task_description_content: text_editor::Content::with_text(""),
             compact_task_view: config.compact_task_view,
             current_task_id: None,
             is_dirty: false,
@@ -122,12 +128,11 @@ impl TasksPage {
     }
 
     pub fn opening_task() -> Task<Message> {
-        Task::none()
+        Task::done(Message::Tasks(TasksPageMessage::LoadProjectsList))
     }
 
     pub fn closing_task(&mut self) -> Task<Message> {
-        println!("Closing task from tasks");
-        Task::none()
+        Task::done(Message::Tasks(TasksPageMessage::SaveProject))
     }
 
     pub fn update(&mut self, message: TasksPageMessage) -> Task<Message> {

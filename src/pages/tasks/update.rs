@@ -3,7 +3,7 @@ use std::{
     path::PathBuf,
 };
 
-use iced::Task;
+use iced::{widget::text_editor, Task};
 use rfd::FileDialog;
 
 use crate::app::Message;
@@ -23,9 +23,8 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
             state.show_confirm_before_delete_dialog = !state.show_confirm_before_delete_dialog
         }
         TasksPageMessage::SetTaskViewType(task_type) => state.task_view_type = task_type,
-        TasksPageMessage::PickTasksFolder => {
-            let selected_folder = FileDialog::new().set_directory("/").pick_folder();
-            state.selected_folder = selected_folder.clone();
+        TasksPageMessage::LoadProjectsList => {
+            let selected_folder = state.selected_folder.clone();
             return Task::perform(
                 async {
                     let projects_list: Vec<PathBuf> = if let Some(selected_folder) = selected_folder
@@ -55,6 +54,11 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
                 |projects_list| Message::Tasks(TasksPageMessage::SetProjectsList(projects_list)),
             );
         }
+        TasksPageMessage::PickTasksFolder => {
+            let selected_folder = FileDialog::new().set_directory("/").pick_folder();
+            state.selected_folder = selected_folder;
+            return Task::done(Message::Tasks(TasksPageMessage::LoadProjectsList));
+        }
         TasksPageMessage::PickProjectFile(path_to_file) => {
             return Task::perform(
                 async {
@@ -73,6 +77,7 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
         TasksPageMessage::SetTasksList(tasks_list) => state.tasks_list = tasks_list,
         TasksPageMessage::SelectTaskToEdit(task_uuid) => state.current_task_id = task_uuid,
         TasksPageMessage::DeleteTask(id_to_delete) => {
+            state.show_confirm_before_delete_dialog = false;
             if let Some(task_index) = state.tasks_list.iter().position(|x| x.id == id_to_delete) {
                 state.tasks_list.remove(task_index);
                 state.is_dirty = true;
@@ -90,14 +95,36 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
             }
             return Task::done(Message::Tasks(TasksPageMessage::SaveProject));
         }
-        TasksPageMessage::CreateNewTask => {
-            state.tasks_list.push(TaskData {
-                title: state.current_task_title_text.clone(),
-                description: state.current_task_description_text.clone(),
-                ..Default::default()
-            });
+        TasksPageMessage::UpdateCurrentTask => {
+            match state.current_task_id {
+                Some(task_id) => {
+                    if let Some(task_index) = state.tasks_list.iter().position(|x| x.id == task_id)
+                    {
+                        state
+                            .tasks_list
+                            .get_mut(task_index)
+                            .expect("Shouldn't be possible for this to fail")
+                            .title = state.current_task_title_text.clone();
+                        state
+                            .tasks_list
+                            .get_mut(task_index)
+                            .expect("Shouldn't be possible for this to fail")
+                            .description = state.current_task_description_content.text();
+                        state.is_dirty = true;
+                    }
+                }
+                None => {
+                    state.tasks_list.push(TaskData {
+                        title: state.current_task_title_text.clone(),
+                        description: state.current_task_description_content.text(),
+                        ..Default::default()
+                    });
+                }
+            };
+            return Task::done(Message::Tasks(TasksPageMessage::SaveProject)).chain(Task::done(
+                Message::Tasks(TasksPageMessage::ClearAndCloseTaskEditDialog),
+            ));
         }
-        TasksPageMessage::UpdateTaskContent => todo!(),
         TasksPageMessage::SaveProject => {
             if state.is_dirty {
                 if let Some(current_project_file) = state.current_project_file.clone() {
@@ -122,6 +149,32 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
                         },
                     );
                 }
+            }
+        }
+        TasksPageMessage::StartCreatingNewTask => {
+            state.show_task_edit_dialog = true;
+            state.current_task_id = None;
+            state.current_task_title_text = String::new();
+            state.current_task_description_content = text_editor::Content::with_text("");
+        }
+        TasksPageMessage::UpdateTaskTitle(s) => state.current_task_title_text = s,
+        TasksPageMessage::EditTaskDescription(action) => {
+            state.current_task_description_content.perform(action)
+        }
+        TasksPageMessage::ClearAndCloseTaskEditDialog => {
+            state.current_task_title_text = String::new();
+            state.current_task_description_content = text_editor::Content::with_text("");
+            state.current_task_id = None;
+            state.show_task_edit_dialog = false;
+        }
+        TasksPageMessage::DeleteTaskWithConfirmationCheck(task_id) => {
+            if state.confirm_before_delete {
+                state.current_task_id = Some(task_id);
+                return Task::done(Message::Tasks(
+                    TasksPageMessage::ToggleConfirmBeforeDeleteDialog,
+                ));
+            } else {
+                return Task::done(Message::Tasks(TasksPageMessage::DeleteTask(task_id)));
             }
         }
     }
