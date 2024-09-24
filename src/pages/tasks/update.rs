@@ -158,7 +158,7 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
             state.current_task_description_content = text_editor::Content::with_text("");
         }
         TasksPageMessage::UpdateTaskTitle(s) => state.current_task_title_text = s,
-        TasksPageMessage::EditTaskDescription(action) => {
+        TasksPageMessage::UpdateTaskDescription(action) => {
             state.current_task_description_content.perform(action)
         }
         TasksPageMessage::ClearAndCloseTaskEditDialog => {
@@ -175,6 +175,25 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
                 ));
             } else {
                 return Task::done(Message::Tasks(TasksPageMessage::DeleteTask(task_id)));
+            }
+        }
+        TasksPageMessage::OpenEditDialogForTask(task_id) => {
+            if let Some(task_index) = state.tasks_list.iter().position(|x| x.id == task_id) {
+                state.current_task_id = Some(task_id);
+                state.show_task_edit_dialog = true;
+                state.current_task_title_text = state
+                    .tasks_list
+                    .get(task_index)
+                    .expect("Shouldn't fail")
+                    .title
+                    .clone();
+                state.current_task_description_content = text_editor::Content::with_text(
+                    &state
+                        .tasks_list
+                        .get(task_index)
+                        .expect("Shouldn't fail")
+                        .description,
+                );
             }
         }
     }

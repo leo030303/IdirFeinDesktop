@@ -44,12 +44,19 @@ fn kanban_view_item(task: &TaskData) -> Element<Message> {
     column![
         text(&task.title),
         text(&task.description),
-        row![button(Svg::from_path("icons/delete.svg"))
-            .style(button::danger)
-            .width(Length::Fill)
-            .on_press(Message::Tasks(
-                TasksPageMessage::DeleteTaskWithConfirmationCheck(task.id)
-            ))]
+        row![
+            button(Svg::from_path("icons/edit.svg"))
+                .width(Length::Fill)
+                .on_press(Message::Tasks(TasksPageMessage::OpenEditDialogForTask(
+                    task.id
+                ))),
+            button(Svg::from_path("icons/delete.svg"))
+                .style(button::danger)
+                .width(Length::Fill)
+                .on_press(Message::Tasks(
+                    TasksPageMessage::DeleteTaskWithConfirmationCheck(task.id)
+                ))
+        ]
     ]
     .into()
 }
@@ -81,7 +88,7 @@ fn task_edit_dialog(state: &TasksPage) -> Element<Message> {
             .on_input(|s| Message::Tasks(TasksPageMessage::UpdateTaskTitle(s))),
         text_editor(&state.current_task_description_content)
             .placeholder("Task Description")
-            .on_action(|action| Message::Tasks(TasksPageMessage::EditTaskDescription(action)))
+            .on_action(|action| Message::Tasks(TasksPageMessage::UpdateTaskDescription(action)))
             .height(Length::Fixed(300.0))
             .padding(10)
             .font(Font::MONOSPACE),
