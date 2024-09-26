@@ -21,9 +21,6 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
             state.show_task_edit_dialog = !state.show_task_edit_dialog
         }
         TasksPageMessage::ToggleShowSidebar => state.show_sidebar = !state.show_sidebar,
-        TasksPageMessage::ToggleCompactTaskView => {
-            state.compact_task_view = !state.compact_task_view
-        }
         TasksPageMessage::ToggleConfirmBeforeDeleteDialog => {
             state.show_confirm_before_delete_dialog = !state.show_confirm_before_delete_dialog
         }

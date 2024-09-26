@@ -73,7 +73,6 @@ pub fn main_view(state: &TasksPage) -> Element<Message> {
 }
 
 fn kanban_view_item(task: &TaskData) -> Element<Message> {
-    // TODO
     column![
         text(&task.title)
             .size(20)
@@ -125,7 +124,8 @@ fn kanban_view_item(task: &TaskData) -> Element<Message> {
                             task.id,
                             TaskCompletionState::Done,
                         )))
-                        .width(Length::Fill),
+                        .width(Length::Fill)
+                        .style(button::success),
                     "Done",
                     iced::widget::tooltip::Position::Bottom,
                 ));
@@ -151,7 +151,6 @@ fn kanban_view_item(task: &TaskData) -> Element<Message> {
 }
 
 fn list_view_item(task: &TaskData) -> Element<Message> {
-    // TODO
     text(&task.title).into()
 }
 
@@ -315,43 +314,58 @@ fn list_view(state: &TasksPage) -> Element<Message> {
     scrollable(column![
         column![
             text("Backlog").width(Length::Fill).align_x(Center).size(20),
-            scrollable(column(
-                state
-                    .tasks_list
-                    .iter()
-                    .filter(|task| matches!(task.completion_state, TaskCompletionState::Backlog))
-                    .map(|task| list_view_item(task))
-            ))
+            scrollable(
+                column(
+                    state
+                        .tasks_list
+                        .iter()
+                        .filter(|task| matches!(
+                            task.completion_state,
+                            TaskCompletionState::Backlog
+                        ))
+                        .map(|task| list_view_item(task))
+                )
+                .spacing(10)
+            )
         ],
         column![
             text("To Do").width(Length::Fill).align_x(Center).size(20),
-            scrollable(column(
-                state
-                    .tasks_list
-                    .iter()
-                    .filter(|task| matches!(task.completion_state, TaskCompletionState::ToDo))
-                    .map(|task| list_view_item(task))
-            ))
+            scrollable(
+                column(
+                    state
+                        .tasks_list
+                        .iter()
+                        .filter(|task| matches!(task.completion_state, TaskCompletionState::ToDo))
+                        .map(|task| list_view_item(task))
+                )
+                .spacing(10)
+            )
         ],
         column![
             text("Doing").width(Length::Fill).align_x(Center).size(20),
-            scrollable(column(
-                state
-                    .tasks_list
-                    .iter()
-                    .filter(|task| matches!(task.completion_state, TaskCompletionState::Doing))
-                    .map(|task| list_view_item(task))
-            ))
+            scrollable(
+                column(
+                    state
+                        .tasks_list
+                        .iter()
+                        .filter(|task| matches!(task.completion_state, TaskCompletionState::Doing))
+                        .map(|task| list_view_item(task))
+                )
+                .spacing(10)
+            )
         ],
         column![
             text("Done").width(Length::Fill).align_x(Center).size(20),
-            scrollable(column(
-                state
-                    .tasks_list
-                    .iter()
-                    .filter(|task| matches!(task.completion_state, TaskCompletionState::Done))
-                    .map(|task| list_view_item(task))
-            ))
+            scrollable(
+                column(
+                    state
+                        .tasks_list
+                        .iter()
+                        .filter(|task| matches!(task.completion_state, TaskCompletionState::Done))
+                        .map(|task| list_view_item(task))
+                )
+                .spacing(10)
+            )
         ],
     ])
     .into()

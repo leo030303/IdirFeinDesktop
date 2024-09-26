@@ -138,6 +138,7 @@ impl AppState {
                 }
             }),
             NotesPage::subscription(),
+            TasksPage::subscription(),
         ])
     }
 

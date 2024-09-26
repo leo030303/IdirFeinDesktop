@@ -1,7 +1,10 @@
 use std::path::PathBuf;
 
+use iced::event::Status;
+use iced::keyboard::key::Named;
+use iced::keyboard::{self, Key, Modifiers};
 use iced::widget::text_editor;
-use iced::{Element, Task};
+use iced::{event, Element, Event, Task};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -53,7 +56,6 @@ pub struct TaskPageConfig {
     pub kanban_task_view_is_default: bool,
     pub show_sidebar_on_start: bool,
     pub confirm_before_delete: bool,
-    pub compact_task_view_is_default: bool,
 }
 
 impl Default for TaskPageConfig {
@@ -64,7 +66,6 @@ impl Default for TaskPageConfig {
             kanban_task_view_is_default: true,
             show_sidebar_on_start: true,
             confirm_before_delete: true,
-            compact_task_view_is_default: false,
         }
     }
 }
@@ -82,7 +83,6 @@ pub struct TasksPage {
     pub(crate) current_task_id: Option<Uuid>,
     pub(crate) confirm_before_delete: bool,
     pub(crate) show_confirm_before_delete_dialog: bool,
-    pub(crate) compact_task_view: bool,
     pub(crate) is_dirty: bool,
     pub(crate) is_creating_new_project: bool,
     pub(crate) new_project_name_entry_content: String,
@@ -92,7 +92,6 @@ pub struct TasksPage {
 pub enum TasksPageMessage {
     ToggleShowTaskEditDialog,
     ToggleShowSidebar,
-    ToggleCompactTaskView,
     ToggleConfirmBeforeDeleteDialog,
     SetTaskViewType(TaskViewType),
     PickProjectsFolder,
@@ -135,7 +134,6 @@ impl TasksPage {
             show_task_edit_dialog: false,
             current_task_title_text: String::new(),
             current_task_description_content: text_editor::Content::with_text(""),
-            compact_task_view: config.compact_task_view_is_default,
             current_task_id: None,
             is_dirty: false,
             is_creating_new_project: false,
@@ -157,6 +155,28 @@ impl TasksPage {
 
     pub fn view(&self) -> Element<Message> {
         main_view(self)
+    }
+
+    pub fn subscription() -> iced::Subscription<Message> {
+        event::listen_with(|event, status, _id| match (event, status) {
+            (
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: Key::Character(pressed_char),
+                    modifiers: Modifiers::CTRL,
+                    ..
+                }),
+                Status::Ignored,
+            ) => {
+                if pressed_char.as_ref() == "n" || pressed_char.as_ref() == "N" {
+                    Some(Message::Tasks(TasksPageMessage::StartCreatingNewTask))
+                } else if pressed_char.as_ref() == "b" || pressed_char.as_ref() == "B" {
+                    Some(Message::Tasks(TasksPageMessage::ToggleShowSidebar))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
     }
 
     pub fn tool_view(&self) -> Element<Message> {

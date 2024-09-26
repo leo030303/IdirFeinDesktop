@@ -88,11 +88,6 @@ fn tasks_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                 ]
                 .width(Length::Fill),
                 toggler(
-                    Some("Compact task view as default".to_string()),
-                    app_config.tasks_config.compact_task_view_is_default,
-                    |b| Message::Settings(SettingsPageMessage::TasksSetCompactTaskViewIsDefault(b))
-                ),
-                toggler(
                     Some("Kanban task view as default".to_string()),
                     app_config.tasks_config.kanban_task_view_is_default,
                     |b| Message::Settings(SettingsPageMessage::TasksSetKanbanTaskViewIsDefault(b))

@@ -75,9 +75,6 @@ pub fn update(
             let selected_folder = FileDialog::new().pick_folder();
             app_config.tasks_config.default_folder = selected_folder;
         }
-        SettingsPageMessage::TasksSetCompactTaskViewIsDefault(b) => {
-            app_config.tasks_config.compact_task_view_is_default = b
-        }
         SettingsPageMessage::TasksSetKanbanTaskViewIsDefault(b) => {
             app_config.tasks_config.kanban_task_view_is_default = b
         }
