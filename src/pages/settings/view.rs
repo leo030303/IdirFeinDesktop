@@ -87,21 +87,21 @@ fn tasks_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                     ))
                 ]
                 .width(Length::Fill),
-                toggler(
-                    Some("Kanban task view as default".to_string()),
-                    app_config.tasks_config.kanban_task_view_is_default,
-                    |b| Message::Settings(SettingsPageMessage::TasksSetKanbanTaskViewIsDefault(b))
-                ),
-                toggler(
-                    Some("Show sidebar on start".to_string()),
-                    app_config.tasks_config.show_sidebar_on_start,
-                    |b| Message::Settings(SettingsPageMessage::TasksSetShowSidebarOnStart(b))
-                ),
-                toggler(
-                    Some("Confirm before deleting a task".to_string()),
-                    app_config.tasks_config.confirm_before_delete,
-                    |b| Message::Settings(SettingsPageMessage::TasksSetConfirmBeforeDelete(b))
-                ),
+                toggler(app_config.tasks_config.kanban_task_view_is_default)
+                    .label("Kanban task view as default")
+                    .on_toggle(|b| Message::Settings(
+                        SettingsPageMessage::TasksSetKanbanTaskViewIsDefault(b)
+                    )),
+                toggler(app_config.tasks_config.show_sidebar_on_start)
+                    .label("Show sidebar on start")
+                    .on_toggle(|b| Message::Settings(
+                        SettingsPageMessage::TasksSetShowSidebarOnStart(b)
+                    )),
+                toggler(app_config.tasks_config.confirm_before_delete)
+                    .label("Confirm before deleting a task")
+                    .on_toggle(|b| Message::Settings(
+                        SettingsPageMessage::TasksSetConfirmBeforeDelete(b)
+                    )),
             ]
             .padding(20)
             .spacing(30),
@@ -137,36 +137,36 @@ fn notes_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                     ))
                 ]
                 .width(Length::Fill),
-                toggler(
-                    Some("Show sidebar on startup".to_string()),
-                    app_config.notes_config.show_sidebar_on_start,
-                    |b| Message::Settings(SettingsPageMessage::NotesSetShowSidebarOnStart(b))
-                ),
-                toggler(
-                    Some("Show editor on startup".to_string()),
-                    app_config.notes_config.show_editor_on_start,
-                    |b| Message::Settings(SettingsPageMessage::NotesSetShowEditorOnStart(b))
-                ),
-                toggler(
-                    Some("Show markdown preview on startup".to_string()),
-                    app_config.notes_config.show_markdown_on_start,
-                    |b| Message::Settings(SettingsPageMessage::NotesSetShowMarkdownOnStart(b))
-                ),
-                toggler(
-                    Some("Confirm before deleting a note".to_string()),
-                    app_config.notes_config.confirm_before_delete,
-                    |b| Message::Settings(SettingsPageMessage::NotesSetShowConfirmDelete(b))
-                ),
-                toggler(
-                    Some("Show formatting toolbar".to_string()),
-                    app_config.notes_config.show_format_toolbar,
-                    |b| Message::Settings(SettingsPageMessage::NotesSetShowFormatToolbar(b))
-                ),
-                toggler(
-                    Some("Autocomplete lists".to_string()),
-                    app_config.notes_config.autocomplete_lists,
-                    |b| Message::Settings(SettingsPageMessage::NotesSetAutocompleteLists(b))
-                ),
+                toggler(app_config.notes_config.show_sidebar_on_start)
+                    .label("Show sidebar on startup")
+                    .on_toggle(|b| Message::Settings(
+                        SettingsPageMessage::NotesSetShowSidebarOnStart(b)
+                    )),
+                toggler(app_config.notes_config.show_editor_on_start)
+                    .label("Show editor on startup")
+                    .on_toggle(|b| Message::Settings(
+                        SettingsPageMessage::NotesSetShowEditorOnStart(b)
+                    )),
+                toggler(app_config.notes_config.show_markdown_on_start)
+                    .label("Show markdown preview on startup")
+                    .on_toggle(|b| Message::Settings(
+                        SettingsPageMessage::NotesSetShowMarkdownOnStart(b)
+                    )),
+                toggler(app_config.notes_config.confirm_before_delete)
+                    .label("Confirm before deleting a note")
+                    .on_toggle(|b| Message::Settings(
+                        SettingsPageMessage::NotesSetShowConfirmDelete(b)
+                    )),
+                toggler(app_config.notes_config.show_format_toolbar)
+                    .label("Show formatting toolbar")
+                    .on_toggle(|b| Message::Settings(
+                        SettingsPageMessage::NotesSetShowFormatToolbar(b)
+                    )),
+                toggler(app_config.notes_config.autocomplete_lists)
+                    .label("Autocomplete lists")
+                    .on_toggle(|b| Message::Settings(
+                        SettingsPageMessage::NotesSetAutocompleteLists(b)
+                    )),
             ]
             .padding(20)
             .spacing(30),
@@ -202,11 +202,11 @@ fn passwords_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Ele
                     ))
                 ]
                 .width(Length::Fill),
-                toggler(
-                    Some("Show sidebar on startup".to_string()),
-                    app_config.passwords_config.show_sidebar_on_start,
-                    |b| Message::Settings(SettingsPageMessage::PasswordsSetShowSidebarOnStart(b))
-                ),
+                toggler(app_config.passwords_config.show_sidebar_on_start)
+                    .label("Show sidebar on startup")
+                    .on_toggle(|b| Message::Settings(
+                        SettingsPageMessage::PasswordsSetShowSidebarOnStart(b)
+                    )),
             ]
             .padding(20)
             .spacing(30),

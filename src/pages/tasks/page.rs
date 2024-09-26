@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use iced::event::Status;
-use iced::keyboard::key::Named;
 use iced::keyboard::{self, Key, Modifiers};
 use iced::widget::text_editor;
 use iced::{event, Element, Event, Task};
