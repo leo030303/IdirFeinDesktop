@@ -62,8 +62,59 @@ fn sync_tab<'a>(_state: &'a SettingsPage, _app_configg: &'a AppConfig) -> Elemen
     text("sync tab").into()
 }
 
-fn tasks_tab<'a>(_state: &'a SettingsPage, _app_config: &'a AppConfig) -> Element<'a, Message> {
-    text("tasks tab").into()
+fn tasks_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
+    scrollable(
+        container(
+            column![
+                row![
+                    text(
+                        app_config
+                            .tasks_config
+                            .default_folder
+                            .as_ref()
+                            .map(|value| format!("Default Task Projects Folder: {value:?}"))
+                            .unwrap_or(String::from("No Default Task Projects Folder Selected"))
+                    )
+                    .align_x(Alignment::Center)
+                    .width(Length::Fill),
+                    button(
+                        text("Select Default Task Projects Folder")
+                            .width(Length::Fill)
+                            .align_x(Alignment::Center)
+                    )
+                    .on_press(Message::Settings(
+                        SettingsPageMessage::TasksSetDefaultProjectFolder
+                    ))
+                ]
+                .width(Length::Fill),
+                toggler(
+                    Some("Compact task view as default".to_string()),
+                    app_config.tasks_config.compact_task_view_is_default,
+                    |b| Message::Settings(SettingsPageMessage::TasksSetCompactTaskViewIsDefault(b))
+                ),
+                toggler(
+                    Some("Kanban task view as default".to_string()),
+                    app_config.tasks_config.kanban_task_view_is_default,
+                    |b| Message::Settings(SettingsPageMessage::TasksSetKanbanTaskViewIsDefault(b))
+                ),
+                toggler(
+                    Some("Show sidebar on start".to_string()),
+                    app_config.tasks_config.show_sidebar_on_start,
+                    |b| Message::Settings(SettingsPageMessage::TasksSetShowSidebarOnStart(b))
+                ),
+                toggler(
+                    Some("Confirm before deleting a task".to_string()),
+                    app_config.tasks_config.confirm_before_delete,
+                    |b| Message::Settings(SettingsPageMessage::TasksSetConfirmBeforeDelete(b))
+                ),
+            ]
+            .padding(20)
+            .spacing(30),
+        )
+        .style(container::bordered_box)
+        .width(Length::Fill),
+    )
+    .into()
 }
 
 fn notes_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {

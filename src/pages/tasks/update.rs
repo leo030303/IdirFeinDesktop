@@ -1,14 +1,19 @@
 use std::{
-    fs::{self},
+    fs::{self, File},
     path::PathBuf,
 };
 
-use iced::{widget::text_editor, Task};
+use iced::{
+    widget::{text_editor, text_input},
+    Task,
+};
 use rfd::FileDialog;
 
 use crate::app::Message;
 
-use super::page::{TaskData, TasksPage, TasksPageMessage};
+use super::page::{
+    TaskData, TasksPage, TasksPageMessage, NEW_PROJECT_TEXT_INPUT_ID, TASK_TITLE_TEXT_INPUT_ID,
+};
 
 pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message> {
     match message {
@@ -54,27 +59,38 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
                 |projects_list| Message::Tasks(TasksPageMessage::SetProjectsList(projects_list)),
             );
         }
-        TasksPageMessage::PickTasksFolder => {
-            let selected_folder = FileDialog::new().set_directory("/").pick_folder();
+        TasksPageMessage::PickProjectsFolder => {
+            let selected_folder = FileDialog::new()
+                .set_directory("/")
+                .set_can_create_directories(true)
+                .pick_folder();
             state.selected_folder = selected_folder;
             return Task::done(Message::Tasks(TasksPageMessage::LoadProjectsList));
         }
         TasksPageMessage::PickProjectFile(path_to_file) => {
-            return Task::perform(
-                async {
-                    if let Ok(task_json) = fs::read_to_string(path_to_file) {
-                        let tasks_list: Vec<TaskData> =
-                            serde_json::from_str(&task_json).unwrap_or_default();
-                        tasks_list
-                    } else {
-                        vec![]
-                    }
-                },
-                |tasks_list| Message::Tasks(TasksPageMessage::SetTasksList(tasks_list)),
-            )
+            return Task::batch([
+                Task::done(Message::Tasks(TasksPageMessage::SaveProject)),
+                Task::perform(
+                    async move {
+                        if let Ok(task_json) = fs::read_to_string(&path_to_file) {
+                            let tasks_list: Vec<TaskData> =
+                                serde_json::from_str(&task_json).unwrap_or_default();
+                            (tasks_list, path_to_file)
+                        } else {
+                            (vec![], path_to_file)
+                        }
+                    },
+                    |(tasks_list, path_to_file)| {
+                        Message::Tasks(TasksPageMessage::SetTasksList(tasks_list, path_to_file))
+                    },
+                ),
+            ]);
         }
         TasksPageMessage::SetProjectsList(projects_list) => state.projects_list = projects_list,
-        TasksPageMessage::SetTasksList(tasks_list) => state.tasks_list = tasks_list,
+        TasksPageMessage::SetTasksList(tasks_list, project_path) => {
+            state.tasks_list = tasks_list;
+            state.current_project_file = Some(project_path);
+        }
         TasksPageMessage::SelectTaskToEdit(task_uuid) => state.current_task_id = task_uuid,
         TasksPageMessage::DeleteTask(id_to_delete) => {
             state.show_confirm_before_delete_dialog = false;
@@ -84,7 +100,7 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
             }
             return Task::done(Message::Tasks(TasksPageMessage::SaveProject));
         }
-        TasksPageMessage::SetTaskCompletionState((id_to_edit, task_completion_state)) => {
+        TasksPageMessage::SetTaskCompletionState(id_to_edit, task_completion_state) => {
             if let Some(task_index) = state.tasks_list.iter().position(|x| x.id == id_to_edit) {
                 state
                     .tasks_list
@@ -119,6 +135,7 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
                         description: state.current_task_description_content.text(),
                         ..Default::default()
                     });
+                    state.is_dirty = true;
                 }
             };
             return Task::done(Message::Tasks(TasksPageMessage::SaveProject)).chain(Task::done(
@@ -156,6 +173,7 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
             state.current_task_id = None;
             state.current_task_title_text = String::new();
             state.current_task_description_content = text_editor::Content::with_text("");
+            return text_input::focus(text_input::Id::new(TASK_TITLE_TEXT_INPUT_ID));
         }
         TasksPageMessage::UpdateTaskTitle(s) => state.current_task_title_text = s,
         TasksPageMessage::UpdateTaskDescription(action) => {
@@ -194,7 +212,33 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
                         .expect("Shouldn't fail")
                         .description,
                 );
+                return text_input::focus(text_input::Id::new(TASK_TITLE_TEXT_INPUT_ID));
             }
+        }
+        TasksPageMessage::StartCreatingNewProject => {
+            state.is_creating_new_project = true;
+            return text_input::focus(text_input::Id::new(NEW_PROJECT_TEXT_INPUT_ID));
+        }
+        TasksPageMessage::CreateNewProject => {
+            state.is_creating_new_project = false;
+            if let Some(mut selected_folder) = state.selected_folder.clone() {
+                selected_folder.push(&state.new_project_name_entry_content);
+                state.new_project_name_entry_content = String::new();
+                selected_folder.set_extension("json");
+                if let Err(err) = File::create(selected_folder) {
+                    return Task::done(Message::ShowToast(
+                        false,
+                        format!("Couldn't create project file: {err:?}"),
+                    ));
+                } else {
+                    return Task::done(Message::Tasks(TasksPageMessage::LoadProjectsList));
+                }
+            }
+        }
+        TasksPageMessage::UpdateNewProjectNameEntry(s) => state.new_project_name_entry_content = s,
+        TasksPageMessage::CancelCreateNewProject => {
+            state.is_creating_new_project = false;
+            state.new_project_name_entry_content = String::new();
         }
     }
     Task::none()

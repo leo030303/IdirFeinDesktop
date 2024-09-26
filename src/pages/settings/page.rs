@@ -66,6 +66,11 @@ pub enum SettingsPageMessage {
     NotesSetAutocompleteLists(bool),
     PasswordsSetDefaultDatabase,
     PasswordsSetShowSidebarOnStart(bool),
+    TasksSetDefaultProjectFolder,
+    TasksSetCompactTaskViewIsDefault(bool),
+    TasksSetKanbanTaskViewIsDefault(bool),
+    TasksSetShowSidebarOnStart(bool),
+    TasksSetConfirmBeforeDelete(bool),
 }
 
 impl SettingsPage {

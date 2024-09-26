@@ -71,6 +71,22 @@ pub fn update(
         SettingsPageMessage::PasswordsSetShowSidebarOnStart(b) => {
             app_config.passwords_config.show_sidebar_on_start = b;
         }
+        SettingsPageMessage::TasksSetDefaultProjectFolder => {
+            let selected_folder = FileDialog::new().pick_folder();
+            app_config.tasks_config.default_folder = selected_folder;
+        }
+        SettingsPageMessage::TasksSetCompactTaskViewIsDefault(b) => {
+            app_config.tasks_config.compact_task_view_is_default = b
+        }
+        SettingsPageMessage::TasksSetKanbanTaskViewIsDefault(b) => {
+            app_config.tasks_config.kanban_task_view_is_default = b
+        }
+        SettingsPageMessage::TasksSetShowSidebarOnStart(b) => {
+            app_config.tasks_config.show_sidebar_on_start = b
+        }
+        SettingsPageMessage::TasksSetConfirmBeforeDelete(b) => {
+            app_config.tasks_config.confirm_before_delete = b
+        }
     }
     Task::done(Message::SaveConfig)
 }

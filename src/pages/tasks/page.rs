@@ -10,6 +10,9 @@ use crate::app::Message;
 use super::update::update;
 use super::view::{main_view, tool_view};
 
+pub const TASK_TITLE_TEXT_INPUT_ID: &str = "TASK_TITLE_TEXT_INPUT_ID";
+pub const NEW_PROJECT_TEXT_INPUT_ID: &str = "NEW_PROJECT_TEXT_INPUT_ID";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TaskViewType {
     Kanban,
@@ -47,10 +50,10 @@ impl Default for TaskData {
 pub struct TaskPageConfig {
     pub default_folder: Option<PathBuf>,
     pub default_project_file: Option<PathBuf>,
-    pub default_task_view_type: TaskViewType,
+    pub kanban_task_view_is_default: bool,
     pub show_sidebar_on_start: bool,
     pub confirm_before_delete: bool,
-    pub compact_task_view: bool,
+    pub compact_task_view_is_default: bool,
 }
 
 impl Default for TaskPageConfig {
@@ -58,10 +61,10 @@ impl Default for TaskPageConfig {
         Self {
             default_folder: None,
             default_project_file: None,
-            default_task_view_type: TaskViewType::Kanban,
+            kanban_task_view_is_default: true,
             show_sidebar_on_start: true,
             confirm_before_delete: true,
-            compact_task_view: false,
+            compact_task_view_is_default: false,
         }
     }
 }
@@ -81,6 +84,8 @@ pub struct TasksPage {
     pub(crate) show_confirm_before_delete_dialog: bool,
     pub(crate) compact_task_view: bool,
     pub(crate) is_dirty: bool,
+    pub(crate) is_creating_new_project: bool,
+    pub(crate) new_project_name_entry_content: String,
 }
 
 #[derive(Debug, Clone)]
@@ -90,22 +95,26 @@ pub enum TasksPageMessage {
     ToggleCompactTaskView,
     ToggleConfirmBeforeDeleteDialog,
     SetTaskViewType(TaskViewType),
-    PickTasksFolder,
+    PickProjectsFolder,
     LoadProjectsList,
     PickProjectFile(PathBuf),
     SetProjectsList(Vec<PathBuf>),
-    SetTasksList(Vec<TaskData>),
+    SetTasksList(Vec<TaskData>, PathBuf),
     SelectTaskToEdit(Option<Uuid>),
     DeleteTask(Uuid),
     DeleteTaskWithConfirmationCheck(Uuid),
     OpenEditDialogForTask(Uuid),
     UpdateTaskTitle(String),
     UpdateTaskDescription(text_editor::Action),
-    SetTaskCompletionState((Uuid, TaskCompletionState)),
+    SetTaskCompletionState(Uuid, TaskCompletionState),
     UpdateCurrentTask,
     SaveProject,
     StartCreatingNewTask,
     ClearAndCloseTaskEditDialog,
+    StartCreatingNewProject,
+    CreateNewProject,
+    UpdateNewProjectNameEntry(String),
+    CancelCreateNewProject,
 }
 
 impl TasksPage {
@@ -113,7 +122,11 @@ impl TasksPage {
         Self {
             selected_folder: config.default_folder.clone(),
             current_project_file: config.default_project_file.clone(),
-            task_view_type: config.default_task_view_type.clone(),
+            task_view_type: if config.kanban_task_view_is_default {
+                TaskViewType::Kanban
+            } else {
+                TaskViewType::List
+            },
             tasks_list: vec![],
             projects_list: vec![],
             show_sidebar: config.show_sidebar_on_start,
@@ -122,9 +135,11 @@ impl TasksPage {
             show_task_edit_dialog: false,
             current_task_title_text: String::new(),
             current_task_description_content: text_editor::Content::with_text(""),
-            compact_task_view: config.compact_task_view,
+            compact_task_view: config.compact_task_view_is_default,
             current_task_id: None,
             is_dirty: false,
+            is_creating_new_project: false,
+            new_project_name_entry_content: String::new(),
         }
     }
 
