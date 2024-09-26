@@ -3,7 +3,7 @@ use std::time::Duration;
 use iced::{
     alignment::Horizontal,
     event,
-    widget::{self, button, column, container, row, text, tooltip::Position, Svg, Tooltip},
+    widget::{self, button, column, container, row, svg, text, tooltip::Position, Svg, Tooltip},
     window, Alignment, ContentFit, Event, Length, Subscription, Task, Theme,
 };
 
@@ -188,7 +188,10 @@ impl AppState {
                                 .align_x(Alignment::Center)
                                 .size(18),
                             button(
-                                Svg::from_path("icons/close.svg").content_fit(ContentFit::Contain)
+                                Svg::new(svg::Handle::from_memory(include_bytes!(
+                                    "../icons/close.svg"
+                                )))
+                                .content_fit(ContentFit::Contain)
                             )
                             .width(Length::Fixed(50.0))
                             .height(Length::Fill)
@@ -235,7 +238,7 @@ impl AppState {
 
 fn navbar_button(page: Page, selected: bool) -> iced::Element<'static, Message> {
     Tooltip::new(
-        button(Svg::from_path(page.icon_path()).content_fit(ContentFit::ScaleDown))
+        button(Svg::new(page.icon_handle()).content_fit(ContentFit::ScaleDown))
             .style(if selected {
                 button::secondary
             } else {

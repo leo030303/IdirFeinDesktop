@@ -3,7 +3,7 @@ use iced_aw::{badge, drop_down, style, DropDown};
 
 use iced::alignment::Horizontal;
 use iced::widget::{
-    button, column, markdown, row, scrollable, text, text_editor, text_input, Scrollable, Svg,
+    button, column, markdown, row, scrollable, svg, text, text_editor, text_input, Scrollable, Svg,
     Tooltip,
 };
 use iced::{highlighter, Length};
@@ -175,8 +175,10 @@ fn editor_view(state: &NotesPage) -> Element<Message> {
     column![
         if state.show_format_toolbar {
             row![Tooltip::new(
-                button(Svg::from_path("icons/header1.svg"))
-                    .on_press(Message::Notes(NotesPageMessage::InsertTitle)),
+                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/header1.svg"
+                ))))
+                .on_press(Message::Notes(NotesPageMessage::InsertTitle)),
                 "Insert Title",
                 iced::widget::tooltip::Position::Bottom
             ),]
@@ -221,11 +223,13 @@ fn document_statistics_view(state: &NotesPage) -> Element<Message> {
         row![
             text("Document Statistics").width(Length::Fill).size(24),
             Tooltip::new(
-                button(Svg::from_path("icons/close.svg"))
-                    .on_press(Message::Notes(
-                        NotesPageMessage::ToggleDocumentStatisticsView
-                    ))
-                    .width(Length::Fixed(50.0)),
+                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/close.svg"
+                ))))
+                .on_press(Message::Notes(
+                    NotesPageMessage::ToggleDocumentStatisticsView
+                ))
+                .width(Length::Fixed(50.0)),
                 "Close Statistics",
                 iced::widget::tooltip::Position::Bottom
             ),
@@ -243,9 +247,11 @@ fn document_statistics_view(state: &NotesPage) -> Element<Message> {
             state.current_note_statistics.reading_time_in_mins
         )),
         Tooltip::new(
-            button(Svg::from_path("icons/refresh.svg"))
-                .on_press(Message::Notes(NotesPageMessage::CalculateNoteStatistics))
-                .width(Length::Fill),
+            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                "../../../icons/refresh.svg"
+            ))))
+            .on_press(Message::Notes(NotesPageMessage::CalculateNoteStatistics))
+            .width(Length::Fill),
             "Refresh Statistics",
             iced::widget::tooltip::Position::Bottom
         ),
@@ -265,9 +271,11 @@ fn edit_note_details_view(state: &NotesPage) -> Element<Message> {
             .size(24),
             if state.current_file.is_some() {
                 column![Tooltip::new(
-                    button(Svg::from_path("icons/close.svg"))
-                        .on_press(Message::Notes(NotesPageMessage::ToggleEditNoteDetailsView))
-                        .width(Length::Fixed(50.0)),
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/close.svg"
+                    ))))
+                    .on_press(Message::Notes(NotesPageMessage::ToggleEditNoteDetailsView))
+                    .width(Length::Fixed(50.0)),
                     "Close Rename Panel",
                     iced::widget::tooltip::Position::Bottom
                 ),]
@@ -299,9 +307,11 @@ fn manage_categories_view(_state: &NotesPage) -> Element<Message> {
     column![row![
         text("Manage Categories").width(Length::Fill).size(24),
         Tooltip::new(
-            button(Svg::from_path("icons/close.svg"))
-                .on_press(Message::Notes(NotesPageMessage::ToggleManageCategoriesView))
-                .width(Length::Fixed(50.0)),
+            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                "../../../icons/close.svg"
+            ))))
+            .on_press(Message::Notes(NotesPageMessage::ToggleManageCategoriesView))
+            .width(Length::Fixed(50.0)),
             "Close Categories Manager",
             iced::widget::tooltip::Position::Bottom
         ),
@@ -327,8 +337,10 @@ fn confirm_delete_view(_state: &NotesPage) -> Element<Message> {
 
 pub fn tool_view(state: &NotesPage) -> Element<Message> {
     let underlay = Tooltip::new(
-        button(Svg::from_path("icons/view-more.svg"))
-            .on_press(Message::Notes(NotesPageMessage::ToggleExtraToolsMenu)),
+        button(Svg::new(svg::Handle::from_memory(include_bytes!(
+            "../../../icons/view-more.svg"
+        ))))
+        .on_press(Message::Notes(NotesPageMessage::ToggleExtraToolsMenu)),
         "More Tools",
         iced::widget::tooltip::Position::Bottom,
     );
@@ -397,41 +409,49 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
         .alignment(drop_down::Alignment::Bottom);
     row![
         Tooltip::new(
-            button(Svg::from_path("icons/toggle-sidebar.svg"))
-                .on_press(Message::Notes(NotesPageMessage::ToggleSidebar))
-                .style(if state.show_sidebar {
-                    button::secondary
-                } else {
-                    button::primary
-                }),
+            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                "../../../icons/toggle-sidebar.svg"
+            ))))
+            .on_press(Message::Notes(NotesPageMessage::ToggleSidebar))
+            .style(if state.show_sidebar {
+                button::secondary
+            } else {
+                button::primary
+            }),
             "Toggle Sidebar",
             iced::widget::tooltip::Position::Bottom
         ),
         Tooltip::new(
-            button(Svg::from_path("icons/markdown.svg"))
-                .on_press(Message::Notes(NotesPageMessage::ToggleMarkdown))
-                .style(if state.show_markdown {
-                    button::secondary
-                } else {
-                    button::primary
-                }),
+            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                "../../../icons/markdown.svg"
+            ))))
+            .on_press(Message::Notes(NotesPageMessage::ToggleMarkdown))
+            .style(if state.show_markdown {
+                button::secondary
+            } else {
+                button::primary
+            }),
             "Toggle Markdown Preview",
             iced::widget::tooltip::Position::Bottom
         ),
         Tooltip::new(
-            button(Svg::from_path("icons/editor.svg"))
-                .on_press(Message::Notes(NotesPageMessage::ToggleEditor))
-                .style(if state.show_editor {
-                    button::secondary
-                } else {
-                    button::primary
-                }),
+            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                "../../../icons/editor.svg"
+            ))))
+            .on_press(Message::Notes(NotesPageMessage::ToggleEditor))
+            .style(if state.show_editor {
+                button::secondary
+            } else {
+                button::primary
+            }),
             "Toggle Editor",
             iced::widget::tooltip::Position::Bottom
         ),
         Tooltip::new(
-            button(Svg::from_path("icons/add.svg"))
-                .on_press(Message::Notes(NotesPageMessage::NewNote)),
+            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                "../../../icons/add.svg"
+            ))))
+            .on_press(Message::Notes(NotesPageMessage::NewNote)),
             "New Note",
             iced::widget::tooltip::Position::Bottom
         ),

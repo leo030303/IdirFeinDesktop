@@ -83,49 +83,57 @@ fn kanban_view_item(task: &TaskData) -> Element<Message> {
             let mut state_setter_row = Row::new();
             if !matches!(task.completion_state, TaskCompletionState::Backlog) {
                 state_setter_row = state_setter_row.push(Tooltip::new(
-                    button(Svg::from_path("icons/1.svg"))
-                        .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
-                            task.id,
-                            TaskCompletionState::Backlog,
-                        )))
-                        .width(Length::Fill),
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/1.svg"
+                    ))))
+                    .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                        task.id,
+                        TaskCompletionState::Backlog,
+                    )))
+                    .width(Length::Fill),
                     "Backlog",
                     iced::widget::tooltip::Position::Bottom,
                 ));
             }
             if !matches!(task.completion_state, TaskCompletionState::ToDo) {
                 state_setter_row = state_setter_row.push(Tooltip::new(
-                    button(Svg::from_path("icons/2.svg"))
-                        .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
-                            task.id,
-                            TaskCompletionState::ToDo,
-                        )))
-                        .width(Length::Fill),
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/2.svg"
+                    ))))
+                    .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                        task.id,
+                        TaskCompletionState::ToDo,
+                    )))
+                    .width(Length::Fill),
                     "To Do",
                     iced::widget::tooltip::Position::Bottom,
                 ));
             }
             if !matches!(task.completion_state, TaskCompletionState::Doing) {
                 state_setter_row = state_setter_row.push(Tooltip::new(
-                    button(Svg::from_path("icons/3.svg"))
-                        .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
-                            task.id,
-                            TaskCompletionState::Doing,
-                        )))
-                        .width(Length::Fill),
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/3.svg"
+                    ))))
+                    .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                        task.id,
+                        TaskCompletionState::Doing,
+                    )))
+                    .width(Length::Fill),
                     "Doing",
                     iced::widget::tooltip::Position::Bottom,
                 ));
             }
             if !matches!(task.completion_state, TaskCompletionState::Done) {
                 state_setter_row = state_setter_row.push(Tooltip::new(
-                    button(Svg::from_path("icons/4.svg"))
-                        .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
-                            task.id,
-                            TaskCompletionState::Done,
-                        )))
-                        .width(Length::Fill)
-                        .style(button::success),
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/4.svg"
+                    ))))
+                    .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                        task.id,
+                        TaskCompletionState::Done,
+                    )))
+                    .width(Length::Fill)
+                    .style(button::success),
                     "Done",
                     iced::widget::tooltip::Position::Bottom,
                 ));
@@ -133,17 +141,21 @@ fn kanban_view_item(task: &TaskData) -> Element<Message> {
             state_setter_row
         },
         row![
-            button(Svg::from_path("icons/edit.svg"))
-                .width(Length::Fill)
-                .on_press(Message::Tasks(TasksPageMessage::OpenEditDialogForTask(
-                    task.id
-                ))),
-            button(Svg::from_path("icons/delete.svg"))
-                .style(button::danger)
-                .width(Length::Fill)
-                .on_press(Message::Tasks(
-                    TasksPageMessage::DeleteTaskWithConfirmationCheck(task.id)
-                ))
+            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                "../../../icons/edit.svg"
+            ))))
+            .width(Length::Fill)
+            .on_press(Message::Tasks(TasksPageMessage::OpenEditDialogForTask(
+                task.id
+            ))),
+            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                "../../../icons/delete.svg"
+            ))))
+            .style(button::danger)
+            .width(Length::Fill)
+            .on_press(Message::Tasks(
+                TasksPageMessage::DeleteTaskWithConfirmationCheck(task.id)
+            ))
         ]
     ]
     .padding(5)
@@ -165,9 +177,11 @@ fn task_edit_dialog(state: &TasksPage) -> Element<Message> {
             .width(Length::Fill)
             .size(24),
             Tooltip::new(
-                button(Svg::from_path("icons/close.svg"))
-                    .on_press(Message::Tasks(TasksPageMessage::ToggleShowTaskEditDialog))
-                    .width(Length::Fixed(50.0)),
+                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/close.svg"
+                ))))
+                .on_press(Message::Tasks(TasksPageMessage::ToggleShowTaskEditDialog))
+                .width(Length::Fixed(50.0)),
                 "Close Edit Dialog",
                 iced::widget::tooltip::Position::Bottom
             ),
@@ -203,11 +217,13 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
             row![
                 Space::with_width(Length::Fill),
                 text("Backlog").size(24),
-                Svg::from_path("icons/1.svg")
-                    .style(|theme, _status| svg::Style {
-                        color: text::base(theme).color
-                    })
-                    .height(Length::Fixed(24.0)),
+                Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/1.svg"
+                )))
+                .style(|theme, _status| svg::Style {
+                    color: text::base(theme).color
+                })
+                .height(Length::Fixed(24.0)),
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
@@ -232,11 +248,13 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
             row![
                 Space::with_width(Length::Fill),
                 text("To Do").size(24),
-                Svg::from_path("icons/2.svg")
-                    .style(|theme, _status| svg::Style {
-                        color: text::base(theme).color
-                    })
-                    .height(Length::Fixed(24.0)),
+                Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/2.svg"
+                )))
+                .style(|theme, _status| svg::Style {
+                    color: text::base(theme).color
+                })
+                .height(Length::Fixed(24.0)),
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
@@ -258,11 +276,13 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
             row![
                 Space::with_width(Length::Fill),
                 text("Doing").size(24),
-                Svg::from_path("icons/3.svg")
-                    .style(|theme, _status| svg::Style {
-                        color: text::base(theme).color
-                    })
-                    .height(Length::Fixed(24.0)),
+                Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/3.svg"
+                )))
+                .style(|theme, _status| svg::Style {
+                    color: text::base(theme).color
+                })
+                .height(Length::Fixed(24.0)),
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
@@ -284,11 +304,13 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
             row![
                 Space::with_width(Length::Fill),
                 text("Done").size(24),
-                Svg::from_path("icons/4.svg")
-                    .style(|theme, _status| svg::Style {
-                        color: text::base(theme).color
-                    })
-                    .height(Length::Fixed(24.0)),
+                Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/4.svg"
+                )))
+                .style(|theme, _status| svg::Style {
+                    color: text::base(theme).color
+                })
+                .height(Length::Fixed(24.0)),
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
@@ -426,20 +448,24 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                     .on_submit(Message::Tasks(TasksPageMessage::CreateNewProject))
                     .id(text_input::Id::new(NEW_PROJECT_TEXT_INPUT_ID)),
                 Tooltip::new(
-                    button(Svg::from_path("icons/ok.svg"))
-                        .on_press(Message::Tasks(TasksPageMessage::CreateNewProject))
-                        .style(button::success)
-                        .width(Length::Fixed(50.0))
-                        .height(Length::Fixed(30.0)),
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/ok.svg"
+                    ))))
+                    .on_press(Message::Tasks(TasksPageMessage::CreateNewProject))
+                    .style(button::success)
+                    .width(Length::Fixed(50.0))
+                    .height(Length::Fixed(30.0)),
                     "Create",
                     iced::widget::tooltip::Position::Bottom
                 ),
                 Tooltip::new(
-                    button(Svg::from_path("icons/close.svg"))
-                        .on_press(Message::Tasks(TasksPageMessage::CancelCreateNewProject))
-                        .style(button::danger)
-                        .width(Length::Fixed(50.0))
-                        .height(Length::Fixed(30.0)),
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/close.svg"
+                    ))))
+                    .on_press(Message::Tasks(TasksPageMessage::CancelCreateNewProject))
+                    .style(button::danger)
+                    .width(Length::Fixed(50.0))
+                    .height(Length::Fixed(30.0)),
                     "Cancel",
                     iced::widget::tooltip::Position::Bottom
                 ),
@@ -490,20 +516,26 @@ pub fn tool_view(state: &TasksPage) -> Element<Message> {
     if state.selected_folder.is_some() {
         row![
             Tooltip::new(
-                button(Svg::from_path("icons/toggle-sidebar.svg"))
-                    .on_press(Message::Tasks(TasksPageMessage::ToggleShowSidebar))
-                    .style(if state.show_sidebar {
-                        button::secondary
-                    } else {
-                        button::primary
-                    }),
+                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/toggle-sidebar.svg"
+                ))))
+                .on_press(Message::Tasks(TasksPageMessage::ToggleShowSidebar))
+                .style(if state.show_sidebar {
+                    button::secondary
+                } else {
+                    button::primary
+                }),
                 "Toggle Sidebar (Ctrl+B)",
                 iced::widget::tooltip::Position::Bottom
             ),
             Tooltip::new(
                 button(match state.task_view_type {
-                    TaskViewType::Kanban => Svg::from_path("icons/list.svg"),
-                    TaskViewType::List => Svg::from_path("icons/kanban.svg"),
+                    TaskViewType::Kanban => Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/list.svg"
+                    ))),
+                    TaskViewType::List => Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/kanban.svg"
+                    ))),
                 })
                 .on_press(Message::Tasks(TasksPageMessage::SetTaskViewType(
                     match state.task_view_type {
@@ -518,8 +550,10 @@ pub fn tool_view(state: &TasksPage) -> Element<Message> {
                 iced::widget::tooltip::Position::Bottom
             ),
             Tooltip::new(
-                button(Svg::from_path("icons/add.svg"))
-                    .on_press(Message::Tasks(TasksPageMessage::StartCreatingNewTask)),
+                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/add.svg"
+                ))))
+                .on_press(Message::Tasks(TasksPageMessage::StartCreatingNewTask)),
                 "New Task (Ctrl+N)",
                 iced::widget::tooltip::Position::Bottom
             ),

@@ -3,7 +3,7 @@ use iced::Alignment::Center;
 use iced::alignment::{Horizontal, Vertical};
 use iced::widget::scrollable::{Direction, Scrollbar};
 use iced::widget::{
-    button, column, container, row, text, text_input, Scrollable, Space, Svg, Tooltip,
+    button, column, container, row, svg, text, text_input, Scrollable, Space, Svg, Tooltip,
 };
 use iced::Element;
 use iced::{Font, Length};
@@ -60,9 +60,15 @@ fn new_database_set_password_view(state: &PasswordsPage) -> Element<Message> {
             .width(Length::FillPortion(9)),
             Tooltip::new(
                 button(if state.hide_master_password_entry {
-                    Svg::from_path("icons/eye.svg").height(Length::Fill)
+                    Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/eye.svg"
+                    )))
+                    .height(Length::Fill)
                 } else {
-                    Svg::from_path("icons/eye-blocked.svg").height(Length::Fill)
+                    Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/eye-blocked.svg"
+                    )))
+                    .height(Length::Fill)
                 })
                 .on_press(Message::Passwords(
                     PasswordsPageMessage::ToggleHideMasterPassword
@@ -98,9 +104,15 @@ fn new_database_set_password_view(state: &PasswordsPage) -> Element<Message> {
             .width(Length::FillPortion(9)),
             Tooltip::new(
                 button(if state.hide_master_password_reentry_entry {
-                    Svg::from_path("icons/eye.svg").height(Length::Fill)
+                    Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/eye.svg"
+                    )))
+                    .height(Length::Fill)
                 } else {
-                    Svg::from_path("icons/eye-blocked.svg").height(Length::Fill)
+                    Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/eye-blocked.svg"
+                    )))
+                    .height(Length::Fill)
                 })
                 .on_press(Message::Passwords(
                     PasswordsPageMessage::ToggleHideMasterPasswordReentry
@@ -236,15 +248,20 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                     .size(24)
                     .align_x(Horizontal::Center)
                     .width(Length::FillPortion(9)),
-                button(Svg::from_path("icons/delete.svg").height(Length::Fill))
-                    .style(button::danger)
+                button(
+                    Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/delete.svg"
+                    )))
                     .height(Length::Fill)
-                    .width(Length::FillPortion(1))
-                    .on_press(Message::Passwords(
-                        PasswordsPageMessage::DeletePasswordEntry(
-                            state.selected_password_entry.clone().unwrap().id
-                        )
-                    ))
+                )
+                .style(button::danger)
+                .height(Length::Fill)
+                .width(Length::FillPortion(1))
+                .on_press(Message::Passwords(
+                    PasswordsPageMessage::DeletePasswordEntry(
+                        state.selected_password_entry.clone().unwrap().id
+                    )
+                ))
             ]
             .height(Length::Shrink)
         },
@@ -256,13 +273,16 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                 })
                 .width(Length::FillPortion(9)),
             Tooltip::new(
-                button(Svg::from_path("icons/copy.svg").height(Length::Fill))
-                    .on_press(Message::Passwords(
-                        PasswordsPageMessage::CopyValueToClipboard(
-                            state.current_title_text.clone()
-                        )
-                    ))
-                    .width(Length::FillPortion(1)),
+                button(
+                    Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/copy.svg"
+                    )))
+                    .height(Length::Fill)
+                )
+                .on_press(Message::Passwords(
+                    PasswordsPageMessage::CopyValueToClipboard(state.current_title_text.clone())
+                ))
+                .width(Length::FillPortion(1)),
                 "Copy",
                 iced::widget::tooltip::Position::Bottom,
             )
@@ -274,11 +294,16 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                 .on_input(|s| { Message::Passwords(PasswordsPageMessage::UpdateCurrentUrlText(s)) })
                 .width(Length::FillPortion(9)),
             Tooltip::new(
-                button(Svg::from_path("icons/copy.svg").height(Length::Fill))
-                    .on_press(Message::Passwords(
-                        PasswordsPageMessage::CopyValueToClipboard(state.current_url_text.clone())
-                    ))
-                    .width(Length::FillPortion(1)),
+                button(
+                    Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/copy.svg"
+                    )))
+                    .height(Length::Fill)
+                )
+                .on_press(Message::Passwords(
+                    PasswordsPageMessage::CopyValueToClipboard(state.current_url_text.clone())
+                ))
+                .width(Length::FillPortion(1)),
                 "Copy",
                 iced::widget::tooltip::Position::Bottom,
             )
@@ -292,13 +317,16 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                 })
                 .width(Length::FillPortion(9)),
             Tooltip::new(
-                button(Svg::from_path("icons/copy.svg").height(Length::Fill))
-                    .on_press(Message::Passwords(
-                        PasswordsPageMessage::CopyValueToClipboard(
-                            state.current_username_text.clone()
-                        )
-                    ))
-                    .width(Length::FillPortion(1)),
+                button(
+                    Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/copy.svg"
+                    )))
+                    .height(Length::Fill)
+                )
+                .on_press(Message::Passwords(
+                    PasswordsPageMessage::CopyValueToClipboard(state.current_username_text.clone())
+                ))
+                .width(Length::FillPortion(1)),
                 "Copy",
                 iced::widget::tooltip::Position::Bottom,
             )
@@ -314,9 +342,15 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                 .width(Length::FillPortion(8)),
             Tooltip::new(
                 button(if state.hide_current_password_entry {
-                    Svg::from_path("icons/eye.svg").height(Length::Fill)
+                    Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/eye.svg"
+                    )))
+                    .height(Length::Fill)
                 } else {
-                    Svg::from_path("icons/eye-blocked.svg").height(Length::Fill)
+                    Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/eye-blocked.svg"
+                    )))
+                    .height(Length::Fill)
                 })
                 .on_press(Message::Passwords(
                     PasswordsPageMessage::ToggleHideCurrentPassword
@@ -337,9 +371,14 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
             ),
             if state.selected_password_entry.is_none() {
                 column![Tooltip::new(
-                    button(Svg::from_path("icons/generate-password.svg").height(Length::Fill))
-                        .on_press(Message::Passwords(PasswordsPageMessage::GeneratePassword))
-                        .width(Length::FillPortion(1)),
+                    button(
+                        Svg::new(svg::Handle::from_memory(include_bytes!(
+                            "../../../icons/generate-password.svg"
+                        )))
+                        .height(Length::Fill)
+                    )
+                    .on_press(Message::Passwords(PasswordsPageMessage::GeneratePassword))
+                    .width(Length::FillPortion(1)),
                     "Generate Password",
                     iced::widget::tooltip::Position::Bottom,
                 ),]
@@ -347,13 +386,16 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                 column![]
             },
             Tooltip::new(
-                button(Svg::from_path("icons/copy.svg").height(Length::Fill))
-                    .on_press(Message::Passwords(
-                        PasswordsPageMessage::CopyValueToClipboard(
-                            state.current_password_text.clone()
-                        )
-                    ))
-                    .width(Length::FillPortion(1)),
+                button(
+                    Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/copy.svg"
+                    )))
+                    .height(Length::Fill)
+                )
+                .on_press(Message::Passwords(
+                    PasswordsPageMessage::CopyValueToClipboard(state.current_password_text.clone())
+                ))
+                .width(Length::FillPortion(1)),
                 "Copy",
                 iced::widget::tooltip::Position::Bottom,
             )
@@ -417,9 +459,15 @@ fn existing_database_selected_and_locked_view(state: &PasswordsPage) -> Element<
                 .width(Length::FillPortion(9)),
             Tooltip::new(
                 button(if state.hide_master_password_entry {
-                    Svg::from_path("icons/eye.svg").height(Length::Fill)
+                    Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/eye.svg"
+                    )))
+                    .height(Length::Fill)
                 } else {
-                    Svg::from_path("icons/eye-blocked.svg").height(Length::Fill)
+                    Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/eye-blocked.svg"
+                    )))
+                    .height(Length::Fill)
                 })
                 .on_press(Message::Passwords(
                     PasswordsPageMessage::ToggleHideMasterPassword
@@ -502,37 +550,46 @@ pub fn tool_view(state: &PasswordsPage) -> Element<Message> {
     if state.is_unlocked {
         row![
             Tooltip::new(
-                button(Svg::from_path("icons/toggle-sidebar.svg"))
-                    .on_press(Message::Passwords(PasswordsPageMessage::ToggleShowSidebar))
-                    .style(if state.show_sidebar {
-                        button::secondary
-                    } else {
-                        button::primary
-                    }),
+                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/toggle-sidebar.svg"
+                ))))
+                .on_press(Message::Passwords(PasswordsPageMessage::ToggleShowSidebar))
+                .style(if state.show_sidebar {
+                    button::secondary
+                } else {
+                    button::primary
+                }),
                 "Toggle Sidebar",
                 iced::widget::tooltip::Position::Bottom
             ),
             Tooltip::new(
-                button(Svg::from_path("icons/add.svg")).on_press(Message::Passwords(
+                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/add.svg"
+                ))))
+                .on_press(Message::Passwords(
                     PasswordsPageMessage::SelectPassword(None)
                 )),
                 "Add Entry",
                 iced::widget::tooltip::Position::Bottom
             ),
             Tooltip::new(
-                button(Svg::from_path("icons/lock.svg"))
-                    .on_press(Message::Passwords(PasswordsPageMessage::Lock)),
+                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/lock.svg"
+                ))))
+                .on_press(Message::Passwords(PasswordsPageMessage::Lock)),
                 "Lock",
                 iced::widget::tooltip::Position::Bottom
             ),
             Tooltip::new(
-                button(Svg::from_path("icons/ok.svg"))
-                    .on_press(Message::Passwords(PasswordsPageMessage::SaveDatabaseToFile))
-                    .style(if state.is_dirty {
-                        button::success
-                    } else {
-                        button::secondary
-                    }),
+                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/ok.svg"
+                ))))
+                .on_press(Message::Passwords(PasswordsPageMessage::SaveDatabaseToFile))
+                .style(if state.is_dirty {
+                    button::success
+                } else {
+                    button::secondary
+                }),
                 "Save Changes",
                 iced::widget::tooltip::Position::Bottom,
             )
@@ -541,7 +598,10 @@ pub fn tool_view(state: &PasswordsPage) -> Element<Message> {
         .into()
     } else if state.is_creating_new_keepass_file || state.selected_keepass_file.is_some() {
         row![Tooltip::new(
-            button(Svg::from_path("icons/back.svg")).on_press(Message::Passwords(
+            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                "../../../icons/back.svg"
+            ))))
+            .on_press(Message::Passwords(
                 PasswordsPageMessage::LockAndDeselectDatabase
             )),
             "Back",

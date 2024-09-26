@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use iced::widget::svg::{self, Handle};
 use serde::{Deserialize, Serialize};
 
 pub mod app;
@@ -53,14 +54,16 @@ impl Page {
         }
     }
 
-    pub fn icon_path(&self) -> &'static str {
+    pub fn icon_handle(&self) -> Handle {
         match self {
-            Page::Settings => "icons/settings.svg",
-            Page::Passwords => "icons/key.svg",
-            Page::FileManager => "icons/file-manager.svg",
-            Page::Gallery => "icons/image-round.svg",
-            Page::Notes => "icons/notepad.svg",
-            Page::Tasks => "icons/task.svg",
+            Page::Settings => svg::Handle::from_memory(include_bytes!("../icons/settings.svg")),
+            Page::Passwords => svg::Handle::from_memory(include_bytes!("../icons/key.svg")),
+            Page::FileManager => {
+                svg::Handle::from_memory(include_bytes!("../icons/file-manager.svg"))
+            }
+            Page::Gallery => svg::Handle::from_memory(include_bytes!("../icons/image-round.svg")),
+            Page::Notes => svg::Handle::from_memory(include_bytes!("../icons/notepad.svg")),
+            Page::Tasks => svg::Handle::from_memory(include_bytes!("../icons/task.svg")),
         }
     }
 }
