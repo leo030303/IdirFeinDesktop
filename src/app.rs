@@ -129,17 +129,26 @@ impl AppState {
         Task::none()
     }
     pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::batch([
-            event::listen().map(|event| {
-                if let Event::Window(window::Event::CloseRequested) = event {
-                    Message::CloseWindowRequest
-                } else {
-                    Message::None
-                }
-            }),
-            NotesPage::subscription(),
-            TasksPage::subscription(),
-        ])
+        let mut subscriptions_vec = vec![event::listen().map(|event| {
+            if let Event::Window(window::Event::CloseRequested) = event {
+                Message::CloseWindowRequest
+            } else {
+                Message::None
+            }
+        })];
+        match self.current_page {
+            Page::Settings => (),
+            Page::Passwords => (),
+            Page::FileManager => (),
+            Page::Gallery => (),
+            Page::Notes => {
+                subscriptions_vec.push(NotesPage::subscription());
+            }
+            Page::Tasks => {
+                subscriptions_vec.push(TasksPage::subscription());
+            }
+        }
+        Subscription::batch(subscriptions_vec)
     }
 
     pub fn view(&self) -> iced::Element<Message> {
