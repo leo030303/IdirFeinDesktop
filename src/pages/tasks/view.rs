@@ -497,7 +497,7 @@ pub fn tool_view(state: &TasksPage) -> Element<Message> {
                     } else {
                         button::primary
                     }),
-                "Toggle Sidebar",
+                "Toggle Sidebar (Ctrl+B)",
                 iced::widget::tooltip::Position::Bottom
             ),
             Tooltip::new(
@@ -520,7 +520,7 @@ pub fn tool_view(state: &TasksPage) -> Element<Message> {
             Tooltip::new(
                 button(Svg::from_path("icons/add.svg"))
                     .on_press(Message::Tasks(TasksPageMessage::StartCreatingNewTask)),
-                "New Task",
+                "New Task (Ctrl+N)",
                 iced::widget::tooltip::Position::Bottom
             ),
         ]
