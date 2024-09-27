@@ -596,7 +596,7 @@ pub fn tool_view(state: &PasswordsPage) -> Element<Message> {
         ]
         .width(Length::FillPortion(1))
         .into()
-    } else if state.is_creating_new_keepass_file || state.selected_keepass_file.is_some() {
+    } else if state.is_creating_new_keepass_file {
         row![Tooltip::new(
             button(Svg::new(svg::Handle::from_memory(include_bytes!(
                 "../../../icons/back.svg"
