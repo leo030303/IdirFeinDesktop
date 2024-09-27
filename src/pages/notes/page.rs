@@ -1,8 +1,10 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
+use iced::event::Status;
+use iced::keyboard::{Key, Modifiers};
 use iced::widget::{markdown, text_editor};
-use iced::{time, Task};
+use iced::{event, keyboard, time, Event, Subscription, Task};
 use iced::{Element, Theme};
 use serde::{Deserialize, Serialize};
 
@@ -159,7 +161,32 @@ impl NotesPage {
     }
 
     pub fn subscription() -> iced::Subscription<Message> {
-        time::every(Duration::from_secs(3)).map(|_| Message::Notes(NotesPageMessage::SaveNote))
+        Subscription::batch([
+            event::listen_with(|event, status, _id| match (event, status) {
+                (
+                    Event::Keyboard(keyboard::Event::KeyPressed {
+                        key: Key::Character(pressed_char),
+                        modifiers: Modifiers::CTRL,
+                        ..
+                    }),
+                    Status::Ignored,
+                ) => {
+                    if pressed_char.as_ref() == "n" || pressed_char.as_ref() == "N" {
+                        Some(Message::Notes(NotesPageMessage::NewNote))
+                    } else if pressed_char.as_ref() == "b" || pressed_char.as_ref() == "B" {
+                        Some(Message::Notes(NotesPageMessage::ToggleSidebar))
+                    } else if pressed_char.as_ref() == "m" || pressed_char.as_ref() == "M" {
+                        Some(Message::Notes(NotesPageMessage::ToggleMarkdown))
+                    } else if pressed_char.as_ref() == "e" || pressed_char.as_ref() == "E" {
+                        Some(Message::Notes(NotesPageMessage::ToggleEditor))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            }),
+            time::every(Duration::from_secs(3)).map(|_| Message::Notes(NotesPageMessage::SaveNote)),
+        ])
     }
 
     pub fn tool_view(&self) -> Element<Message> {

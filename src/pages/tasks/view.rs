@@ -182,7 +182,7 @@ fn task_edit_dialog(state: &TasksPage) -> Element<Message> {
                 ))))
                 .on_press(Message::Tasks(TasksPageMessage::ToggleShowTaskEditDialog))
                 .width(Length::Fixed(50.0)),
-                "Close Edit Dialog",
+                "Close Edit Dialog (Esc)",
                 iced::widget::tooltip::Position::Bottom
             ),
         ],
@@ -398,7 +398,7 @@ fn confirm_delete_view(state: &TasksPage) -> Element<Message> {
         column![
             text("Delete This Task").width(Length::Fill).size(24),
             row![
-                button(text("Cancel").align_x(Center).width(Length::Fill))
+                button(text("Cancel (Esc)").align_x(Center).width(Length::Fill))
                     .width(Length::Fill)
                     .on_press(Message::Tasks(
                         TasksPageMessage::ToggleConfirmBeforeDeleteDialog
@@ -474,39 +474,43 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
             row![
                 button(text("New Project").width(Length::Fill).align_x(Center))
                     .width(Length::Fill)
+                    .style(button::success)
                     .on_press(Message::Tasks(TasksPageMessage::StartCreatingNewProject))
             ]
         },
         Space::with_height(20),
-        scrollable(column(state.projects_list.iter().map(|project| {
-            button(
-                text(
-                    project
-                        .file_stem()
-                        .unwrap_or_default()
-                        .to_str()
-                        .unwrap_or("Couldn't read filename"),
+        scrollable(
+            column(state.projects_list.iter().map(|project| {
+                button(
+                    text(
+                        project
+                            .file_stem()
+                            .unwrap_or_default()
+                            .to_str()
+                            .unwrap_or("Couldn't read filename"),
+                    )
+                    .width(Length::Fill)
+                    .align_x(Center),
+                )
+                .style(
+                    if state
+                        .current_project_file
+                        .clone()
+                        .is_some_and(|value| value == *project)
+                    {
+                        button::secondary
+                    } else {
+                        button::primary
+                    },
                 )
                 .width(Length::Fill)
-                .align_x(Center),
-            )
-            .style(
-                if state
-                    .current_project_file
-                    .clone()
-                    .is_some_and(|value| value == *project)
-                {
-                    button::secondary
-                } else {
-                    button::primary
-                },
-            )
-            .width(Length::Fill)
-            .on_press(Message::Tasks(TasksPageMessage::PickProjectFile(
-                project.to_path_buf(),
-            )))
-            .into()
-        })))
+                .on_press(Message::Tasks(TasksPageMessage::PickProjectFile(
+                    project.to_path_buf(),
+                )))
+                .into()
+            }))
+            .spacing(5)
+        )
     ]
     .width(Length::FillPortion(1))
     .into()

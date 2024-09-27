@@ -418,7 +418,7 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
             } else {
                 button::primary
             }),
-            "Toggle Sidebar",
+            "Toggle Sidebar (Ctrl+B)",
             iced::widget::tooltip::Position::Bottom
         ),
         Tooltip::new(
@@ -431,7 +431,7 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
             } else {
                 button::primary
             }),
-            "Toggle Markdown Preview",
+            "Toggle Markdown Preview (Ctrl+M)",
             iced::widget::tooltip::Position::Bottom
         ),
         Tooltip::new(
@@ -444,7 +444,7 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
             } else {
                 button::primary
             }),
-            "Toggle Editor",
+            "Toggle Editor (Ctrl+E)",
             iced::widget::tooltip::Position::Bottom
         ),
         Tooltip::new(
@@ -452,7 +452,7 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
                 "../../../icons/add.svg"
             ))))
             .on_press(Message::Notes(NotesPageMessage::NewNote)),
-            "New Note",
+            "New Note (Ctrl+N)",
             iced::widget::tooltip::Position::Bottom
         ),
         drop_down

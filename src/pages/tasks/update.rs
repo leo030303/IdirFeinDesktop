@@ -237,6 +237,13 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
             state.is_creating_new_project = false;
             state.new_project_name_entry_content = String::new();
         }
+        TasksPageMessage::EscapeKeyPressed => {
+            state.show_task_edit_dialog = false;
+            state.current_task_title_text = String::new();
+            state.current_task_description_content = text_editor::Content::with_text("");
+            state.current_task_id = None;
+            state.show_confirm_before_delete_dialog = false;
+        }
     }
     Task::none()
 }

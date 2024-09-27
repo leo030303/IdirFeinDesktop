@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use iced::event::Status;
+use iced::keyboard::key::Named;
 use iced::keyboard::{self, Key, Modifiers};
 use iced::widget::text_editor;
 use iced::{event, Element, Event, Task};
@@ -113,6 +114,7 @@ pub enum TasksPageMessage {
     CreateNewProject,
     UpdateNewProjectNameEntry(String),
     CancelCreateNewProject,
+    EscapeKeyPressed,
 }
 
 impl TasksPage {
@@ -174,6 +176,13 @@ impl TasksPage {
                     None
                 }
             }
+            (
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: Key::Named(Named::Escape),
+                    ..
+                }),
+                Status::Ignored,
+            ) => Some(Message::Tasks(TasksPageMessage::EscapeKeyPressed)),
             _ => None,
         })
     }
