@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
-use iced::{Element, Task};
+use iced::event::{self, Status};
+use iced::keyboard::{Key, Modifiers};
+use iced::{keyboard, Element, Event, Task};
 use serde::{Deserialize, Serialize};
 
 use crate::app::Message;
@@ -152,6 +154,34 @@ impl PasswordsPage {
 
     pub fn view(&self) -> Element<Message> {
         main_view(self)
+    }
+
+    pub fn subscription() -> iced::Subscription<Message> {
+        event::listen_with(|event, status, _id| match (event, status) {
+            (
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: Key::Character(pressed_char),
+                    modifiers: Modifiers::CTRL,
+                    ..
+                }),
+                Status::Ignored,
+            ) => {
+                if pressed_char.as_ref() == "n" || pressed_char.as_ref() == "N" {
+                    Some(Message::Passwords(PasswordsPageMessage::SelectPassword(
+                        None,
+                    )))
+                } else if pressed_char.as_ref() == "b" || pressed_char.as_ref() == "B" {
+                    Some(Message::Passwords(PasswordsPageMessage::ToggleShowSidebar))
+                } else if pressed_char.as_ref() == "l" || pressed_char.as_ref() == "L" {
+                    Some(Message::Passwords(
+                        PasswordsPageMessage::LockAndDeselectDatabase,
+                    ))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
     }
 
     pub fn tool_view(&self) -> Element<Message> {

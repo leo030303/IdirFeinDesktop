@@ -559,7 +559,7 @@ pub fn tool_view(state: &PasswordsPage) -> Element<Message> {
                 } else {
                     button::primary
                 }),
-                "Toggle Sidebar",
+                "Toggle Sidebar (Ctrl+B)",
                 iced::widget::tooltip::Position::Bottom
             ),
             Tooltip::new(
@@ -569,7 +569,7 @@ pub fn tool_view(state: &PasswordsPage) -> Element<Message> {
                 .on_press(Message::Passwords(
                     PasswordsPageMessage::SelectPassword(None)
                 )),
-                "Add Entry",
+                "Add Entry (Ctrl+N)",
                 iced::widget::tooltip::Position::Bottom
             ),
             Tooltip::new(
@@ -577,7 +577,7 @@ pub fn tool_view(state: &PasswordsPage) -> Element<Message> {
                     "../../../icons/lock.svg"
                 ))))
                 .on_press(Message::Passwords(PasswordsPageMessage::Lock)),
-                "Lock",
+                "Lock (Ctrl+L)",
                 iced::widget::tooltip::Position::Bottom
             ),
             Tooltip::new(

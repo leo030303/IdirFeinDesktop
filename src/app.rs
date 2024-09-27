@@ -138,7 +138,9 @@ impl AppState {
         })];
         match self.current_page {
             Page::Settings => (),
-            Page::Passwords => (),
+            Page::Passwords => {
+                subscriptions_vec.push(PasswordsPage::subscription());
+            }
             Page::FileManager => (),
             Page::Gallery => (),
             Page::Notes => {
