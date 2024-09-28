@@ -24,7 +24,14 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
         TasksPageMessage::ToggleConfirmBeforeDeleteDialog => {
             state.show_confirm_before_delete_dialog = !state.show_confirm_before_delete_dialog
         }
-        TasksPageMessage::SetTaskViewType(task_type) => state.task_view_type = task_type,
+        TasksPageMessage::ToggleTaskViewType => match state.task_view_type {
+            super::page::TaskViewType::Kanban => {
+                state.task_view_type = super::page::TaskViewType::List
+            }
+            super::page::TaskViewType::List => {
+                state.task_view_type = super::page::TaskViewType::Kanban
+            }
+        },
         TasksPageMessage::LoadProjectsList => {
             let selected_folder = state.selected_folder.clone();
             return Task::perform(

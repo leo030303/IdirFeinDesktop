@@ -197,13 +197,17 @@ fn task_edit_dialog(state: &TasksPage) -> Element<Message> {
             .padding(10)
             .font(Font::MONOSPACE),
         row![
-            button(text("Cancel").align_x(Center).width(Length::Fill))
+            button(text("Cancel (Esc)").align_x(Center).width(Length::Fill))
                 .width(Length::Fill)
                 .on_press(Message::Tasks(TasksPageMessage::ToggleShowTaskEditDialog)),
-            button(text("Save Task").align_x(Center).width(Length::Fill))
-                .width(Length::Fill)
-                .style(button::success)
-                .on_press(Message::Tasks(TasksPageMessage::UpdateCurrentTask))
+            button(
+                text("Save Task (Ctrl+S)")
+                    .align_x(Center)
+                    .width(Length::Fill)
+            )
+            .width(Length::Fill)
+            .style(button::success)
+            .on_press(Message::Tasks(TasksPageMessage::UpdateCurrentTask))
         ]
         .spacing(20)
     ]
@@ -541,15 +545,10 @@ pub fn tool_view(state: &TasksPage) -> Element<Message> {
                         "../../../icons/kanban.svg"
                     ))),
                 })
-                .on_press(Message::Tasks(TasksPageMessage::SetTaskViewType(
-                    match state.task_view_type {
-                        TaskViewType::Kanban => TaskViewType::List,
-                        TaskViewType::List => TaskViewType::Kanban,
-                    }
-                ))),
+                .on_press(Message::Tasks(TasksPageMessage::ToggleTaskViewType)),
                 match state.task_view_type {
-                    TaskViewType::Kanban => "Use List View",
-                    TaskViewType::List => "Use Kanban View",
+                    TaskViewType::Kanban => "Use List View (Ctrl+L)",
+                    TaskViewType::List => "Use Kanban View (Ctrl+L)",
                 },
                 iced::widget::tooltip::Position::Bottom
             ),

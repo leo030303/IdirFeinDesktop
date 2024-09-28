@@ -93,7 +93,7 @@ pub enum TasksPageMessage {
     ToggleShowTaskEditDialog,
     ToggleShowSidebar,
     ToggleConfirmBeforeDeleteDialog,
-    SetTaskViewType(TaskViewType),
+    ToggleTaskViewType,
     PickProjectsFolder,
     LoadProjectsList,
     PickProjectFile(PathBuf),
@@ -166,12 +166,16 @@ impl TasksPage {
                     modifiers: Modifiers::CTRL,
                     ..
                 }),
-                Status::Ignored,
+                _,
             ) => {
                 if pressed_char.as_ref() == "n" || pressed_char.as_ref() == "N" {
                     Some(Message::Tasks(TasksPageMessage::StartCreatingNewTask))
                 } else if pressed_char.as_ref() == "b" || pressed_char.as_ref() == "B" {
                     Some(Message::Tasks(TasksPageMessage::ToggleShowSidebar))
+                } else if pressed_char.as_ref() == "l" || pressed_char.as_ref() == "L" {
+                    Some(Message::Tasks(TasksPageMessage::ToggleTaskViewType))
+                } else if pressed_char.as_ref() == "s" || pressed_char.as_ref() == "S" {
+                    Some(Message::Tasks(TasksPageMessage::UpdateCurrentTask))
                 } else {
                     None
                 }
