@@ -70,6 +70,7 @@ pub enum SettingsPageMessage {
     TasksSetKanbanTaskViewIsDefault(bool),
     TasksSetShowSidebarOnStart(bool),
     TasksSetConfirmBeforeDelete(bool),
+    GallerySetDefaultFolder,
 }
 
 impl SettingsPage {

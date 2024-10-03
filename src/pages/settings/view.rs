@@ -217,8 +217,37 @@ fn passwords_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Ele
     .into()
 }
 
-fn gallery_tab<'a>(_state: &'a SettingsPage, _app_configg: &'a AppConfig) -> Element<'a, Message> {
-    text("gallery tab").into()
+fn gallery_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
+    scrollable(
+        container(
+            column![row![
+                text(
+                    app_config
+                        .gallery_config
+                        .default_folder
+                        .as_ref()
+                        .map(|value| format!("Default Folder: {value:?}"))
+                        .unwrap_or(String::from("No Default Folder Selected"))
+                )
+                .align_x(Alignment::Center)
+                .width(Length::Fill),
+                button(
+                    text("Select Default Folder")
+                        .width(Length::Fill)
+                        .align_x(Alignment::Center)
+                )
+                .on_press(Message::Settings(
+                    SettingsPageMessage::GallerySetDefaultFolder
+                ))
+            ]
+            .width(Length::Fill),]
+            .padding(20)
+            .spacing(30),
+        )
+        .style(container::bordered_box)
+        .width(Length::Fill),
+    )
+    .into()
 }
 
 fn file_manager_tab<'a>(

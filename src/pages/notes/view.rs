@@ -124,11 +124,9 @@ fn sidebar_with_selected_folder(state: &NotesPage) -> Element<Message> {
                                 .width(Length::Fill)
                                 .align_x(Horizontal::Center),
                             if let Some(category) = &note.category {
-                                std::convert::Into::<Element<Message>>::into(
-                                    badge(text(category)).style(style::badge::info),
-                                )
+                                column![badge(text(category)).style(style::badge::info)]
                             } else {
-                                column![].into()
+                                column![]
                             }
                         ])
                         .on_press(Message::Notes(NotesPageMessage::OpenFile(

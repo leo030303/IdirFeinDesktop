@@ -84,6 +84,10 @@ pub fn update(
         SettingsPageMessage::TasksSetConfirmBeforeDelete(b) => {
             app_config.tasks_config.confirm_before_delete = b
         }
+        SettingsPageMessage::GallerySetDefaultFolder => {
+            let selected_folder = FileDialog::new().pick_folder();
+            app_config.gallery_config.default_folder = selected_folder;
+        }
     }
     Task::done(Message::SaveConfig)
 }

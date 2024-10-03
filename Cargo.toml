@@ -6,8 +6,8 @@ edition = "2021"
 [dependencies]
 arboard = "3.4.0"
 bytes = "1.7.1"
-iced = { version = "0.13.1", features = ["markdown", "highlighter", "svg", "tokio"]}
-iced_aw = { git = "https://github.com/iced-rs/iced_aw", default-features = false, features = ["badge", "drop_down", "spinner"] }
+iced = { git = "https://github.com/leo030303/iced", features = ["markdown", "highlighter", "svg", "tokio", "image"]}
+iced_aw = { git = "https://github.com/leo030303/iced_aw", default-features = false, features = ["badge", "drop_down", "spinner", "grid"] }
 keepass = { version = "0.7.21", features = ["save_kdbx4"] }
 opener = "0.7.2"
 rand = "0.8.5"
