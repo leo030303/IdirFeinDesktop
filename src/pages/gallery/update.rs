@@ -97,12 +97,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         GalleryPageMessage::LoadImageHandle(index, image_path_vec) => {
             return Task::batch(image_path_vec.into_iter().map(|(image_path, _)| {
                 Task::perform(
-                    async move {
-                        let mut file = File::open(&image_path).unwrap();
-                        let mut buffer = Vec::new();
-                        file.read_to_end(&mut buffer).unwrap();
-                        (image_path, Handle::from_bytes(buffer))
-                    },
+                    async move { (image_path.clone(), Handle::from_path(image_path)) },
                     move |(image_path, image_handle)| {
                         Message::Gallery(GalleryPageMessage::SetImageHandle(
                             index,
@@ -111,7 +106,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                         ))
                     },
                 )
-            }))
+            }));
         }
         GalleryPageMessage::SetImageHandle(index, image_path, image_data) => {
             state
