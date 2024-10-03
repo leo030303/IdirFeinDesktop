@@ -90,6 +90,7 @@ pub enum NotesPageMessage {
     NewNote,
     SaveNote,
     OpenFilePicker,
+    SetNotesFolder(Option<PathBuf>),
     SetNotesList(Vec<Note>),
     SetTextEditorContent(String),
     OpenFile(PathBuf),

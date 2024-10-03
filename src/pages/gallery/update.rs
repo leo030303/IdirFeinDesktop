@@ -1,6 +1,5 @@
 use std::{
-    fs::{self, File},
-    io::Read,
+    fs::{self},
     os::linux::fs::MetadataExt,
     path::PathBuf,
 };
@@ -20,10 +19,19 @@ use super::page::{
 pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Message> {
     match message {
         GalleryPageMessage::PickGalleryFolder => {
-            let selected_folder = FileDialog::new()
-                .set_directory("/")
-                .set_can_create_directories(true)
-                .pick_folder();
+            return Task::perform(
+                async {
+                    FileDialog::new()
+                        .set_directory("/")
+                        .set_can_create_directories(true)
+                        .pick_folder()
+                },
+                |selected_folder| {
+                    Message::Gallery(GalleryPageMessage::SetGalleryFolder(selected_folder))
+                },
+            );
+        }
+        GalleryPageMessage::SetGalleryFolder(selected_folder) => {
             state.selected_folder = selected_folder;
             return Task::done(Message::Gallery(GalleryPageMessage::LoadGalleryFolder));
         }

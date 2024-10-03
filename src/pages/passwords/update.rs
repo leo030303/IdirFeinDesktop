@@ -158,19 +158,34 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
             Clipboard::new().unwrap().set_text(s).unwrap()
         }
         PasswordsPageMessage::PickDatabaseFile => {
-            let selected_file = FileDialog::new()
-                .add_filter("keepass", &["kdbx"])
-                .pick_file();
+            return Task::perform(
+                async {
+                    FileDialog::new()
+                        .add_filter("keepass", &["kdbx"])
+                        .pick_file()
+                },
+                |selected_file| {
+                    Message::Passwords(PasswordsPageMessage::SetDatabaseFile(selected_file))
+                },
+            );
+        }
+        PasswordsPageMessage::SetDatabaseFile(selected_file) => {
             state.selected_keepass_file = selected_file;
         }
         PasswordsPageMessage::StartCreatingNewKeepassFile => {
             state.is_creating_new_keepass_file = true
         }
         PasswordsPageMessage::PickNewDatabasePath => {
-            let selected_file = FileDialog::new()
-                .add_filter("keepass", &["kdbx"])
-                .save_file();
-            state.selected_keepass_file = selected_file;
+            return Task::perform(
+                async {
+                    FileDialog::new()
+                        .add_filter("keepass", &["kdbx"])
+                        .save_file()
+                },
+                |selected_file| {
+                    Message::Passwords(PasswordsPageMessage::SetDatabaseFile(selected_file))
+                },
+            );
         }
         PasswordsPageMessage::UpdateMasterPasswordReentryField(s) => {
             state.master_password_reentry_field_text = s
@@ -192,7 +207,11 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
         }
         PasswordsPageMessage::CloseDatabase => state.selected_keepass_file = None,
         PasswordsPageMessage::PickKeyFile => {
-            let selected_file = FileDialog::new().pick_file();
+            return Task::perform(async { FileDialog::new().pick_file() }, |selected_file| {
+                Message::Passwords(PasswordsPageMessage::SetKeyFile(selected_file))
+            });
+        }
+        PasswordsPageMessage::SetKeyFile(selected_file) => {
             state.selected_key_file = selected_file;
         }
         PasswordsPageMessage::LockAndDeselectDatabase => {

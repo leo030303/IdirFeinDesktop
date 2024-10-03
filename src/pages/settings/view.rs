@@ -83,7 +83,7 @@ fn tasks_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                             .align_x(Alignment::Center)
                     )
                     .on_press(Message::Settings(
-                        SettingsPageMessage::TasksSetDefaultProjectFolder
+                        SettingsPageMessage::TasksPickDefaultProjectFolder
                     ))
                 ]
                 .width(Length::Fill),
@@ -133,7 +133,7 @@ fn notes_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                             .align_x(Alignment::Center)
                     )
                     .on_press(Message::Settings(
-                        SettingsPageMessage::NotesSetDefaultFolder
+                        SettingsPageMessage::NotesPickDefaultFolder
                     ))
                 ]
                 .width(Length::Fill),
@@ -198,7 +198,7 @@ fn passwords_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Ele
                             .align_x(Alignment::Center)
                     )
                     .on_press(Message::Settings(
-                        SettingsPageMessage::PasswordsSetDefaultDatabase
+                        SettingsPageMessage::PasswordsPickDefaultDatabase
                     ))
                 ]
                 .width(Length::Fill),
@@ -237,7 +237,7 @@ fn gallery_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Eleme
                         .align_x(Alignment::Center)
                 )
                 .on_press(Message::Settings(
-                    SettingsPageMessage::GallerySetDefaultFolder
+                    SettingsPageMessage::GalleryPickDefaultFolder
                 ))
             ]
             .width(Length::Fill),]

@@ -40,8 +40,20 @@ pub fn update(
                 _ => Page::Notes,
             };
         }
-        SettingsPageMessage::NotesSetDefaultFolder => {
-            let selected_folder = FileDialog::new().pick_folder();
+        SettingsPageMessage::NotesPickDefaultFolder => {
+            return Task::perform(
+                async {
+                    FileDialog::new()
+                        .set_directory("/")
+                        .set_can_create_directories(true)
+                        .pick_folder()
+                },
+                |selected_folder| {
+                    Message::Settings(SettingsPageMessage::NotesSetDefaultFolder(selected_folder))
+                },
+            );
+        }
+        SettingsPageMessage::NotesSetDefaultFolder(selected_folder) => {
             app_config.notes_config.default_folder = selected_folder;
         }
         SettingsPageMessage::NotesSetShowSidebarOnStart(b) => {
@@ -62,17 +74,42 @@ pub fn update(
         SettingsPageMessage::NotesSetAutocompleteLists(b) => {
             app_config.notes_config.autocomplete_lists = b;
         }
-        SettingsPageMessage::PasswordsSetDefaultDatabase => {
-            let selected_file = FileDialog::new()
-                .add_filter("keepass", &["kdbx"])
-                .pick_file();
+        SettingsPageMessage::PasswordsPickDefaultDatabase => {
+            return Task::perform(
+                async {
+                    FileDialog::new()
+                        .add_filter("keepass", &["kdbx"])
+                        .pick_file()
+                },
+                |selected_file| {
+                    Message::Settings(SettingsPageMessage::PasswordsSetDefaultDatabase(
+                        selected_file,
+                    ))
+                },
+            );
+        }
+        SettingsPageMessage::PasswordsSetDefaultDatabase(selected_file) => {
             app_config.passwords_config.default_database = selected_file;
         }
         SettingsPageMessage::PasswordsSetShowSidebarOnStart(b) => {
             app_config.passwords_config.show_sidebar_on_start = b;
         }
-        SettingsPageMessage::TasksSetDefaultProjectFolder => {
-            let selected_folder = FileDialog::new().pick_folder();
+        SettingsPageMessage::TasksPickDefaultProjectFolder => {
+            return Task::perform(
+                async {
+                    FileDialog::new()
+                        .set_directory("/")
+                        .set_can_create_directories(true)
+                        .pick_folder()
+                },
+                |selected_folder| {
+                    Message::Settings(SettingsPageMessage::TasksSetDefaultProjectFolder(
+                        selected_folder,
+                    ))
+                },
+            );
+        }
+        SettingsPageMessage::TasksSetDefaultProjectFolder(selected_folder) => {
             app_config.tasks_config.default_folder = selected_folder;
         }
         SettingsPageMessage::TasksSetKanbanTaskViewIsDefault(b) => {
@@ -84,8 +121,22 @@ pub fn update(
         SettingsPageMessage::TasksSetConfirmBeforeDelete(b) => {
             app_config.tasks_config.confirm_before_delete = b
         }
-        SettingsPageMessage::GallerySetDefaultFolder => {
-            let selected_folder = FileDialog::new().pick_folder();
+        SettingsPageMessage::GalleryPickDefaultFolder => {
+            return Task::perform(
+                async {
+                    FileDialog::new()
+                        .set_directory("/")
+                        .set_can_create_directories(true)
+                        .pick_folder()
+                },
+                |selected_folder| {
+                    Message::Settings(SettingsPageMessage::GallerySetDefaultFolder(
+                        selected_folder,
+                    ))
+                },
+            );
+        }
+        SettingsPageMessage::GallerySetDefaultFolder(selected_folder) => {
             app_config.gallery_config.default_folder = selected_folder;
         }
     }

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use iced::{Element, Task, Theme};
 
 use crate::app::Message;
@@ -57,20 +59,24 @@ pub enum SettingsPageMessage {
     StartSaving,
     ResultFromSave((bool, String)),
     SetDefaultPageOnOpen(&'static str),
-    NotesSetDefaultFolder,
+    NotesPickDefaultFolder,
+    NotesSetDefaultFolder(Option<PathBuf>),
     NotesSetShowSidebarOnStart(bool),
     NotesSetShowEditorOnStart(bool),
     NotesSetShowMarkdownOnStart(bool),
     NotesSetShowConfirmDelete(bool),
     NotesSetShowFormatToolbar(bool),
     NotesSetAutocompleteLists(bool),
-    PasswordsSetDefaultDatabase,
+    PasswordsPickDefaultDatabase,
+    PasswordsSetDefaultDatabase(Option<PathBuf>),
     PasswordsSetShowSidebarOnStart(bool),
-    TasksSetDefaultProjectFolder,
+    TasksPickDefaultProjectFolder,
+    TasksSetDefaultProjectFolder(Option<PathBuf>),
     TasksSetKanbanTaskViewIsDefault(bool),
     TasksSetShowSidebarOnStart(bool),
     TasksSetConfirmBeforeDelete(bool),
-    GallerySetDefaultFolder,
+    GalleryPickDefaultFolder,
+    GallerySetDefaultFolder(Option<PathBuf>),
 }
 
 impl SettingsPage {

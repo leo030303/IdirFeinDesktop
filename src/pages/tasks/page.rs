@@ -95,6 +95,7 @@ pub enum TasksPageMessage {
     ToggleConfirmBeforeDeleteDialog,
     ToggleTaskViewType,
     PickProjectsFolder,
+    SetProjectsFolder(Option<PathBuf>),
     LoadProjectsList,
     PickProjectFile(PathBuf),
     SetProjectsList(Vec<PathBuf>),

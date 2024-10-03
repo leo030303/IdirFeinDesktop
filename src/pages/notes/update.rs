@@ -105,7 +105,17 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             }
         }
         NotesPageMessage::OpenFilePicker => {
-            let selected_folder = FileDialog::new().set_directory("/").pick_folder();
+            return Task::perform(
+                async {
+                    FileDialog::new()
+                        .set_directory("/")
+                        .set_can_create_directories(true)
+                        .pick_folder()
+                },
+                |selected_folder| Message::Notes(NotesPageMessage::SetNotesFolder(selected_folder)),
+            );
+        }
+        NotesPageMessage::SetNotesFolder(selected_folder) => {
             state.selected_folder = selected_folder;
             return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList));
         }

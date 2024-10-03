@@ -88,11 +88,13 @@ pub enum PasswordsPageMessage {
     ToggleHideMasterPasswordReentry,
     CopyValueToClipboard(String),
     PickDatabaseFile,
+    SetDatabaseFile(Option<PathBuf>),
     StartCreatingNewKeepassFile,
     PickNewDatabasePath,
     CreateDatabase,
     CloseDatabase,
     PickKeyFile,
+    SetKeyFile(Option<PathBuf>),
     LockAndDeselectDatabase,
     GeneratePassword,
 }

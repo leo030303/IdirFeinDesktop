@@ -38,6 +38,7 @@ pub struct GalleryPage {
 #[derive(Debug, Clone)]
 pub enum GalleryPageMessage {
     PickGalleryFolder,
+    SetGalleryFolder(Option<PathBuf>),
     LoadGalleryFolder,
     SelectImageForBigView(Option<PathBuf>),
     SetGalleryFilesList(Vec<Vec<PathBuf>>),

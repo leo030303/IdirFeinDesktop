@@ -64,13 +64,23 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
             );
         }
         TasksPageMessage::PickProjectsFolder => {
-            let selected_folder = FileDialog::new()
-                .set_directory("/")
-                .set_can_create_directories(true)
-                .pick_folder();
+            return Task::perform(
+                async {
+                    FileDialog::new()
+                        .set_directory("/")
+                        .set_can_create_directories(true)
+                        .pick_folder()
+                },
+                |selected_folder| {
+                    Message::Tasks(TasksPageMessage::SetProjectsFolder(selected_folder))
+                },
+            );
+        }
+        TasksPageMessage::SetProjectsFolder(selected_folder) => {
             state.selected_folder = selected_folder;
             return Task::done(Message::Tasks(TasksPageMessage::LoadProjectsList));
         }
+
         TasksPageMessage::PickProjectFile(path_to_file) => {
             return Task::batch([
                 Task::done(Message::Tasks(TasksPageMessage::SaveProject)),
