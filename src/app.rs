@@ -168,7 +168,9 @@ impl AppState {
                 subscriptions_vec.push(PasswordsPage::subscription());
             }
             Page::FileManager => (),
-            Page::Gallery => (),
+            Page::Gallery => {
+                subscriptions_vec.push(GalleryPage::subscription());
+            }
             Page::Notes => {
                 subscriptions_vec.push(NotesPage::subscription());
             }

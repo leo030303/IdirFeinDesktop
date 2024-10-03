@@ -84,6 +84,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "aliasable"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "250f629c0161ad8107cf89319e990051fae62832fd343083bea452d93e2205fd"
+
+[[package]]
 name = "allocator-api2"
 version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2365,7 +2371,7 @@ dependencies = [
 [[package]]
 name = "iced"
 version = "0.14.0-dev"
-source = "git+https://github.com/leo030303/iced#727f8b53e619073a407bc60a434156181bc1b216"
+source = "git+https://github.com/leo030303/iced#5a31a213bd58b69a3af2be0192613dcd4f2cf5cc"
 dependencies = [
  "iced_core 0.14.0-dev",
  "iced_futures",
@@ -2385,7 +2391,7 @@ dependencies = [
  "cfg-if",
  "iced",
  "iced_fonts",
- "itertools",
+ "itertools 0.13.0",
 ]
 
 [[package]]
@@ -2410,7 +2416,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.14.0-dev"
-source = "git+https://github.com/leo030303/iced#727f8b53e619073a407bc60a434156181bc1b216"
+source = "git+https://github.com/leo030303/iced#5a31a213bd58b69a3af2be0192613dcd4f2cf5cc"
 dependencies = [
  "bitflags 2.6.0",
  "bytes",
@@ -2438,7 +2444,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.14.0-dev"
-source = "git+https://github.com/leo030303/iced#727f8b53e619073a407bc60a434156181bc1b216"
+source = "git+https://github.com/leo030303/iced#5a31a213bd58b69a3af2be0192613dcd4f2cf5cc"
 dependencies = [
  "futures",
  "iced_core 0.14.0-dev",
@@ -2452,7 +2458,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.14.0-dev"
-source = "git+https://github.com/leo030303/iced#727f8b53e619073a407bc60a434156181bc1b216"
+source = "git+https://github.com/leo030303/iced#5a31a213bd58b69a3af2be0192613dcd4f2cf5cc"
 dependencies = [
  "bitflags 2.6.0",
  "bytemuck",
@@ -2473,7 +2479,7 @@ dependencies = [
 [[package]]
 name = "iced_highlighter"
 version = "0.14.0-dev"
-source = "git+https://github.com/leo030303/iced#727f8b53e619073a407bc60a434156181bc1b216"
+source = "git+https://github.com/leo030303/iced#5a31a213bd58b69a3af2be0192613dcd4f2cf5cc"
 dependencies = [
  "iced_core 0.14.0-dev",
  "once_cell",
@@ -2483,7 +2489,7 @@ dependencies = [
 [[package]]
 name = "iced_renderer"
 version = "0.14.0-dev"
-source = "git+https://github.com/leo030303/iced#727f8b53e619073a407bc60a434156181bc1b216"
+source = "git+https://github.com/leo030303/iced#5a31a213bd58b69a3af2be0192613dcd4f2cf5cc"
 dependencies = [
  "iced_graphics",
  "iced_tiny_skia",
@@ -2495,7 +2501,7 @@ dependencies = [
 [[package]]
 name = "iced_runtime"
 version = "0.14.0-dev"
-source = "git+https://github.com/leo030303/iced#727f8b53e619073a407bc60a434156181bc1b216"
+source = "git+https://github.com/leo030303/iced#5a31a213bd58b69a3af2be0192613dcd4f2cf5cc"
 dependencies = [
  "bytes",
  "iced_core 0.14.0-dev",
@@ -2507,7 +2513,7 @@ dependencies = [
 [[package]]
 name = "iced_tiny_skia"
 version = "0.14.0-dev"
-source = "git+https://github.com/leo030303/iced#727f8b53e619073a407bc60a434156181bc1b216"
+source = "git+https://github.com/leo030303/iced#5a31a213bd58b69a3af2be0192613dcd4f2cf5cc"
 dependencies = [
  "bytemuck",
  "cosmic-text",
@@ -2523,7 +2529,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.14.0-dev"
-source = "git+https://github.com/leo030303/iced#727f8b53e619073a407bc60a434156181bc1b216"
+source = "git+https://github.com/leo030303/iced#5a31a213bd58b69a3af2be0192613dcd4f2cf5cc"
 dependencies = [
  "bitflags 2.6.0",
  "bytemuck",
@@ -2543,13 +2549,14 @@ dependencies = [
 [[package]]
 name = "iced_widget"
 version = "0.14.0-dev"
-source = "git+https://github.com/leo030303/iced#727f8b53e619073a407bc60a434156181bc1b216"
+source = "git+https://github.com/leo030303/iced#5a31a213bd58b69a3af2be0192613dcd4f2cf5cc"
 dependencies = [
  "iced_highlighter",
  "iced_renderer",
  "iced_runtime",
  "num-traits",
  "once_cell",
+ "ouroboros",
  "pulldown-cmark",
  "rustc-hash 2.0.0",
  "thiserror",
@@ -2560,7 +2567,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.14.0-dev"
-source = "git+https://github.com/leo030303/iced#727f8b53e619073a407bc60a434156181bc1b216"
+source = "git+https://github.com/leo030303/iced#5a31a213bd58b69a3af2be0192613dcd4f2cf5cc"
 dependencies = [
  "iced_futures",
  "iced_graphics",
@@ -2739,6 +2746,7 @@ dependencies = [
  "iced",
  "iced_aw",
  "keepass",
+ "once_cell",
  "opener",
  "rand",
  "rfd",
@@ -2843,6 +2851,15 @@ name = "is_terminal_polyfill"
 version = "1.70.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7943c866cc5cd64cbc25b2e01621d07fa8eb2a1a23160ee81ce38704e97b8ecf"
+
+[[package]]
+name = "itertools"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
+dependencies = [
+ "either",
+]
 
 [[package]]
 name = "itertools"
@@ -3724,6 +3741,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "ouroboros"
+version = "0.18.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "944fa20996a25aded6b4795c6d63f10014a7a83f8be9828a11860b08c5fc4a67"
+dependencies = [
+ "aliasable",
+ "ouroboros_macro",
+ "static_assertions",
+]
+
+[[package]]
+name = "ouroboros_macro"
+version = "0.18.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39b0deead1528fd0e5947a8546a9642a9777c25f6e1e26f34c97b204bbb465bd"
+dependencies = [
+ "heck 0.4.1",
+ "itertools 0.12.1",
+ "proc-macro2",
+ "proc-macro2-diagnostics",
+ "quote",
+ "syn 2.0.79",
+]
+
+[[package]]
 name = "owned_ttf_parser"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4088,6 +4130,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e719e8df665df0d1c8fbfd238015744736151d4445ec0836b8e628aae103b77"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "proc-macro2-diagnostics"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af066a9c399a26e020ada66a034357a868728e72cd426f3adcd35f80d88d88c8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.79",
+ "version_check",
+ "yansi",
 ]
 
 [[package]]
@@ -6807,6 +6862,12 @@ checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
 dependencies = [
  "linked-hash-map",
 ]
+
+[[package]]
+name = "yansi"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"
 
 [[package]]
 name = "yazi"
