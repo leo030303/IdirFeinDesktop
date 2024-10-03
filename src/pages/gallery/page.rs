@@ -64,7 +64,7 @@ impl GalleryPage {
     }
 
     pub fn opening_task() -> Task<Message> {
-        Task::none()
+        Task::done(Message::Gallery(GalleryPageMessage::LoadGalleryFolder))
     }
 
     pub fn closing_task(&mut self) -> Task<Message> {

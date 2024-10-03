@@ -55,15 +55,17 @@ fn gallery_grid(state: &GalleryPage) -> Element<Message> {
     scrollable(list(&state.gallery_list, |_index, photos_vec| {
         row(photos_vec.iter().map(|(photo_path, handle_option)| {
             if let Some(image_handle) = handle_option {
-                MouseArea::new(
-                    container(Image::new(image_handle).content_fit(iced::ContentFit::ScaleDown))
-                        .height(Length::Fixed(IMAGE_HEIGHT))
-                        .padding(20)
-                        .width(Length::FillPortion(1)),
+                container(
+                    MouseArea::new(
+                        Image::new(image_handle).content_fit(iced::ContentFit::ScaleDown),
+                    )
+                    .on_press(Message::Gallery(
+                        GalleryPageMessage::SelectImageForBigView(Some(photo_path.to_path_buf())),
+                    )),
                 )
-                .on_press(Message::Gallery(GalleryPageMessage::SelectImageForBigView(
-                    Some(photo_path.to_path_buf()),
-                )))
+                .height(Length::Fixed(IMAGE_HEIGHT))
+                .padding(20)
+                .width(Length::FillPortion(1))
                 .into()
             } else {
                 container(

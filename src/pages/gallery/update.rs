@@ -137,7 +137,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 state.last_images_scrolled_past_val = images_scrolled_passed;
                 let image_indexes_to_load: Vec<usize> = (images_scrolled_passed - load_ahead_amount
                     ..images_scrolled_passed + load_ahead_amount)
-                    .filter(|value| *value >= 0)
+                    .filter(|value| *value >= 0 && *value < state.gallery_list.len() as i64)
                     .map(|val| val as usize)
                     .collect();
                 state
