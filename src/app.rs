@@ -3,6 +3,7 @@ use std::time::Duration;
 use iced::{
     alignment::Horizontal,
     event,
+    keyboard::{self, Key, Modifiers},
     widget::{self, button, column, container, row, svg, text, tooltip::Position, Svg, Tooltip},
     window, Alignment, ContentFit, Event, Length, Subscription, Task, Theme,
 };
@@ -129,11 +130,36 @@ impl AppState {
         Task::none()
     }
     pub fn subscription(&self) -> Subscription<Message> {
-        let mut subscriptions_vec = vec![event::listen().map(|event| {
-            if let Event::Window(window::Event::CloseRequested) = event {
-                Message::CloseWindowRequest
-            } else {
-                Message::None
+        let mut subscriptions_vec = vec![event::listen_with(|event, status, _id| {
+            match (event, status) {
+                (Event::Window(window::Event::CloseRequested), _) => {
+                    Some(Message::CloseWindowRequest)
+                }
+                (
+                    Event::Keyboard(keyboard::Event::KeyPressed {
+                        key: Key::Character(pressed_char),
+                        modifiers: Modifiers::ALT,
+                        ..
+                    }),
+                    _,
+                ) => {
+                    if pressed_char.as_ref() == "1" {
+                        Some(Message::ChangePage(Page::Notes))
+                    } else if pressed_char.as_ref() == "2" {
+                        Some(Message::ChangePage(Page::Tasks))
+                    } else if pressed_char.as_ref() == "3" {
+                        Some(Message::ChangePage(Page::Passwords))
+                    } else if pressed_char.as_ref() == "4" {
+                        Some(Message::ChangePage(Page::FileManager))
+                    } else if pressed_char.as_ref() == "5" {
+                        Some(Message::ChangePage(Page::Gallery))
+                    } else if pressed_char.as_ref() == "6" {
+                        Some(Message::ChangePage(Page::Settings))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
             }
         })];
         match self.current_page {
@@ -155,12 +181,12 @@ impl AppState {
 
     pub fn view(&self) -> iced::Element<Message> {
         let nav_bar = row![
-            navbar_button(Page::Notes, self.current_page == Page::Notes),
-            navbar_button(Page::Tasks, self.current_page == Page::Tasks),
-            navbar_button(Page::Passwords, self.current_page == Page::Passwords),
-            navbar_button(Page::FileManager, self.current_page == Page::FileManager),
-            navbar_button(Page::Gallery, self.current_page == Page::Gallery),
-            navbar_button(Page::Settings, self.current_page == Page::Settings),
+            navbar_button(Page::Notes, self.current_page == Page::Notes, 1),
+            navbar_button(Page::Tasks, self.current_page == Page::Tasks, 2),
+            navbar_button(Page::Passwords, self.current_page == Page::Passwords, 3),
+            navbar_button(Page::FileManager, self.current_page == Page::FileManager, 4),
+            navbar_button(Page::Gallery, self.current_page == Page::Gallery, 5),
+            navbar_button(Page::Settings, self.current_page == Page::Settings, 6),
         ]
         .width(Length::FillPortion(1));
 
@@ -247,7 +273,7 @@ impl AppState {
     }
 }
 
-fn navbar_button(page: Page, selected: bool) -> iced::Element<'static, Message> {
+fn navbar_button(page: Page, selected: bool, index: u8) -> iced::Element<'static, Message> {
     Tooltip::new(
         button(Svg::new(page.icon_handle()).content_fit(ContentFit::ScaleDown))
             .style(if selected {
@@ -256,7 +282,7 @@ fn navbar_button(page: Page, selected: bool) -> iced::Element<'static, Message> 
                 button::primary
             })
             .on_press(Message::ChangePage(page.clone())),
-        page.name(),
+        text(format!("{} (Alt+{})", page.name(), index)),
         Position::Bottom,
     )
     .into()
