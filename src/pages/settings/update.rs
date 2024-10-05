@@ -121,6 +121,9 @@ pub fn update(
         SettingsPageMessage::TasksSetConfirmBeforeDelete(b) => {
             app_config.tasks_config.confirm_before_delete = b
         }
+        SettingsPageMessage::TasksSetShowTaskCompletionToolbar(b) => {
+            app_config.tasks_config.show_task_completion_toolbar = b
+        }
         SettingsPageMessage::GalleryPickDefaultFolder => {
             return Task::perform(
                 async {

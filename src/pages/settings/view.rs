@@ -102,6 +102,11 @@ fn tasks_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::TasksSetConfirmBeforeDelete(b)
                     )),
+                toggler(app_config.tasks_config.show_task_completion_toolbar)
+                    .label("Show task completion toolbar on each task")
+                    .on_toggle(|b| Message::Settings(
+                        SettingsPageMessage::TasksSetShowTaskCompletionToolbar(b)
+                    )),
             ]
             .padding(20)
             .spacing(30),

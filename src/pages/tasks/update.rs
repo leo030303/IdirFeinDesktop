@@ -4,15 +4,18 @@ use std::{
 };
 
 use iced::{
+    advanced::widget::Id,
     widget::{text_editor, text_input},
     Task,
 };
+use iced_aw::widget::zones_on_point;
 use rfd::FileDialog;
 
 use crate::app::Message;
 
 use super::page::{
-    TaskData, TasksPage, TasksPageMessage, NEW_PROJECT_TEXT_INPUT_ID, TASK_TITLE_TEXT_INPUT_ID,
+    TaskCompletionState, TaskData, TasksPage, TasksPageMessage, BACKLOG_ID, DOING_ID, DONE_ID,
+    NEW_PROJECT_TEXT_INPUT_ID, TASK_TITLE_TEXT_INPUT_ID, TODO_ID,
 };
 
 pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message> {
@@ -260,6 +263,39 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
             state.current_task_description_content = text_editor::Content::with_text("");
             state.current_task_id = None;
             state.show_confirm_before_delete_dialog = false;
+        }
+        TasksPageMessage::DropTask(task_id, cursor_position, _rectangle) => {
+            return zones_on_point(
+                move |zones| Message::Tasks(TasksPageMessage::HandleTaskDropZones(task_id, zones)),
+                cursor_position,
+                None,
+                None,
+            );
+        }
+        TasksPageMessage::HandleTaskDropZones(task_id, zones) => {
+            if let Some(dropped_zone) = zones.first() {
+                if dropped_zone.0 == Id::new(BACKLOG_ID) {
+                    return Task::done(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                        task_id,
+                        TaskCompletionState::Backlog,
+                    )));
+                } else if dropped_zone.0 == Id::new(TODO_ID) {
+                    return Task::done(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                        task_id,
+                        TaskCompletionState::ToDo,
+                    )));
+                } else if dropped_zone.0 == Id::new(DOING_ID) {
+                    return Task::done(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                        task_id,
+                        TaskCompletionState::Doing,
+                    )));
+                } else if dropped_zone.0 == Id::new(DONE_ID) {
+                    return Task::done(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                        task_id,
+                        TaskCompletionState::Done,
+                    )));
+                }
+            }
         }
     }
     Task::none()

@@ -15,6 +15,10 @@ use super::view::{main_view, tool_view};
 
 pub const TASK_TITLE_TEXT_INPUT_ID: &str = "TASK_TITLE_TEXT_INPUT_ID";
 pub const NEW_PROJECT_TEXT_INPUT_ID: &str = "NEW_PROJECT_TEXT_INPUT_ID";
+pub const BACKLOG_ID: &str = "BACKLOG_ID";
+pub const TODO_ID: &str = "TODO_ID";
+pub const DOING_ID: &str = "DOING_ID";
+pub const DONE_ID: &str = "DONE_ID";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TaskViewType {
@@ -56,6 +60,7 @@ pub struct TaskPageConfig {
     pub kanban_task_view_is_default: bool,
     pub show_sidebar_on_start: bool,
     pub confirm_before_delete: bool,
+    pub show_task_completion_toolbar: bool,
 }
 
 impl Default for TaskPageConfig {
@@ -66,6 +71,7 @@ impl Default for TaskPageConfig {
             kanban_task_view_is_default: true,
             show_sidebar_on_start: true,
             confirm_before_delete: true,
+            show_task_completion_toolbar: false,
         }
     }
 }
@@ -86,6 +92,7 @@ pub struct TasksPage {
     pub(crate) is_dirty: bool,
     pub(crate) is_creating_new_project: bool,
     pub(crate) new_project_name_entry_content: String,
+    pub(crate) show_task_completion_toolbar: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -116,6 +123,8 @@ pub enum TasksPageMessage {
     UpdateNewProjectNameEntry(String),
     CancelCreateNewProject,
     EscapeKeyPressed,
+    DropTask(Uuid, iced::Point, iced::Rectangle),
+    HandleTaskDropZones(Uuid, Vec<(iced::advanced::widget::Id, iced::Rectangle)>),
 }
 
 impl TasksPage {
@@ -140,6 +149,7 @@ impl TasksPage {
             is_dirty: false,
             is_creating_new_project: false,
             new_project_name_entry_content: String::new(),
+            show_task_completion_toolbar: config.show_task_completion_toolbar,
         }
     }
 

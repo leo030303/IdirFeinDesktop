@@ -8,11 +8,13 @@ use iced::{
     Alignment::Center,
     Element, Font, Length,
 };
+use iced_aw::drag_and_drop::droppable;
 
 use crate::app::Message;
 
 use super::page::{
-    TaskCompletionState, TaskData, TasksPage, TasksPageMessage, TASK_TITLE_TEXT_INPUT_ID,
+    TaskCompletionState, TaskData, TasksPage, TasksPageMessage, BACKLOG_ID, DOING_ID, DONE_ID,
+    TASK_TITLE_TEXT_INPUT_ID, TODO_ID,
 };
 
 pub fn main_view(state: &TasksPage) -> Element<Message> {
@@ -72,93 +74,100 @@ pub fn main_view(state: &TasksPage) -> Element<Message> {
     }
 }
 
-fn kanban_view_item(task: &TaskData) -> Element<Message> {
-    column![
-        text(&task.title)
-            .size(20)
-            .width(Length::Fill)
-            .align_x(Center),
-        text(&task.description),
-        {
-            let mut state_setter_row = Row::new();
-            if !matches!(task.completion_state, TaskCompletionState::Backlog) {
-                state_setter_row = state_setter_row.push(Tooltip::new(
-                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                        "../../../icons/1.svg"
-                    ))))
-                    .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
-                        task.id,
-                        TaskCompletionState::Backlog,
-                    )))
-                    .width(Length::Fill),
-                    "Backlog",
-                    iced::widget::tooltip::Position::Bottom,
-                ));
-            }
-            if !matches!(task.completion_state, TaskCompletionState::ToDo) {
-                state_setter_row = state_setter_row.push(Tooltip::new(
-                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                        "../../../icons/2.svg"
-                    ))))
-                    .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
-                        task.id,
-                        TaskCompletionState::ToDo,
-                    )))
-                    .width(Length::Fill),
-                    "To Do",
-                    iced::widget::tooltip::Position::Bottom,
-                ));
-            }
-            if !matches!(task.completion_state, TaskCompletionState::Doing) {
-                state_setter_row = state_setter_row.push(Tooltip::new(
-                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                        "../../../icons/3.svg"
-                    ))))
-                    .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
-                        task.id,
-                        TaskCompletionState::Doing,
-                    )))
-                    .width(Length::Fill),
-                    "Doing",
-                    iced::widget::tooltip::Position::Bottom,
-                ));
-            }
-            if !matches!(task.completion_state, TaskCompletionState::Done) {
-                state_setter_row = state_setter_row.push(Tooltip::new(
-                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                        "../../../icons/4.svg"
-                    ))))
-                    .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
-                        task.id,
-                        TaskCompletionState::Done,
-                    )))
-                    .width(Length::Fill)
-                    .style(button::success),
-                    "Done",
-                    iced::widget::tooltip::Position::Bottom,
-                ));
-            }
-            state_setter_row
-        },
-        row![
-            button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                "../../../icons/edit.svg"
-            ))))
-            .width(Length::Fill)
-            .on_press(Message::Tasks(TasksPageMessage::OpenEditDialogForTask(
-                task.id
-            ))),
-            button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                "../../../icons/delete.svg"
-            ))))
-            .style(button::danger)
-            .width(Length::Fill)
-            .on_press(Message::Tasks(
-                TasksPageMessage::DeleteTaskWithConfirmationCheck(task.id)
-            ))
+fn kanban_view_item<'a>(state: &'a TasksPage, task: &'a TaskData) -> Element<'a, Message> {
+    droppable(
+        column![
+            text(&task.title)
+                .size(20)
+                .width(Length::Fill)
+                .align_x(Center),
+            text(&task.description),
+            if state.show_task_completion_toolbar {
+                let mut state_setter_row = Row::new();
+                if !matches!(task.completion_state, TaskCompletionState::Backlog) {
+                    state_setter_row = state_setter_row.push(Tooltip::new(
+                        button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                            "../../../icons/1.svg"
+                        ))))
+                        .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                            task.id,
+                            TaskCompletionState::Backlog,
+                        )))
+                        .width(Length::Fill),
+                        "Backlog",
+                        iced::widget::tooltip::Position::Bottom,
+                    ));
+                }
+                if !matches!(task.completion_state, TaskCompletionState::ToDo) {
+                    state_setter_row = state_setter_row.push(Tooltip::new(
+                        button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                            "../../../icons/2.svg"
+                        ))))
+                        .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                            task.id,
+                            TaskCompletionState::ToDo,
+                        )))
+                        .width(Length::Fill),
+                        "To Do",
+                        iced::widget::tooltip::Position::Bottom,
+                    ));
+                }
+                if !matches!(task.completion_state, TaskCompletionState::Doing) {
+                    state_setter_row = state_setter_row.push(Tooltip::new(
+                        button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                            "../../../icons/3.svg"
+                        ))))
+                        .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                            task.id,
+                            TaskCompletionState::Doing,
+                        )))
+                        .width(Length::Fill),
+                        "Doing",
+                        iced::widget::tooltip::Position::Bottom,
+                    ));
+                }
+                if !matches!(task.completion_state, TaskCompletionState::Done) {
+                    state_setter_row = state_setter_row.push(Tooltip::new(
+                        button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                            "../../../icons/4.svg"
+                        ))))
+                        .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                            task.id,
+                            TaskCompletionState::Done,
+                        )))
+                        .width(Length::Fill)
+                        .style(button::success),
+                        "Done",
+                        iced::widget::tooltip::Position::Bottom,
+                    ));
+                }
+                state_setter_row
+            } else {
+                row![]
+            },
+            row![
+                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/edit.svg"
+                ))))
+                .width(Length::Fill)
+                .on_press(Message::Tasks(
+                    TasksPageMessage::OpenEditDialogForTask(task.id)
+                )),
+                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/delete.svg"
+                ))))
+                .style(button::danger)
+                .width(Length::Fill)
+                .on_press(Message::Tasks(
+                    TasksPageMessage::DeleteTaskWithConfirmationCheck(task.id)
+                ))
+            ]
         ]
-    ]
-    .padding(5)
+        .padding(5),
+    )
+    .on_drop(|point, rectangle| {
+        Message::Tasks(TasksPageMessage::DropTask(task.id, point, rectangle))
+    })
     .into()
 }
 
@@ -240,11 +249,14 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                             task.completion_state,
                             TaskCompletionState::Backlog
                         ))
-                        .map(|task| kanban_view_item(task))
+                        .map(|task| kanban_view_item(state, task))
                 )
                 .padding(5)
                 .spacing(5)
             )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .id(scrollable::Id::new(BACKLOG_ID))
         ]
         .width(Length::Fill)
         .align_x(Center),
@@ -268,11 +280,14 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                         .tasks_list
                         .iter()
                         .filter(|task| matches!(task.completion_state, TaskCompletionState::ToDo))
-                        .map(|task| kanban_view_item(task))
+                        .map(|task| kanban_view_item(state, task))
                 )
                 .padding(5)
                 .spacing(5)
             )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .id(scrollable::Id::new(TODO_ID))
         ]
         .width(Length::Fill)
         .align_x(Center),
@@ -296,11 +311,14 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                         .tasks_list
                         .iter()
                         .filter(|task| matches!(task.completion_state, TaskCompletionState::Doing))
-                        .map(|task| kanban_view_item(task))
+                        .map(|task| kanban_view_item(state, task))
                 )
                 .padding(5)
                 .spacing(5)
             )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .id(scrollable::Id::new(DOING_ID))
         ]
         .width(Length::Fill)
         .align_x(Center),
@@ -324,11 +342,14 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                         .tasks_list
                         .iter()
                         .filter(|task| matches!(task.completion_state, TaskCompletionState::Done))
-                        .map(|task| kanban_view_item(task))
+                        .map(|task| kanban_view_item(state, task))
                 )
                 .padding(5)
                 .spacing(5)
             )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .id(scrollable::Id::new(DONE_ID))
         ]
         .width(Length::Fill)
         .align_x(Center),
