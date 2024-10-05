@@ -76,94 +76,97 @@ pub fn main_view(state: &TasksPage) -> Element<Message> {
 
 fn kanban_view_item<'a>(state: &'a TasksPage, task: &'a TaskData) -> Element<'a, Message> {
     droppable(
-        column![
-            text(&task.title)
-                .size(20)
-                .width(Length::Fill)
-                .align_x(Center),
-            text(&task.description),
-            if state.show_task_completion_toolbar {
-                let mut state_setter_row = Row::new();
-                if !matches!(task.completion_state, TaskCompletionState::Backlog) {
-                    state_setter_row = state_setter_row.push(Tooltip::new(
-                        button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                            "../../../icons/1.svg"
-                        ))))
-                        .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
-                            task.id,
-                            TaskCompletionState::Backlog,
-                        )))
-                        .width(Length::Fill),
-                        "Backlog",
-                        iced::widget::tooltip::Position::Bottom,
-                    ));
-                }
-                if !matches!(task.completion_state, TaskCompletionState::ToDo) {
-                    state_setter_row = state_setter_row.push(Tooltip::new(
-                        button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                            "../../../icons/2.svg"
-                        ))))
-                        .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
-                            task.id,
-                            TaskCompletionState::ToDo,
-                        )))
-                        .width(Length::Fill),
-                        "To Do",
-                        iced::widget::tooltip::Position::Bottom,
-                    ));
-                }
-                if !matches!(task.completion_state, TaskCompletionState::Doing) {
-                    state_setter_row = state_setter_row.push(Tooltip::new(
-                        button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                            "../../../icons/3.svg"
-                        ))))
-                        .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
-                            task.id,
-                            TaskCompletionState::Doing,
-                        )))
-                        .width(Length::Fill),
-                        "Doing",
-                        iced::widget::tooltip::Position::Bottom,
-                    ));
-                }
-                if !matches!(task.completion_state, TaskCompletionState::Done) {
-                    state_setter_row = state_setter_row.push(Tooltip::new(
-                        button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                            "../../../icons/4.svg"
-                        ))))
-                        .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
-                            task.id,
-                            TaskCompletionState::Done,
-                        )))
-                        .width(Length::Fill)
-                        .style(button::success),
-                        "Done",
-                        iced::widget::tooltip::Position::Bottom,
-                    ));
-                }
-                state_setter_row
-            } else {
-                row![]
-            },
-            row![
-                button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                    "../../../icons/edit.svg"
-                ))))
-                .width(Length::Fill)
-                .on_press(Message::Tasks(
-                    TasksPageMessage::OpenEditDialogForTask(task.id)
-                )),
-                button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                    "../../../icons/delete.svg"
-                ))))
-                .style(button::danger)
-                .width(Length::Fill)
-                .on_press(Message::Tasks(
-                    TasksPageMessage::DeleteTaskWithConfirmationCheck(task.id)
-                ))
+        container(
+            column![
+                text(&task.title)
+                    .size(20)
+                    .width(Length::Fill)
+                    .align_x(Center),
+                text(&task.description),
+                if state.show_task_completion_toolbar {
+                    let mut state_setter_row = Row::new();
+                    if !matches!(task.completion_state, TaskCompletionState::Backlog) {
+                        state_setter_row = state_setter_row.push(Tooltip::new(
+                            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                "../../../icons/1.svg"
+                            ))))
+                            .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                                task.id,
+                                TaskCompletionState::Backlog,
+                            )))
+                            .width(Length::Fill),
+                            "Backlog",
+                            iced::widget::tooltip::Position::Bottom,
+                        ));
+                    }
+                    if !matches!(task.completion_state, TaskCompletionState::ToDo) {
+                        state_setter_row = state_setter_row.push(Tooltip::new(
+                            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                "../../../icons/2.svg"
+                            ))))
+                            .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                                task.id,
+                                TaskCompletionState::ToDo,
+                            )))
+                            .width(Length::Fill),
+                            "To Do",
+                            iced::widget::tooltip::Position::Bottom,
+                        ));
+                    }
+                    if !matches!(task.completion_state, TaskCompletionState::Doing) {
+                        state_setter_row = state_setter_row.push(Tooltip::new(
+                            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                "../../../icons/3.svg"
+                            ))))
+                            .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                                task.id,
+                                TaskCompletionState::Doing,
+                            )))
+                            .width(Length::Fill),
+                            "Doing",
+                            iced::widget::tooltip::Position::Bottom,
+                        ));
+                    }
+                    if !matches!(task.completion_state, TaskCompletionState::Done) {
+                        state_setter_row = state_setter_row.push(Tooltip::new(
+                            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                "../../../icons/4.svg"
+                            ))))
+                            .on_press(Message::Tasks(TasksPageMessage::SetTaskCompletionState(
+                                task.id,
+                                TaskCompletionState::Done,
+                            )))
+                            .width(Length::Fill)
+                            .style(button::success),
+                            "Done",
+                            iced::widget::tooltip::Position::Bottom,
+                        ));
+                    }
+                    state_setter_row
+                } else {
+                    row![]
+                },
+                row![
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/edit.svg"
+                    ))))
+                    .width(Length::Fill)
+                    .on_press(Message::Tasks(
+                        TasksPageMessage::OpenEditDialogForTask(task.id)
+                    )),
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/delete.svg"
+                    ))))
+                    .style(button::danger)
+                    .width(Length::Fill)
+                    .on_press(Message::Tasks(
+                        TasksPageMessage::DeleteTaskWithConfirmationCheck(task.id)
+                    ))
+                ]
             ]
-        ]
-        .padding(5),
+            .padding(5),
+        )
+        .style(container::bordered_box),
     )
     .on_drop(|point, rectangle| {
         Message::Tasks(TasksPageMessage::DropTask(task.id, point, rectangle))
@@ -252,7 +255,7 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                         .map(|task| kanban_view_item(state, task))
                 )
                 .padding(5)
-                .spacing(5)
+                .spacing(10)
             )
             .width(Length::Fill)
             .height(Length::Fill)
@@ -283,7 +286,7 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                         .map(|task| kanban_view_item(state, task))
                 )
                 .padding(5)
-                .spacing(5)
+                .spacing(10)
             )
             .width(Length::Fill)
             .height(Length::Fill)
@@ -314,7 +317,7 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                         .map(|task| kanban_view_item(state, task))
                 )
                 .padding(5)
-                .spacing(5)
+                .spacing(10)
             )
             .width(Length::Fill)
             .height(Length::Fill)
@@ -345,7 +348,7 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                         .map(|task| kanban_view_item(state, task))
                 )
                 .padding(5)
-                .spacing(5)
+                .spacing(10)
             )
             .width(Length::Fill)
             .height(Length::Fill)
