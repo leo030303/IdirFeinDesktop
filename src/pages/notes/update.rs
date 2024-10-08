@@ -203,7 +203,6 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                     state.current_file = Some(new_path);
                     state.current_rename_note_text = String::new();
                     state.show_edit_note_details_view = false;
-                    return Task::done(Message::Notes(NotesPageMessage::SaveNote));
                 } else {
                     let mut new_path = selected_folder.clone();
                     new_path.push(&state.current_rename_note_text);
@@ -211,8 +210,10 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                     state.current_file = Some(new_path);
                     state.current_rename_note_text = String::new();
                     state.show_edit_note_details_view = false;
-                    return Task::done(Message::Notes(NotesPageMessage::SaveNote));
                 }
+                return Task::done(Message::Notes(NotesPageMessage::SaveNote)).chain(Task::done(
+                    Message::Notes(NotesPageMessage::LoadFolderAsNotesList),
+                ));
             } else {
                 return Task::done(Message::ShowToast(
                     false,
