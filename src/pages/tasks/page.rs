@@ -15,6 +15,7 @@ use super::view::{main_view, tool_view};
 
 pub const TASK_TITLE_TEXT_INPUT_ID: &str = "TASK_TITLE_TEXT_INPUT_ID";
 pub const NEW_PROJECT_TEXT_INPUT_ID: &str = "NEW_PROJECT_TEXT_INPUT_ID";
+pub const RENAME_PROJECT_TEXT_INPUT_ID: &str = "RENAME_PROJECT_TEXT_INPUT_ID";
 pub const BACKLOG_ID: &str = "BACKLOG_ID";
 pub const TODO_ID: &str = "TODO_ID";
 pub const DOING_ID: &str = "DOING_ID";
@@ -93,6 +94,11 @@ pub struct TasksPage {
     pub(crate) is_creating_new_project: bool,
     pub(crate) new_project_name_entry_content: String,
     pub(crate) show_task_completion_toolbar: bool,
+    pub(crate) show_extra_tools_menu: bool,
+    pub(crate) current_project_being_managed: Option<PathBuf>,
+    pub(crate) display_rename_view: bool,
+    pub(crate) display_delete_view: bool,
+    pub(crate) rename_project_entry_text: String,
 }
 
 #[derive(Debug, Clone)]
@@ -125,6 +131,13 @@ pub enum TasksPageMessage {
     EscapeKeyPressed,
     DropTask(Uuid, iced::Point, iced::Rectangle),
     HandleTaskDropZones(Uuid, Vec<(iced::advanced::widget::Id, iced::Rectangle)>),
+    ToggleExtraToolsMenu,
+    ShowMenuForProject(Option<PathBuf>),
+    SetRenameProjectEntryText(String),
+    RenameProject,
+    DeleteProject,
+    ToggleRenameProjectView,
+    ToggleDeleteProjectView,
 }
 
 impl TasksPage {
@@ -150,6 +163,11 @@ impl TasksPage {
             is_creating_new_project: false,
             new_project_name_entry_content: String::new(),
             show_task_completion_toolbar: config.show_task_completion_toolbar,
+            show_extra_tools_menu: false,
+            current_project_being_managed: None,
+            display_rename_view: false,
+            display_delete_view: false,
+            rename_project_entry_text: String::new(),
         }
     }
 

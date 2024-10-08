@@ -15,7 +15,7 @@ use crate::app::Message;
 
 use super::page::{
     TaskCompletionState, TaskData, TasksPage, TasksPageMessage, BACKLOG_ID, DOING_ID, DONE_ID,
-    NEW_PROJECT_TEXT_INPUT_ID, TASK_TITLE_TEXT_INPUT_ID, TODO_ID,
+    NEW_PROJECT_TEXT_INPUT_ID, RENAME_PROJECT_TEXT_INPUT_ID, TASK_TITLE_TEXT_INPUT_ID, TODO_ID,
 };
 
 pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message> {
@@ -296,6 +296,66 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
                     )));
                 }
             }
+        }
+        TasksPageMessage::ToggleExtraToolsMenu => {
+            state.show_extra_tools_menu = !state.show_extra_tools_menu
+        }
+        TasksPageMessage::ShowMenuForProject(project_path) => {
+            state.display_rename_view = false;
+            state.display_delete_view = false;
+            state.current_project_being_managed = project_path
+        }
+        TasksPageMessage::SetRenameProjectEntryText(s) => state.rename_project_entry_text = s,
+        TasksPageMessage::DeleteProject => {
+            if let Some(current_project_file) = state.current_project_being_managed.as_ref() {
+                fs::remove_file(current_project_file).unwrap();
+                state.current_project_file = None;
+                return Task::done(Message::Tasks(TasksPageMessage::LoadProjectsList)).chain(
+                    Task::done(Message::ShowToast(true, String::from("Project deleted"))),
+                );
+            }
+        }
+        TasksPageMessage::RenameProject => {
+            if let Some(_selected_folder) = state.selected_folder.as_ref() {
+                if let Some(current_project_file) = state.current_project_being_managed.as_ref() {
+                    let mut new_path =
+                        current_project_file.with_file_name(&state.rename_project_entry_text);
+
+                    new_path.set_extension("json");
+                    fs::rename(current_project_file, &new_path).unwrap();
+                    if state.current_project_file == state.current_project_being_managed {
+                        state.current_project_file = Some(new_path);
+                    }
+                    state.rename_project_entry_text = String::new();
+                    state.display_rename_view = false;
+                    state.display_delete_view = false;
+                    state.current_project_being_managed = None;
+                } else {
+                    return Task::done(Message::ShowToast(
+                        false,
+                        String::from("No selected project to rename"),
+                    ));
+                }
+                return Task::done(Message::Tasks(TasksPageMessage::SaveProject)).chain(
+                    Task::done(Message::Tasks(TasksPageMessage::LoadProjectsList)),
+                );
+            } else {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("No selected folder to save renamed project to."),
+                ));
+            }
+        }
+        TasksPageMessage::ToggleRenameProjectView => {
+            state.display_rename_view = !state.display_rename_view;
+            if state.display_rename_view {
+                return text_input::focus(text_input::Id::new(RENAME_PROJECT_TEXT_INPUT_ID));
+            } else {
+                state.rename_project_entry_text = String::new();
+            }
+        }
+        TasksPageMessage::ToggleDeleteProjectView => {
+            state.display_delete_view = !state.display_delete_view;
         }
     }
     Task::none()

@@ -8,13 +8,13 @@ use iced::{
     Alignment::Center,
     Element, Font, Length,
 };
-use iced_aw::drag_and_drop::droppable;
+use iced_aw::{drag_and_drop::droppable, drop_down, DropDown};
 
 use crate::app::Message;
 
 use super::page::{
     TaskCompletionState, TaskData, TasksPage, TasksPageMessage, BACKLOG_ID, DOING_ID, DONE_ID,
-    TASK_TITLE_TEXT_INPUT_ID, TODO_ID,
+    RENAME_PROJECT_TEXT_INPUT_ID, TASK_TITLE_TEXT_INPUT_ID, TODO_ID,
 };
 
 pub fn main_view(state: &TasksPage) -> Element<Message> {
@@ -468,6 +468,7 @@ fn no_project_folder_selected_view(_state: &TasksPage) -> Element<Message> {
 
 fn sidebar_view(state: &TasksPage) -> Element<Message> {
     column![
+        Space::with_height(10),
         if state.is_creating_new_project {
             row![
                 text_input("New Project Name", &state.new_project_name_entry_content)
@@ -509,33 +510,130 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
         Space::with_height(20),
         scrollable(
             column(state.projects_list.iter().map(|project| {
-                button(
-                    text(
-                        project
-                            .file_stem()
-                            .unwrap_or_default()
-                            .to_str()
-                            .unwrap_or("Couldn't read filename"),
-                    )
-                    .width(Length::Fill)
-                    .align_x(Center),
-                )
-                .style(
-                    if state
-                        .current_project_file
-                        .clone()
-                        .is_some_and(|value| value == *project)
-                    {
-                        button::secondary
+                if state
+                    .current_project_being_managed
+                    .clone()
+                    .is_some_and(|selected_project| selected_project == *project)
+                {
+                    if state.display_rename_view {
+                        row![
+                            text_input("Rename Project", &state.rename_project_entry_text)
+                                .width(Length::Fill)
+                                .on_input(|s| Message::Tasks(
+                                    TasksPageMessage::SetRenameProjectEntryText(s)
+                                ))
+                                .on_submit(Message::Tasks(TasksPageMessage::RenameProject))
+                                .id(text_input::Id::new(RENAME_PROJECT_TEXT_INPUT_ID)),
+                            Tooltip::new(
+                                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                    "../../../icons/ok.svg"
+                                ))))
+                                .on_press(Message::Tasks(TasksPageMessage::RenameProject))
+                                .style(button::success)
+                                .width(Length::Fixed(50.0))
+                                .height(Length::Fixed(30.0)),
+                                "Rename",
+                                iced::widget::tooltip::Position::Bottom
+                            ),
+                            Tooltip::new(
+                                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                    "../../../icons/close.svg"
+                                ))))
+                                .on_press(Message::Tasks(TasksPageMessage::ToggleRenameProjectView))
+                                .style(button::danger)
+                                .width(Length::Fixed(50.0))
+                                .height(Length::Fixed(30.0)),
+                                "Cancel",
+                                iced::widget::tooltip::Position::Bottom
+                            ),
+                        ]
+                        .into()
+                    } else if state.display_delete_view {
+                        row![
+                            button(text("Delete").width(Length::Fill).align_x(Center))
+                                .style(button::danger)
+                                .width(Length::Fill)
+                                .on_press(Message::Tasks(TasksPageMessage::DeleteProject)),
+                            button(text("Cancel").width(Length::Fill).align_x(Center))
+                                .width(Length::Fill)
+                                .on_press(Message::Tasks(
+                                    TasksPageMessage::ToggleDeleteProjectView
+                                )),
+                        ]
+                        .into()
                     } else {
-                        button::primary
-                    },
-                )
-                .width(Length::Fill)
-                .on_press(Message::Tasks(TasksPageMessage::PickProjectFile(
-                    project.to_path_buf(),
-                )))
-                .into()
+                        row![
+                            button(text("Rename").width(Length::Fill).align_x(Center))
+                                .width(Length::Fill)
+                                .on_press(Message::Tasks(
+                                    TasksPageMessage::ToggleRenameProjectView
+                                )),
+                            button(text("Delete").width(Length::Fill).align_x(Center))
+                                .style(button::danger)
+                                .width(Length::Fill)
+                                .on_press(Message::Tasks(
+                                    TasksPageMessage::ToggleDeleteProjectView
+                                )),
+                            Tooltip::new(
+                                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                    "../../../icons/close.svg"
+                                ))))
+                                .on_press(Message::Tasks(TasksPageMessage::ShowMenuForProject(
+                                    None
+                                )))
+                                .width(Length::Fixed(50.0))
+                                .height(Length::Fixed(30.0)),
+                                "Close",
+                                iced::widget::tooltip::Position::Right,
+                            )
+                        ]
+                        .spacing(5)
+                        .into()
+                    }
+                } else {
+                    row![
+                        button(
+                            text(
+                                project
+                                    .file_stem()
+                                    .unwrap_or_default()
+                                    .to_str()
+                                    .unwrap_or("Couldn't read filename"),
+                            )
+                            .width(Length::Fill)
+                            .align_x(Center),
+                        )
+                        .style(
+                            if state
+                                .current_project_file
+                                .clone()
+                                .is_some_and(|value| value == *project)
+                            {
+                                button::secondary
+                            } else {
+                                button::primary
+                            },
+                        )
+                        .width(Length::Fill)
+                        .on_press(Message::Tasks(
+                            TasksPageMessage::PickProjectFile(project.to_path_buf(),)
+                        )),
+                        Tooltip::new(
+                            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                "../../../icons/view-more.svg"
+                            ))))
+                            .on_press(Message::Tasks(TasksPageMessage::ShowMenuForProject(Some(
+                                project.to_path_buf()
+                            ))))
+                            .height(Length::Fixed(30.0))
+                            .width(Length::Fixed(50.0)),
+                            "Manage Details",
+                            iced::widget::tooltip::Position::Right,
+                        )
+                    ]
+                    .spacing(5)
+                    .into()
+                }
             }))
             .spacing(5)
         )
@@ -545,6 +643,26 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
 }
 
 pub fn tool_view(state: &TasksPage) -> Element<Message> {
+    let underlay = Tooltip::new(
+        button(Svg::new(svg::Handle::from_memory(include_bytes!(
+            "../../../icons/view-more.svg"
+        ))))
+        .on_press(Message::Tasks(TasksPageMessage::ToggleExtraToolsMenu)),
+        "More Tools",
+        iced::widget::tooltip::Position::Bottom,
+    );
+    let overlay = column![button(
+        text("Select Projects Folder")
+            .width(Length::Fill)
+            .align_x(Center),
+    )
+    .on_press(Message::Tasks(TasksPageMessage::PickProjectsFolder)),]
+    .width(Length::Fixed(200.0));
+
+    let drop_down = DropDown::new(underlay, overlay, state.show_extra_tools_menu)
+        .on_dismiss(Message::Tasks(TasksPageMessage::ToggleExtraToolsMenu))
+        .width(Length::Fill)
+        .alignment(drop_down::Alignment::Bottom);
     if state.selected_folder.is_some() {
         row![
             Tooltip::new(
@@ -584,6 +702,7 @@ pub fn tool_view(state: &TasksPage) -> Element<Message> {
                 "New Task (Ctrl+N)",
                 iced::widget::tooltip::Position::Bottom
             ),
+            drop_down
         ]
         .width(Length::FillPortion(1))
     } else {
