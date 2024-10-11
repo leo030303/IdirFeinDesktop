@@ -22,6 +22,8 @@ use super::view::{main_view, tool_view};
 // TODO Sync scrolling between editor and preview
 // TODO Export as HTML and add to website
 
+pub const NEW_NOTE_TEXT_INPUT_ID: &str = "NEW_NOTE_TEXT_INPUT_ID";
+
 #[derive(Debug, Clone)]
 pub struct Note {
     pub button_title: String,
@@ -78,6 +80,8 @@ pub struct NotesPage {
     pub(crate) note_is_dirty: bool,
     pub(crate) autocomplete_lists: bool,
     pub(crate) show_format_toolbar: bool,
+    pub(crate) new_note_title_entry_content: String,
+    pub(crate) is_creating_new_note: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -87,7 +91,6 @@ pub enum NotesPageMessage {
     ToggleSidebar,
     ToggleMarkdown,
     ToggleEditor,
-    NewNote,
     SaveNote,
     OpenFilePicker,
     SetNotesFolder(Option<PathBuf>),
@@ -112,6 +115,10 @@ pub enum NotesPageMessage {
     SetAutoCompleteLists(bool),
     SetShowFormatToolbar(bool),
     SetConfirmBeforeDelete(bool),
+    CreateNewNote,
+    UpdateNewNoteTitleEntry(String),
+    CancelCreateNewNote,
+    StartCreatingNewNote,
 }
 
 impl NotesPage {
@@ -145,6 +152,8 @@ impl NotesPage {
             note_is_dirty: false,
             show_format_toolbar: config.show_format_toolbar,
             autocomplete_lists: config.autocomplete_lists,
+            new_note_title_entry_content: String::new(),
+            is_creating_new_note: false,
         }
     }
 
@@ -176,7 +185,7 @@ impl NotesPage {
                     Status::Ignored,
                 ) => {
                     if pressed_char.as_ref() == "n" || pressed_char.as_ref() == "N" {
-                        Some(Message::Notes(NotesPageMessage::NewNote))
+                        Some(Message::Notes(NotesPageMessage::StartCreatingNewNote))
                     } else if pressed_char.as_ref() == "b" || pressed_char.as_ref() == "B" {
                         Some(Message::Notes(NotesPageMessage::ToggleSidebar))
                     } else if pressed_char.as_ref() == "m" || pressed_char.as_ref() == "M" {

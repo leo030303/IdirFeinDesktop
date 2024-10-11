@@ -1,5 +1,5 @@
 use iced::{
-    widget::{markdown, text_editor},
+    widget::{markdown, text_editor, text_input},
     Task,
 };
 use rfd::FileDialog;
@@ -9,7 +9,7 @@ use crate::{app::Message, pages::notes::notes_utils::parse_markdown_lists};
 
 use super::{
     notes_utils::{export_pdf, read_file_to_note, read_notes_from_folder, NoteStatistics},
-    page::{NotesPage, NotesPageMessage},
+    page::{NotesPage, NotesPageMessage, NEW_NOTE_TEXT_INPUT_ID},
 };
 
 pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message> {
@@ -75,16 +75,6 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                 state.markdown_preview_items =
                     markdown::parse(&state.editor_content.text()).collect();
             }
-        }
-        NotesPageMessage::NewNote => {
-            // Save current file content
-            if let Some(current_file) = &state.current_file {
-                fs::write(current_file, state.editor_content.text()).unwrap();
-            };
-            state.note_is_dirty = false;
-            state.current_file = None;
-            state.editor_content = text_editor::Content::new();
-            state.markdown_preview_items = markdown::parse(&state.editor_content.text()).collect();
         }
         NotesPageMessage::SaveNote => {
             if state.note_is_dirty {
@@ -258,6 +248,42 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         }
         NotesPageMessage::SetConfirmBeforeDelete(b) => {
             state.confirm_before_delete_note = b;
+        }
+        NotesPageMessage::CreateNewNote => {
+            if let Some(selected_folder) = state.selected_folder.as_ref() {
+                if let Some(current_file) = &state.current_file {
+                    fs::write(current_file, state.editor_content.text()).unwrap();
+                };
+                state.note_is_dirty = true;
+                state.editor_content = text_editor::Content::new();
+                state.markdown_preview_items =
+                    markdown::parse(&state.editor_content.text()).collect();
+                let mut new_path = selected_folder.clone();
+                new_path.push(&state.new_note_title_entry_content);
+                new_path.set_extension("md");
+                state.current_file = Some(new_path);
+                state.new_note_title_entry_content = String::new();
+                state.is_creating_new_note = false;
+                return Task::done(Message::Notes(NotesPageMessage::SaveNote)).chain(Task::done(
+                    Message::Notes(NotesPageMessage::LoadFolderAsNotesList),
+                ));
+            } else {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("No selected folder to save note into"),
+                ));
+            }
+        }
+        NotesPageMessage::UpdateNewNoteTitleEntry(s) => {
+            state.new_note_title_entry_content = s;
+        }
+        NotesPageMessage::CancelCreateNewNote => {
+            state.is_creating_new_note = false;
+            state.new_note_title_entry_content = String::new();
+        }
+        NotesPageMessage::StartCreatingNewNote => {
+            state.is_creating_new_note = true;
+            return text_input::focus(text_input::Id::new(NEW_NOTE_TEXT_INPUT_ID));
         }
     }
     Task::none()

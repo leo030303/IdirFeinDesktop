@@ -3,13 +3,14 @@ use iced_aw::{badge, drop_down, style, DropDown};
 
 use iced::alignment::Horizontal;
 use iced::widget::{
-    button, column, markdown, row, scrollable, svg, text, text_editor, text_input, Scrollable, Svg,
-    Tooltip,
+    button, column, markdown, row, scrollable, svg, text, text_editor, text_input, Scrollable,
+    Space, Svg, Tooltip,
 };
 use iced::{highlighter, Length};
 use iced::{Element, Fill, Font};
 
 use crate::app::Message;
+use crate::pages::notes::page::NEW_NOTE_TEXT_INPUT_ID;
 
 use super::page::{NotesPage, NotesPageMessage};
 
@@ -45,7 +46,7 @@ pub fn main_view(state: &NotesPage) -> Element<Message> {
                 } else {
                     column![].into()
                 },
-                if state.show_edit_note_details_view || state.current_file.is_none() {
+                if state.show_edit_note_details_view  {
                     if state.is_loading_note {
                         loading_note_view(state)
                     } else {
@@ -65,32 +66,36 @@ pub fn main_view(state: &NotesPage) -> Element<Message> {
                 },
             ]
             .spacing(10),
-            row![
-                if state.show_editor {
-                    if state.is_loading_note {
-                        loading_note_view(state)
-                    } else {
-                        editor_view(state)
-                    }
+                if state.current_file.is_some(){
+                    row![
+                        if state.show_editor {
+                            if state.is_loading_note {
+                                loading_note_view(state)
+                            } else {
+                                editor_view(state)
+                            }
+                        } else {
+                            column![].into()
+                        },
+                        if state.show_markdown {
+                            if state.is_loading_note {
+                                loading_preview_view(state)
+                            } else {
+                                preview_view(state)
+                            }
+                        } else {
+                            column![].into()
+                        },
+                        if !state.show_markdown && !state.show_editor {
+                            column![text("Use the buttons in the top left of the screen to open the editor or preview").size(24).width(Length::Fill).height(Length::Fill)]
+                        } else {
+                            column![]
+                        }
+                    ]
+                    .spacing(10).into()
                 } else {
-                    column![].into()
-                },
-                if state.show_markdown {
-                    if state.is_loading_note {
-                        loading_preview_view(state)
-                    } else {
-                        preview_view(state)
-                    }
-                } else {
-                    column![].into()
-                },
-                if !state.show_markdown && !state.show_editor {
-                    column![text("Use the buttons in the top left of the screen to open the editor or preview").size(24).width(Length::Fill).height(Length::Fill)]
-                } else {
-                    column![]
+                    markdown_guide_view(state)
                 }
-            ]
-            .spacing(10)
         ]
         .spacing(10)
         .width(Length::FillPortion(2))
@@ -102,6 +107,47 @@ pub fn main_view(state: &NotesPage) -> Element<Message> {
 
 fn sidebar_with_selected_folder(state: &NotesPage) -> Element<Message> {
     column![
+        if state.is_creating_new_note {
+            row![
+                text_input("New Note Title", &state.new_note_title_entry_content)
+                    .width(Length::Fill)
+                    .on_input(|s| Message::Notes(NotesPageMessage::UpdateNewNoteTitleEntry(s)))
+                    .on_submit(Message::Notes(NotesPageMessage::CreateNewNote))
+                    .id(text_input::Id::new(NEW_NOTE_TEXT_INPUT_ID)),
+                Tooltip::new(
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/ok.svg"
+                    ))))
+                    .on_press(Message::Notes(NotesPageMessage::CreateNewNote))
+                    .style(button::success)
+                    .width(Length::Fixed(50.0))
+                    .height(Length::Fixed(30.0)),
+                    "Create",
+                    iced::widget::tooltip::Position::Bottom
+                ),
+                Tooltip::new(
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/close.svg"
+                    ))))
+                    .on_press(Message::Notes(NotesPageMessage::CancelCreateNewNote))
+                    .style(button::danger)
+                    .width(Length::Fixed(50.0))
+                    .height(Length::Fixed(30.0)),
+                    "Cancel",
+                    iced::widget::tooltip::Position::Bottom
+                ),
+            ]
+        } else {
+            row![button(
+                text("New Note (Ctrl+N)")
+                    .width(Length::Fill)
+                    .align_x(Center)
+            )
+            .width(Length::Fill)
+            .style(button::success)
+            .on_press(Message::Notes(NotesPageMessage::StartCreatingNewNote))]
+        },
+        Space::with_height(20),
         text_input("Filter", &state.notes_list_filter)
             .on_input(|s| { Message::Notes(NotesPageMessage::FilterNotesList(s)) }),
         Scrollable::new(
@@ -333,6 +379,14 @@ fn confirm_delete_view(_state: &NotesPage) -> Element<Message> {
     .into()
 }
 
+fn markdown_guide_view(_state: &NotesPage) -> Element<Message> {
+    // TODO
+    row![text(
+        "This will be a markdown guide, currently a placeholder"
+    )]
+    .into()
+}
+
 pub fn tool_view(state: &NotesPage) -> Element<Message> {
     let underlay = Tooltip::new(
         button(Svg::new(svg::Handle::from_memory(include_bytes!(
@@ -443,14 +497,6 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
                 button::primary
             }),
             "Toggle Editor (Ctrl+E)",
-            iced::widget::tooltip::Position::Bottom
-        ),
-        Tooltip::new(
-            button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                "../../../icons/add.svg"
-            ))))
-            .on_press(Message::Notes(NotesPageMessage::NewNote)),
-            "New Note (Ctrl+N)",
             iced::widget::tooltip::Position::Bottom
         ),
         drop_down
