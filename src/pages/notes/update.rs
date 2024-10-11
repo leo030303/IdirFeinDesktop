@@ -250,6 +250,15 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                 .editor_content
                 .perform(text_editor::Action::Edit(text_editor::Edit::Insert(' ')));
         }
+        NotesPageMessage::SetAutoCompleteLists(b) => {
+            state.autocomplete_lists = b;
+        }
+        NotesPageMessage::SetShowFormatToolbar(b) => {
+            state.show_format_toolbar = b;
+        }
+        NotesPageMessage::SetConfirmBeforeDelete(b) => {
+            state.confirm_before_delete_note = b;
+        }
     }
     Task::none()
 }

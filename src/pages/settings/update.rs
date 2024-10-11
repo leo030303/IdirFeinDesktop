@@ -2,6 +2,10 @@ use iced::Task;
 use rfd::FileDialog;
 
 use crate::config::AppConfig;
+use crate::pages::gallery::page::GalleryPageMessage;
+use crate::pages::notes::page::NotesPageMessage;
+use crate::pages::passwords::page::PasswordsPageMessage;
+use crate::pages::tasks::page::TasksPageMessage;
 use crate::{app::Message, Page};
 
 use super::page::{SettingsPage, SettingsPageMessage};
@@ -54,7 +58,10 @@ pub fn update(
             );
         }
         SettingsPageMessage::NotesSetDefaultFolder(selected_folder) => {
-            app_config.notes_config.default_folder = selected_folder;
+            app_config.notes_config.default_folder = selected_folder.clone();
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::Notes(
+                NotesPageMessage::SetNotesFolder(selected_folder),
+            )));
         }
         SettingsPageMessage::NotesSetShowSidebarOnStart(b) => {
             app_config.notes_config.show_sidebar_on_start = b;
@@ -67,12 +74,21 @@ pub fn update(
         }
         SettingsPageMessage::NotesSetShowConfirmDelete(b) => {
             app_config.notes_config.confirm_before_delete = b;
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::Notes(
+                NotesPageMessage::SetConfirmBeforeDelete(b),
+            )));
         }
         SettingsPageMessage::NotesSetShowFormatToolbar(b) => {
             app_config.notes_config.show_format_toolbar = b;
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::Notes(
+                NotesPageMessage::SetShowFormatToolbar(b),
+            )));
         }
         SettingsPageMessage::NotesSetAutocompleteLists(b) => {
             app_config.notes_config.autocomplete_lists = b;
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::Notes(
+                NotesPageMessage::SetAutoCompleteLists(b),
+            )));
         }
         SettingsPageMessage::PasswordsPickDefaultDatabase => {
             return Task::perform(
@@ -89,7 +105,10 @@ pub fn update(
             );
         }
         SettingsPageMessage::PasswordsSetDefaultDatabase(selected_file) => {
-            app_config.passwords_config.default_database = selected_file;
+            app_config.passwords_config.default_database = selected_file.clone();
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::Passwords(
+                PasswordsPageMessage::SetDatabaseFile(selected_file),
+            )));
         }
         SettingsPageMessage::PasswordsSetShowSidebarOnStart(b) => {
             app_config.passwords_config.show_sidebar_on_start = b;
@@ -110,7 +129,10 @@ pub fn update(
             );
         }
         SettingsPageMessage::TasksSetDefaultProjectFolder(selected_folder) => {
-            app_config.tasks_config.default_folder = selected_folder;
+            app_config.tasks_config.default_folder = selected_folder.clone();
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::Tasks(
+                TasksPageMessage::SetProjectsFolder(selected_folder),
+            )));
         }
         SettingsPageMessage::TasksSetKanbanTaskViewIsDefault(b) => {
             app_config.tasks_config.kanban_task_view_is_default = b
@@ -119,10 +141,16 @@ pub fn update(
             app_config.tasks_config.show_sidebar_on_start = b
         }
         SettingsPageMessage::TasksSetConfirmBeforeDelete(b) => {
-            app_config.tasks_config.confirm_before_delete = b
+            app_config.tasks_config.confirm_before_delete = b;
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::Tasks(
+                TasksPageMessage::SetConfirmBeforeDelete(b),
+            )));
         }
         SettingsPageMessage::TasksSetShowTaskCompletionToolbar(b) => {
-            app_config.tasks_config.show_task_completion_toolbar = b
+            app_config.tasks_config.show_task_completion_toolbar = b;
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::Tasks(
+                TasksPageMessage::SetShowTaskCompletionToolbar(b),
+            )));
         }
         SettingsPageMessage::GalleryPickDefaultFolder => {
             return Task::perform(
@@ -140,7 +168,10 @@ pub fn update(
             );
         }
         SettingsPageMessage::GallerySetDefaultFolder(selected_folder) => {
-            app_config.gallery_config.default_folder = selected_folder;
+            app_config.gallery_config.default_folder = selected_folder.clone();
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::Gallery(
+                GalleryPageMessage::SetGalleryFolder(selected_folder),
+            )));
         }
     }
     Task::done(Message::SaveConfig)

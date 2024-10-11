@@ -109,6 +109,9 @@ pub enum NotesPageMessage {
     RenameCurrentNote,
     DeleteCurrentFile,
     InsertTitle,
+    SetAutoCompleteLists(bool),
+    SetShowFormatToolbar(bool),
+    SetConfirmBeforeDelete(bool),
 }
 
 impl NotesPage {

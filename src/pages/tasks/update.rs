@@ -357,6 +357,12 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
         TasksPageMessage::ToggleDeleteProjectView => {
             state.display_delete_view = !state.display_delete_view;
         }
+        TasksPageMessage::SetShowTaskCompletionToolbar(b) => {
+            state.show_task_completion_toolbar = b;
+        }
+        TasksPageMessage::SetConfirmBeforeDelete(b) => {
+            state.confirm_before_delete = b;
+        }
     }
     Task::none()
 }

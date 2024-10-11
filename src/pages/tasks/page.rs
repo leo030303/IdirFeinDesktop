@@ -138,6 +138,8 @@ pub enum TasksPageMessage {
     DeleteProject,
     ToggleRenameProjectView,
     ToggleDeleteProjectView,
+    SetShowTaskCompletionToolbar(bool),
+    SetConfirmBeforeDelete(bool),
 }
 
 impl TasksPage {
