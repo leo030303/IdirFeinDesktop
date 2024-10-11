@@ -187,46 +187,49 @@ fn sidebar_view(state: &PasswordsPage) -> Element<Message> {
     column![
         text_input("Filter", &state.current_passwords_list_filter)
             .on_input(|s| { Message::Passwords(PasswordsPageMessage::UpdatePasswordsFilter(s)) }),
-        Scrollable::new(column(
-            state
-                .passwords_list
-                .iter()
-                .filter(|password| password
-                    .title
-                    .to_lowercase()
-                    .contains(&state.current_passwords_list_filter.to_lowercase()))
-                .map(|password| {
-                    button(
-                        text(if !password.title.is_empty() {
-                            &password.title
-                        } else {
-                            "<No Title>"
-                        })
-                        .font(Font {
-                            weight: iced::font::Weight::Semibold,
-                            ..Default::default()
-                        })
-                        .width(Length::Fill)
-                        .align_x(Horizontal::Center),
-                    )
-                    .on_press(Message::Passwords(PasswordsPageMessage::SelectPassword(
-                        Some(password.clone()),
-                    )))
-                    .style(
-                        if let Some(selected_password) = &state.selected_password_entry {
-                            if selected_password.id == password.id {
-                                button::secondary
+        Scrollable::new(
+            column(
+                state
+                    .passwords_list
+                    .iter()
+                    .filter(|password| password
+                        .title
+                        .to_lowercase()
+                        .contains(&state.current_passwords_list_filter.to_lowercase()))
+                    .map(|password| {
+                        button(
+                            text(if !password.title.is_empty() {
+                                &password.title
+                            } else {
+                                "<No Title>"
+                            })
+                            .font(Font {
+                                weight: iced::font::Weight::Semibold,
+                                ..Default::default()
+                            })
+                            .width(Length::Fill)
+                            .align_x(Horizontal::Center),
+                        )
+                        .on_press(Message::Passwords(PasswordsPageMessage::SelectPassword(
+                            Some(password.clone()),
+                        )))
+                        .style(
+                            if let Some(selected_password) = &state.selected_password_entry {
+                                if selected_password.id == password.id {
+                                    button::secondary
+                                } else {
+                                    button::primary
+                                }
                             } else {
                                 button::primary
-                            }
-                        } else {
-                            button::primary
-                        },
-                    )
-                    .width(Length::Fill)
-                    .into()
-                })
-        ))
+                            },
+                        )
+                        .width(Length::Fill)
+                        .into()
+                    })
+            )
+            .spacing(5)
+        )
         .direction(Direction::Vertical(Scrollbar::new()))
         .height(Length::Fill)
         .width(Length::FillPortion(1)),
