@@ -9,7 +9,7 @@ use crate::{app::Message, pages::notes::notes_utils::parse_markdown_lists};
 
 use super::{
     notes_utils::{export_pdf, read_file_to_note, read_notes_from_folder, NoteStatistics},
-    page::{NotesPage, NotesPageMessage, NEW_NOTE_TEXT_INPUT_ID},
+    page::{NotesPage, NotesPageMessage, NEW_NOTE_TEXT_INPUT_ID, RENAME_NOTE_TEXT_INPUT_ID},
 };
 
 pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message> {
@@ -156,9 +156,6 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                 return Task::done(Message::Notes(NotesPageMessage::CalculateNoteStatistics));
             }
         }
-        NotesPageMessage::ToggleEditNoteDetailsView => {
-            state.show_edit_note_details_view = !state.show_edit_note_details_view
-        }
         NotesPageMessage::ToggleManageCategoriesView => {
             state.show_manage_categories_view = !state.show_manage_categories_view
         }
@@ -182,51 +179,6 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         }
         NotesPageMessage::SetNoteStatistics(note_statistics) => {
             state.current_note_statistics = note_statistics;
-        }
-        NotesPageMessage::UpdateRenameNoteText(s) => state.current_rename_note_text = s,
-        NotesPageMessage::RenameCurrentNote => {
-            if let Some(selected_folder) = state.selected_folder.as_ref() {
-                if let Some(current_file) = state.current_file.as_ref() {
-                    let mut new_path = current_file.with_file_name(&state.current_rename_note_text);
-                    new_path.set_extension("md");
-                    fs::rename(current_file, &new_path).unwrap();
-                    state.current_file = Some(new_path);
-                    state.current_rename_note_text = String::new();
-                    state.show_edit_note_details_view = false;
-                } else {
-                    let mut new_path = selected_folder.clone();
-                    new_path.push(&state.current_rename_note_text);
-                    new_path.set_extension("md");
-                    state.current_file = Some(new_path);
-                    state.current_rename_note_text = String::new();
-                    state.show_edit_note_details_view = false;
-                }
-                return Task::done(Message::Notes(NotesPageMessage::SaveNote)).chain(Task::done(
-                    Message::Notes(NotesPageMessage::LoadFolderAsNotesList),
-                ));
-            } else {
-                return Task::done(Message::ShowToast(
-                    false,
-                    String::from("No selected folder to save note into"),
-                ));
-            }
-        }
-        NotesPageMessage::DeleteCurrentFile => {
-            state.editor_content = text_editor::Content::new();
-            state.markdown_preview_items = markdown::parse(&state.editor_content.text()).collect();
-            state.show_confirm_delete_note_view = false;
-            if let Some(current_file) = state.current_file.as_ref() {
-                fs::remove_file(current_file).unwrap();
-                state.current_file = None;
-                return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList)).chain(
-                    Task::done(Message::ShowToast(true, String::from("Note deleted"))),
-                );
-            }
-        }
-        NotesPageMessage::ToggleConfirmDeleteView => {
-            if state.current_file.is_some() {
-                state.show_confirm_delete_note_view = !state.show_confirm_delete_note_view
-            }
         }
         NotesPageMessage::InsertTitle => {
             state.note_is_dirty = true;
@@ -284,6 +236,67 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         NotesPageMessage::StartCreatingNewNote => {
             state.is_creating_new_note = true;
             return text_input::focus(text_input::Id::new(NEW_NOTE_TEXT_INPUT_ID));
+        }
+        NotesPageMessage::SetRenameNoteText(s) => state.rename_note_entry_text = s,
+        NotesPageMessage::RenameNote => {
+            if let Some(_selected_folder) = state.selected_folder.as_ref() {
+                if let Some(current_note_being_managed_path) =
+                    state.current_note_being_managed_path.as_ref()
+                {
+                    let mut new_path = current_note_being_managed_path
+                        .with_file_name(&state.rename_note_entry_text);
+                    new_path.set_extension("md");
+                    fs::rename(current_note_being_managed_path, &new_path).unwrap();
+                    if state.current_file == state.current_note_being_managed_path {
+                        state.current_file = Some(new_path);
+                    }
+                    state.rename_note_entry_text = String::new();
+                    state.display_rename_view = false;
+                    state.display_delete_view = false;
+                    state.current_note_being_managed_path = None;
+                }
+                return Task::done(Message::Notes(NotesPageMessage::SaveNote)).chain(Task::done(
+                    Message::Notes(NotesPageMessage::LoadFolderAsNotesList),
+                ));
+            } else {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("No selected folder to save note into"),
+                ));
+            }
+        }
+        NotesPageMessage::ToggleRenameNoteView => {
+            state.display_rename_view = !state.display_rename_view;
+            if state.display_rename_view {
+                return text_input::focus(text_input::Id::new(RENAME_NOTE_TEXT_INPUT_ID));
+            } else {
+                state.rename_note_entry_text = String::new();
+            }
+        }
+        NotesPageMessage::DeleteNote => {
+            if let Some(current_note_being_managed_path) =
+                state.current_note_being_managed_path.as_ref()
+            {
+                fs::remove_file(current_note_being_managed_path).unwrap();
+                if state.current_file == state.current_note_being_managed_path {
+                    state.current_file = None;
+                }
+                state.current_note_being_managed_path = None;
+                state.editor_content = text_editor::Content::new();
+                state.markdown_preview_items =
+                    markdown::parse(&state.editor_content.text()).collect();
+                return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList)).chain(
+                    Task::done(Message::ShowToast(true, String::from("Note deleted"))),
+                );
+            }
+        }
+        NotesPageMessage::ToggleDeleteNoteView => {
+            state.display_delete_view = !state.display_delete_view
+        }
+        NotesPageMessage::ShowMenuForNote(note_path) => {
+            state.display_rename_view = false;
+            state.display_delete_view = false;
+            state.current_note_being_managed_path = note_path;
         }
     }
     Task::none()

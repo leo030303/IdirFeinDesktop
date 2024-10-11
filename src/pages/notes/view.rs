@@ -12,7 +12,7 @@ use iced::{Element, Fill, Font};
 use crate::app::Message;
 use crate::pages::notes::page::NEW_NOTE_TEXT_INPUT_ID;
 
-use super::page::{NotesPage, NotesPageMessage};
+use super::page::{NotesPage, NotesPageMessage, RENAME_NOTE_TEXT_INPUT_ID};
 
 pub fn main_view(state: &NotesPage) -> Element<Message> {
     row![
@@ -28,29 +28,11 @@ pub fn main_view(state: &NotesPage) -> Element<Message> {
         }],
         column![
             row![
-                if state.show_confirm_delete_note_view {
-                    if state.is_loading_note {
-                        loading_note_view(state)
-                    } else {
-                        confirm_delete_view(state)
-                    }
-                } else {
-                    column![].into()
-                },
                 if state.show_document_statistics_view {
                     if state.is_loading_note {
                         loading_note_view(state)
                     } else {
                         document_statistics_view(state)
-                    }
-                } else {
-                    column![].into()
-                },
-                if state.show_edit_note_details_view  {
-                    if state.is_loading_note {
-                        loading_note_view(state)
-                    } else {
-                        edit_note_details_view(state)
                     }
                 } else {
                     column![].into()
@@ -161,38 +143,146 @@ fn sidebar_with_selected_folder(state: &NotesPage) -> Element<Message> {
                             .contains(&state.notes_list_filter.to_lowercase())
                     })
                     .map(|note| {
-                        button(column![
-                            text(note.button_title.clone())
-                                .font(Font {
-                                    weight: iced::font::Weight::Semibold,
-                                    ..Default::default()
-                                })
-                                .width(Length::Fill)
-                                .align_x(Horizontal::Center),
-                            if let Some(category) = &note.category {
-                                column![badge(text(category)).style(style::badge::info)]
+                        {
+                            if state
+                                .current_note_being_managed_path
+                                .clone()
+                                .is_some_and(|selected_note| selected_note == note.file_path)
+                            {
+                                if state.display_rename_view {
+                                    row![
+                                        text_input("Rename Note", &state.rename_note_entry_text)
+                                            .width(Length::Fill)
+                                            .on_input(|s| Message::Notes(
+                                                NotesPageMessage::SetRenameNoteText(s)
+                                            ))
+                                            .on_submit(Message::Notes(NotesPageMessage::RenameNote))
+                                            .id(text_input::Id::new(RENAME_NOTE_TEXT_INPUT_ID)),
+                                        Tooltip::new(
+                                            button(Svg::new(svg::Handle::from_memory(
+                                                include_bytes!("../../../icons/ok.svg")
+                                            )))
+                                            .on_press(Message::Notes(NotesPageMessage::RenameNote))
+                                            .style(button::success)
+                                            .width(Length::Fixed(50.0))
+                                            .height(Length::Fixed(30.0)),
+                                            "Rename",
+                                            iced::widget::tooltip::Position::Bottom
+                                        ),
+                                        Tooltip::new(
+                                            button(Svg::new(svg::Handle::from_memory(
+                                                include_bytes!("../../../icons/close.svg")
+                                            )))
+                                            .on_press(Message::Notes(
+                                                NotesPageMessage::ToggleRenameNoteView
+                                            ))
+                                            .style(button::danger)
+                                            .width(Length::Fixed(50.0))
+                                            .height(Length::Fixed(30.0)),
+                                            "Cancel",
+                                            iced::widget::tooltip::Position::Bottom
+                                        ),
+                                    ]
+                                    .into()
+                                } else if state.display_delete_view {
+                                    row![
+                                        button(text("Delete").width(Length::Fill).align_x(Center))
+                                            .style(button::danger)
+                                            .width(Length::Fill)
+                                            .on_press(Message::Notes(NotesPageMessage::DeleteNote)),
+                                        button(text("Cancel").width(Length::Fill).align_x(Center))
+                                            .width(Length::Fill)
+                                            .on_press(Message::Notes(
+                                                NotesPageMessage::ToggleDeleteNoteView
+                                            )),
+                                    ]
+                                    .into()
+                                } else {
+                                    row![
+                                        button(text("Rename").width(Length::Fill).align_x(Center))
+                                            .width(Length::Fill)
+                                            .on_press(Message::Notes(
+                                                NotesPageMessage::ToggleRenameNoteView
+                                            )),
+                                        button(text("Delete").width(Length::Fill).align_x(Center))
+                                            .style(button::danger)
+                                            .width(Length::Fill)
+                                            .on_press(Message::Notes(
+                                                if state.confirm_before_delete_note {
+                                                    NotesPageMessage::ToggleDeleteNoteView
+                                                } else {
+                                                    NotesPageMessage::DeleteNote
+                                                }
+                                            )),
+                                        Tooltip::new(
+                                            button(Svg::new(svg::Handle::from_memory(
+                                                include_bytes!("../../../icons/close.svg")
+                                            )))
+                                            .on_press(Message::Notes(
+                                                NotesPageMessage::ShowMenuForNote(None)
+                                            ))
+                                            .width(Length::Fixed(50.0))
+                                            .height(Length::Fixed(30.0)),
+                                            "Close",
+                                            iced::widget::tooltip::Position::Right,
+                                        )
+                                    ]
+                                    .spacing(5)
+                                    .into()
+                                }
                             } else {
-                                column![]
+                                row![
+                                    button(column![
+                                        text(note.button_title.clone())
+                                            .font(Font {
+                                                weight: iced::font::Weight::Semibold,
+                                                ..Default::default()
+                                            })
+                                            .width(Length::Fill)
+                                            .align_x(Horizontal::Center),
+                                        // if let Some(category) = &note.category {
+                                        //     column![badge(text(category)).style(style::badge::info)]
+                                        // } else {
+                                        //     column![]
+                                        // }
+                                    ])
+                                    .on_press(Message::Notes(NotesPageMessage::OpenFile(
+                                        note.file_path.clone(),
+                                    )))
+                                    .style(if let Some(current_file) = &state.current_file {
+                                        if *current_file == note.file_path {
+                                            button::secondary
+                                        } else {
+                                            button::primary
+                                        }
+                                    } else {
+                                        button::primary
+                                    })
+                                    .width(Length::Fill),
+                                    Tooltip::new(
+                                        button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                            "../../../icons/view-more.svg"
+                                        ))))
+                                        .on_press(Message::Notes(
+                                            NotesPageMessage::ShowMenuForNote(Some(
+                                                note.file_path.to_path_buf()
+                                            ))
+                                        ))
+                                        .height(Length::Fixed(30.0))
+                                        .width(Length::Fixed(50.0)),
+                                        "Manage Details",
+                                        iced::widget::tooltip::Position::Right,
+                                    )
+                                ]
+                                .spacing(5)
+                                .into()
                             }
-                        ])
-                        .on_press(Message::Notes(NotesPageMessage::OpenFile(
-                            note.file_path.clone(),
-                        )))
-                        .style(if let Some(current_file) = &state.current_file {
-                            if *current_file == note.file_path {
-                                button::secondary
-                            } else {
-                                button::primary
-                            }
-                        } else {
-                            button::primary
-                        })
-                        .width(Length::Fill)
-                        .into()
+                        }
                     }),
             )
             .spacing(5)
         )
+        .spacing(5)
     ]
     .into()
 }
@@ -303,50 +393,6 @@ fn document_statistics_view(state: &NotesPage) -> Element<Message> {
     .into()
 }
 
-fn edit_note_details_view(state: &NotesPage) -> Element<Message> {
-    column![
-        row![
-            text(if state.current_file.is_some() {
-                "Rename Note"
-            } else {
-                "Set Note Title"
-            })
-            .width(Length::Fill)
-            .size(24),
-            if state.current_file.is_some() {
-                column![Tooltip::new(
-                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                        "../../../icons/close.svg"
-                    ))))
-                    .on_press(Message::Notes(NotesPageMessage::ToggleEditNoteDetailsView))
-                    .width(Length::Fixed(50.0)),
-                    "Close Rename Panel",
-                    iced::widget::tooltip::Position::Bottom
-                ),]
-            } else {
-                column![]
-            }
-        ],
-        text_input(
-            &format!(
-                "New name for {}",
-                state
-                    .current_file
-                    .as_ref()
-                    .map(|note_path| note_path
-                        .file_name()
-                        .map(|os_str| os_str.to_str().unwrap_or("Unnamed"))
-                        .unwrap_or("Unnamed"))
-                    .unwrap_or("Unnamed")
-            ),
-            &state.current_rename_note_text
-        )
-        .on_input(|s| Message::Notes(NotesPageMessage::UpdateRenameNoteText(s)))
-        .on_submit(Message::Notes(NotesPageMessage::RenameCurrentNote))
-    ]
-    .into()
-}
-
 fn manage_categories_view(_state: &NotesPage) -> Element<Message> {
     column![row![
         text("Manage Categories").width(Length::Fill).size(24),
@@ -360,22 +406,6 @@ fn manage_categories_view(_state: &NotesPage) -> Element<Message> {
             iced::widget::tooltip::Position::Bottom
         ),
     ],]
-    .into()
-}
-fn confirm_delete_view(_state: &NotesPage) -> Element<Message> {
-    column![
-        text("Delete This Note").width(Length::Fill).size(24),
-        row![
-            button(text("Delete").align_x(Center).width(Length::Fill))
-                .width(Length::Fill)
-                .style(button::danger)
-                .on_press(Message::Notes(NotesPageMessage::DeleteCurrentFile)),
-            button(text("Cancel").align_x(Center).width(Length::Fill))
-                .width(Length::Fill)
-                .on_press(Message::Notes(NotesPageMessage::ToggleConfirmDeleteView))
-        ]
-        .spacing(20)
-    ]
     .into()
 }
 
@@ -433,25 +463,6 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
         )
         .on_press(Message::Notes(NotesPageMessage::ToggleManageCategoriesView))
         .width(Length::Fill),
-        button(
-            text(if !state.show_edit_note_details_view {
-                "Rename Note"
-            } else {
-                "Hide Rename Panel"
-            })
-            .width(Length::Fill)
-            .align_x(Center)
-        )
-        .on_press(Message::Notes(NotesPageMessage::ToggleEditNoteDetailsView))
-        .width(Length::Fill),
-        button(text("Delete Note").width(Length::Fill).align_x(Center))
-            .on_press(if state.confirm_before_delete_note {
-                Message::Notes(NotesPageMessage::ToggleConfirmDeleteView)
-            } else {
-                Message::Notes(NotesPageMessage::DeleteCurrentFile)
-            })
-            .width(Length::Fill)
-            .style(button::danger),
     ]
     .width(Length::Fixed(200.0));
 

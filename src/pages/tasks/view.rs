@@ -600,6 +600,10 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                                     .to_str()
                                     .unwrap_or("Couldn't read filename"),
                             )
+                            .font(Font {
+                                weight: iced::font::Weight::Semibold,
+                                ..Default::default()
+                            })
                             .width(Length::Fill)
                             .align_x(Center),
                         )
@@ -637,6 +641,7 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
             }))
             .spacing(5)
         )
+        .spacing(5)
     ]
     .width(Length::FillPortion(1))
     .into()

@@ -23,6 +23,7 @@ use super::view::{main_view, tool_view};
 // TODO Export as HTML and add to website
 
 pub const NEW_NOTE_TEXT_INPUT_ID: &str = "NEW_NOTE_TEXT_INPUT_ID";
+pub const RENAME_NOTE_TEXT_INPUT_ID: &str = "RENAME_NOTE_TEXT_INPUT_ID";
 
 #[derive(Debug, Clone)]
 pub struct Note {
@@ -71,17 +72,18 @@ pub struct NotesPage {
     pub(crate) is_loading_note: bool,
     pub(crate) show_extra_tools_menu: bool,
     pub(crate) show_document_statistics_view: bool,
-    pub(crate) show_edit_note_details_view: bool,
     pub(crate) show_manage_categories_view: bool,
-    pub(crate) show_confirm_delete_note_view: bool,
     pub(crate) current_note_statistics: NoteStatistics,
-    pub(crate) current_rename_note_text: String,
     pub(crate) confirm_before_delete_note: bool,
     pub(crate) note_is_dirty: bool,
     pub(crate) autocomplete_lists: bool,
     pub(crate) show_format_toolbar: bool,
     pub(crate) new_note_title_entry_content: String,
     pub(crate) is_creating_new_note: bool,
+    pub(crate) current_note_being_managed_path: Option<PathBuf>,
+    pub(crate) display_rename_view: bool,
+    pub(crate) rename_note_entry_text: String,
+    pub(crate) display_delete_view: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -102,15 +104,10 @@ pub enum NotesPageMessage {
     ExportPDF,
     ExportToWebsite,
     ToggleDocumentStatisticsView,
-    ToggleEditNoteDetailsView,
     ToggleManageCategoriesView,
-    ToggleConfirmDeleteView,
     CalculateNoteStatistics,
     SetNoteStatistics(NoteStatistics),
     LoadFolderAsNotesList,
-    UpdateRenameNoteText(String),
-    RenameCurrentNote,
-    DeleteCurrentFile,
     InsertTitle,
     SetAutoCompleteLists(bool),
     SetShowFormatToolbar(bool),
@@ -119,6 +116,12 @@ pub enum NotesPageMessage {
     UpdateNewNoteTitleEntry(String),
     CancelCreateNewNote,
     StartCreatingNewNote,
+    SetRenameNoteText(String),
+    RenameNote,
+    ToggleRenameNoteView,
+    DeleteNote,
+    ToggleDeleteNoteView,
+    ShowMenuForNote(Option<PathBuf>),
 }
 
 impl NotesPage {
@@ -139,21 +142,22 @@ impl NotesPage {
             is_loading_note: false,
             show_extra_tools_menu: false,
             show_document_statistics_view: false,
-            show_edit_note_details_view: false,
             current_note_statistics: NoteStatistics {
                 char_count: 0,
                 word_count: 0,
                 reading_time_in_mins: 0,
             },
-            current_rename_note_text: String::new(),
             show_manage_categories_view: false,
-            show_confirm_delete_note_view: false,
             confirm_before_delete_note: config.confirm_before_delete,
             note_is_dirty: false,
             show_format_toolbar: config.show_format_toolbar,
             autocomplete_lists: config.autocomplete_lists,
             new_note_title_entry_content: String::new(),
             is_creating_new_note: false,
+            current_note_being_managed_path: None,
+            display_rename_view: false,
+            rename_note_entry_text: String::new(),
+            display_delete_view: false,
         }
     }
 
