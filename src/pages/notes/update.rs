@@ -3,13 +3,16 @@ use iced::{
     Task,
 };
 use rfd::FileDialog;
-use std::fs;
+use std::{fs, path::PathBuf};
 
 use crate::{app::Message, pages::notes::notes_utils::parse_markdown_lists};
 
 use super::{
     notes_utils::{export_pdf, read_file_to_note, read_notes_from_folder, NoteStatistics},
-    page::{NotesPage, NotesPageMessage, NEW_NOTE_TEXT_INPUT_ID, RENAME_NOTE_TEXT_INPUT_ID},
+    page::{
+        NoteCategory, NotesPage, NotesPageMessage, SerializableColour, NEW_NOTE_TEXT_INPUT_ID,
+        RENAME_NOTE_TEXT_INPUT_ID,
+    },
 };
 
 pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message> {
@@ -39,16 +42,31 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                                 .editor_content
                                 .perform(text_editor::Action::Edit(text_editor::Edit::Insert(' ')));
                         }
-                        crate::pages::notes::notes_utils::ListAction::DeleteUnorderedListItem => {
-                            state
-                                .editor_content
-                                .perform(text_editor::Action::Edit(text_editor::Edit::Backspace));
-                            state
-                                .editor_content
-                                .perform(text_editor::Action::Edit(text_editor::Edit::Backspace));
-                            state
-                                .editor_content
-                                .perform(text_editor::Action::Edit(text_editor::Edit::Enter));
+                        crate::pages::notes::notes_utils::ListAction::DeleteUnorderedListItem(
+                            cursor_position_in_line,
+                        ) => {
+                            if cursor_position_in_line == 0 {
+                                state
+                                    .editor_content
+                                    .perform(text_editor::Action::Edit(text_editor::Edit::Delete));
+                                state
+                                    .editor_content
+                                    .perform(text_editor::Action::Edit(text_editor::Edit::Delete));
+                            } else if cursor_position_in_line == 1 {
+                                state
+                                    .editor_content
+                                    .perform(text_editor::Action::Edit(text_editor::Edit::Delete));
+                                state.editor_content.perform(text_editor::Action::Edit(
+                                    text_editor::Edit::Backspace,
+                                ));
+                            } else {
+                                state.editor_content.perform(text_editor::Action::Edit(
+                                    text_editor::Edit::Backspace,
+                                ));
+                                state.editor_content.perform(text_editor::Action::Edit(
+                                    text_editor::Edit::Backspace,
+                                ));
+                            }
                         }
                     }
                 } else {
@@ -107,7 +125,11 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         }
         NotesPageMessage::SetNotesFolder(selected_folder) => {
             state.selected_folder = selected_folder;
-            return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList));
+            return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList))
+                .chain(Task::done(Message::Notes(NotesPageMessage::LoadCategories)))
+                .chain(Task::done(Message::Notes(
+                    NotesPageMessage::LoadArchivedNotesList,
+                )));
         }
         NotesPageMessage::LoadFolderAsNotesList => {
             if let Some(selected_folder) = state.selected_folder.clone() {
@@ -297,6 +319,155 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             state.display_rename_view = false;
             state.display_delete_view = false;
             state.current_note_being_managed_path = note_path;
+        }
+        NotesPageMessage::LoadCategories => {
+            if let Some(mut selected_folder) = state.selected_folder.clone() {
+                return Task::perform(
+                    async move {
+                        selected_folder.push(".categories.json");
+                        let categories_file = selected_folder;
+                        if let Ok(categories_json) = fs::read_to_string(categories_file) {
+                            let categories_list: Vec<NoteCategory> =
+                                serde_json::from_str(&categories_json).unwrap_or_default();
+                            categories_list
+                        } else {
+                            vec![]
+                        }
+                    },
+                    |categories_list| {
+                        Message::Notes(NotesPageMessage::SetCategoriesList(categories_list))
+                    },
+                );
+            }
+        }
+        NotesPageMessage::SetCategoriesList(categories_list) => {
+            state.categories_list = categories_list
+        }
+        NotesPageMessage::SaveCategoriesList => {
+            let categories_list = state.categories_list.clone();
+            if let Some(mut selected_folder) = state.selected_folder.clone() {
+                return Task::perform(
+                    async move {
+                        selected_folder.push(".categories.json");
+                        let categories_file = selected_folder;
+                        match serde_json::to_string(&categories_list) {
+                            Ok(serialised_categories) => {
+                                match fs::write(categories_file, serialised_categories) {
+                                    Ok(_) => (true, String::new()),
+                                    Err(err) => {
+                                        (false, format!("Failed to save categories: {err:?}"))
+                                    }
+                                }
+                            }
+                            Err(err) => (false, format!("Failed to save categories: {err:?}")),
+                        }
+                    },
+                    |(success, toast_message)| {
+                        if success {
+                            Message::None
+                        } else {
+                            Message::ShowToast(success, toast_message)
+                        }
+                    },
+                );
+            }
+        }
+        NotesPageMessage::LoadArchivedNotesList => {
+            if let Some(mut selected_folder) = state.selected_folder.clone() {
+                return Task::perform(
+                    async move {
+                        selected_folder.push(".archived.json");
+                        let archive_file = selected_folder;
+                        if let Ok(archived_json) = fs::read_to_string(archive_file) {
+                            let archived_notes_list: Vec<PathBuf> =
+                                serde_json::from_str(&archived_json).unwrap_or_default();
+                            archived_notes_list
+                        } else {
+                            vec![]
+                        }
+                    },
+                    |archived_notes_list| {
+                        Message::Notes(NotesPageMessage::SetArchivedNotesList(archived_notes_list))
+                    },
+                );
+            }
+        }
+        NotesPageMessage::SetArchivedNotesList(archived_notes_list) => {
+            state.archived_notes_list = archived_notes_list
+        }
+        NotesPageMessage::SaveArchivedNotesList => {
+            let archived_notes_list = state.archived_notes_list.clone();
+            if let Some(mut selected_folder) = state.selected_folder.clone() {
+                return Task::perform(
+                    async move {
+                        selected_folder.push(".archived.json");
+                        let archived_notes_file = selected_folder;
+                        match serde_json::to_string(&archived_notes_list) {
+                            Ok(serialised_archived_notes_list) => {
+                                match fs::write(archived_notes_file, serialised_archived_notes_list)
+                                {
+                                    Ok(_) => (true, String::new()),
+                                    Err(err) => {
+                                        (false, format!("Failed to save archived list: {err:?}"))
+                                    }
+                                }
+                            }
+                            Err(err) => (false, format!("Failed to save archived list: {err:?}")),
+                        }
+                    },
+                    |(success, toast_message)| {
+                        if success {
+                            Message::None
+                        } else {
+                            Message::ShowToast(success, toast_message)
+                        }
+                    },
+                );
+            }
+        }
+        NotesPageMessage::AddCategory => {
+            let serializable_colour =
+                SerializableColour::from_iced_color(state.current_color_picker_colour);
+            if serializable_colour != SerializableColour::default() {
+                if !state.new_category_entry_text.is_empty() {
+                    let invalid_chars = r#"/\?%*:|"<>"#;
+                    if !state
+                        .new_category_entry_text
+                        .chars()
+                        .any(|c| invalid_chars.contains(c) || c.is_control())
+                    {
+                        state.categories_list.push(NoteCategory {
+                            name: state.new_category_entry_text.clone(),
+                            colour: serializable_colour,
+                        });
+                        return Task::done(Message::Notes(NotesPageMessage::SaveCategoriesList));
+                    } else {
+                        return Task::done(Message::ShowToast(
+                            false,
+                            format!("Category name can't contain any of {invalid_chars}"),
+                        ));
+                    }
+                } else {
+                    return Task::done(Message::ShowToast(
+                        false,
+                        String::from("Choose a name for the category"),
+                    ));
+                }
+            } else {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Select a colour for the category"),
+                ));
+            }
+        }
+        NotesPageMessage::DeleteCategory => todo!(),
+        NotesPageMessage::SetNewCategoryText(s) => state.new_category_entry_text = s,
+        NotesPageMessage::SetColourPickerColour(colour) => {
+            state.current_color_picker_colour = colour;
+            state.show_colour_picker = false;
+        }
+        NotesPageMessage::ToggleColourPicker => {
+            state.show_colour_picker = !state.show_colour_picker;
         }
     }
     Task::none()

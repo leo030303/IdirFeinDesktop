@@ -25,10 +25,39 @@ use super::view::{main_view, tool_view};
 pub const NEW_NOTE_TEXT_INPUT_ID: &str = "NEW_NOTE_TEXT_INPUT_ID";
 pub const RENAME_NOTE_TEXT_INPUT_ID: &str = "RENAME_NOTE_TEXT_INPUT_ID";
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NoteCategory {
+    pub name: String,
+    pub colour: SerializableColour,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct SerializableColour {
+    pub red: f32,
+    pub green: f32,
+    pub blue: f32,
+    pub transparency: f32,
+}
+
+impl SerializableColour {
+    pub fn from_iced_color(value: iced::Color) -> Self {
+        Self {
+            red: value.r,
+            green: value.g,
+            blue: value.b,
+            transparency: value.a,
+        }
+    }
+
+    pub fn to_iced_colour(&self) -> iced::Color {
+        iced::Color::from_rgba(self.red, self.green, self.blue, self.transparency)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Note {
     pub button_title: String,
-    pub category: Option<String>,
+    pub category_name: Option<String>,
     pub file_path: PathBuf,
     pub last_edited: u64,
 }
@@ -84,6 +113,11 @@ pub struct NotesPage {
     pub(crate) display_rename_view: bool,
     pub(crate) rename_note_entry_text: String,
     pub(crate) display_delete_view: bool,
+    pub(crate) archived_notes_list: Vec<PathBuf>,
+    pub(crate) categories_list: Vec<NoteCategory>,
+    pub(crate) new_category_entry_text: String,
+    pub(crate) current_color_picker_colour: iced::Color,
+    pub(crate) show_colour_picker: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -122,6 +156,17 @@ pub enum NotesPageMessage {
     DeleteNote,
     ToggleDeleteNoteView,
     ShowMenuForNote(Option<PathBuf>),
+    LoadCategories,
+    SetCategoriesList(Vec<NoteCategory>),
+    SaveCategoriesList,
+    AddCategory,
+    DeleteCategory,
+    LoadArchivedNotesList,
+    SetArchivedNotesList(Vec<PathBuf>),
+    SaveArchivedNotesList,
+    SetNewCategoryText(String),
+    SetColourPickerColour(iced::Color),
+    ToggleColourPicker,
 }
 
 impl NotesPage {
@@ -158,11 +203,20 @@ impl NotesPage {
             display_rename_view: false,
             rename_note_entry_text: String::new(),
             display_delete_view: false,
+            archived_notes_list: vec![],
+            categories_list: vec![],
+            new_category_entry_text: String::new(),
+            current_color_picker_colour: iced::Color::default(),
+            show_colour_picker: false,
         }
     }
 
     pub fn opening_task() -> Task<Message> {
         Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList))
+            .chain(Task::done(Message::Notes(NotesPageMessage::LoadCategories)))
+            .chain(Task::done(Message::Notes(
+                NotesPageMessage::LoadArchivedNotesList,
+            )))
     }
 
     pub fn closing_task(&mut self) -> Task<Message> {

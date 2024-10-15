@@ -7,7 +7,7 @@ use std::{
 
 use walkdir::WalkDir;
 
-use super::page::{Note, NotesPage};
+use super::page::{Note, NoteCategory, NotesPage, SerializableColour};
 
 #[derive(Debug, Clone)]
 pub struct NoteStatistics {
@@ -31,7 +31,7 @@ pub async fn read_file_to_note(
 pub enum ListAction {
     NoAction,
     AddUnorderedListItem(char),
-    DeleteUnorderedListItem,
+    DeleteUnorderedListItem(usize),
 }
 
 // TODO Get this working for ordered lists
@@ -48,7 +48,7 @@ pub fn parse_markdown_lists(state: &mut NotesPage) -> ListAction {
         {
             ListAction::AddUnorderedListItem('*')
         } else {
-            ListAction::DeleteUnorderedListItem
+            ListAction::DeleteUnorderedListItem(state.editor_content.cursor_position().1)
         }
     } else if state
         .editor_content
@@ -62,7 +62,7 @@ pub fn parse_markdown_lists(state: &mut NotesPage) -> ListAction {
         {
             ListAction::AddUnorderedListItem('-')
         } else {
-            ListAction::DeleteUnorderedListItem
+            ListAction::DeleteUnorderedListItem(state.editor_content.cursor_position().1)
         }
     } else {
         ListAction::NoAction
@@ -89,13 +89,26 @@ pub async fn read_notes_from_folder(selected_folder: PathBuf) -> Vec<Note> {
                     file_path.path().file_stem().unwrap().to_str().unwrap(),
                     30,
                 ),
-                category: find_nested_folder_name(&selected_folder, file_path.path()),
+                category_name: find_nested_folder_name(&selected_folder, file_path.path()),
                 file_path: file_path.path().to_path_buf(),
                 last_edited: file_path.metadata().unwrap().st_mtime() as u64,
             }
         })
         .collect();
     notes_list
+}
+
+pub fn get_colour_for_category(
+    categories_list: &[NoteCategory],
+    category_name: &str,
+) -> iced::Color {
+    categories_list
+        .iter()
+        .find(|category| category.name == category_name)
+        .map_or(SerializableColour::default(), |category| {
+            category.colour.clone()
+        })
+        .to_iced_colour()
 }
 
 pub fn take_first_n_chars(input: &str, n: usize) -> String {
