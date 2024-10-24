@@ -1,4 +1,6 @@
+use regex::Regex;
 use std::{
+    error::Error,
     ffi::OsStr,
     fs,
     os::linux::fs::MetadataExt,
@@ -176,6 +178,16 @@ pub async fn export_pdf(text_to_convert: String, md_file_path: Option<PathBuf>) 
     // }
 }
 
+fn add_html_to_template(
+    html_content: &str,
+    mut website_folder: PathBuf,
+) -> Result<String, Box<dyn Error>> {
+    website_folder.push("template.html");
+    let template_file_content = fs::read_to_string(website_folder)?;
+    let re = Regex::new(r"__CONTENT__")?;
+    Ok(re.replace(&template_file_content, html_content).to_string())
+}
+
 pub fn convert_to_html(text_to_convert: &str) -> String {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_TABLES);
@@ -206,9 +218,18 @@ pub async fn export_to_website(
         );
     }
     let md_file_path = md_file_path_option.expect("Can't fail");
-    let mut html_export_path = website_folder_option.clone().expect("Can't fail");
-    let mut markdown_export_path = website_folder_option.expect("Can't fail");
-    let converted_html = convert_to_html(&text_to_convert);
+    let website_folder = website_folder_option.expect("Can't fail");
+    let mut html_export_path = website_folder.clone();
+    let mut markdown_export_path = website_folder.clone();
+    let initial_html = convert_to_html(&text_to_convert);
+    let converted_html_result = add_html_to_template(&initial_html, website_folder);
+    if let Err(err) = converted_html_result {
+        return (
+            false,
+            format!("Error inserting HTML into template: {err:?}"),
+        );
+    }
+    let converted_html = converted_html_result.expect("Can't fail");
 
     if let Some(file_export_filestem) = md_file_path.file_stem() {
         let mut html_export_filename = file_export_filestem.to_os_string();
