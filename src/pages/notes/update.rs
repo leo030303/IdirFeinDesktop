@@ -8,7 +8,9 @@ use std::{fs, path::PathBuf};
 use crate::{app::Message, pages::notes::notes_utils::parse_markdown_lists};
 
 use super::{
-    notes_utils::{export_pdf, read_file_to_note, read_notes_from_folder, NoteStatistics},
+    notes_utils::{
+        export_pdf, export_to_website, read_file_to_note, read_notes_from_folder, NoteStatistics,
+    },
     page::{
         NoteCategory, NotesPage, NotesPageMessage, SerializableColour, NEW_NOTE_TEXT_INPUT_ID,
         RENAME_NOTE_TEXT_INPUT_ID,
@@ -171,7 +173,16 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                 |(success, content)| Message::ShowToast(success, content),
             );
         }
-        NotesPageMessage::ExportToWebsite => todo!(),
+        NotesPageMessage::ExportToWebsite => {
+            return Task::perform(
+                export_to_website(
+                    state.editor_content.text(),
+                    state.current_file.clone(),
+                    state.website_folder.clone(),
+                ),
+                |(success, content)| Message::ShowToast(success, content),
+            );
+        }
         NotesPageMessage::ToggleDocumentStatisticsView => {
             state.show_document_statistics_view = !state.show_document_statistics_view;
             if state.show_document_statistics_view {
@@ -468,6 +479,9 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         }
         NotesPageMessage::ToggleColourPicker => {
             state.show_colour_picker = !state.show_colour_picker;
+        }
+        NotesPageMessage::SetWebsiteFolder(selected_folder) => {
+            state.website_folder = selected_folder
         }
     }
     Task::none()

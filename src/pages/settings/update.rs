@@ -90,6 +90,25 @@ pub fn update(
                 NotesPageMessage::SetAutoCompleteLists(b),
             )));
         }
+        SettingsPageMessage::NotesPickWebsiteFolder => {
+            return Task::perform(
+                async {
+                    FileDialog::new()
+                        .set_directory("/")
+                        .set_can_create_directories(true)
+                        .pick_folder()
+                },
+                |selected_folder| {
+                    Message::Settings(SettingsPageMessage::NotesSetWebsiteFolder(selected_folder))
+                },
+            );
+        }
+        SettingsPageMessage::NotesSetWebsiteFolder(selected_folder) => {
+            app_config.notes_config.website_folder = selected_folder.clone();
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::Notes(
+                NotesPageMessage::SetWebsiteFolder(selected_folder),
+            )));
+        }
         SettingsPageMessage::PasswordsPickDefaultDatabase => {
             return Task::perform(
                 async {

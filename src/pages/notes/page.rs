@@ -71,6 +71,7 @@ pub struct NotesPageConfig {
     pub confirm_before_delete: bool,
     pub show_format_toolbar: bool,
     pub autocomplete_lists: bool,
+    pub website_folder: Option<PathBuf>,
 }
 
 impl Default for NotesPageConfig {
@@ -83,6 +84,7 @@ impl Default for NotesPageConfig {
             confirm_before_delete: true,
             show_format_toolbar: true,
             autocomplete_lists: true,
+            website_folder: None,
         }
     }
 }
@@ -118,6 +120,7 @@ pub struct NotesPage {
     pub(crate) new_category_entry_text: String,
     pub(crate) current_color_picker_colour: iced::Color,
     pub(crate) show_colour_picker: bool,
+    pub(crate) website_folder: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone)]
@@ -167,6 +170,7 @@ pub enum NotesPageMessage {
     SetNewCategoryText(String),
     SetColourPickerColour(iced::Color),
     ToggleColourPicker,
+    SetWebsiteFolder(Option<PathBuf>),
 }
 
 impl NotesPage {
@@ -208,6 +212,7 @@ impl NotesPage {
             new_category_entry_text: String::new(),
             current_color_picker_colour: iced::Color::default(),
             show_colour_picker: false,
+            website_folder: config.website_folder.clone(),
         }
     }
 

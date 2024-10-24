@@ -1,10 +1,11 @@
-use shiva::core::TransformerTrait;
 use std::{
+    ffi::OsStr,
     fs,
     os::linux::fs::MetadataExt,
     path::{Component, Path, PathBuf},
 };
 
+use pulldown_cmark::Options;
 use walkdir::WalkDir;
 
 use super::page::{Note, NoteCategory, NotesPage, SerializableColour};
@@ -137,51 +138,119 @@ pub fn find_nested_folder_name(original_folder: &PathBuf, file_path: &Path) -> O
 }
 
 pub async fn export_pdf(text_to_convert: String, md_file_path: Option<PathBuf>) -> (bool, String) {
-    let input_bytes = bytes::Bytes::from(text_to_convert);
-    match shiva::markdown::Transformer::parse(&input_bytes) {
-        Ok(document) => match shiva::pdf::Transformer::generate(&document) {
-            Ok(output_bytes) => {
-                let export_path = md_file_path
-                    .unwrap_or(PathBuf::from("export.md"))
-                    .with_extension("pdf");
-                match std::fs::write(export_path.clone(), output_bytes) {
-                    Ok(_) => (
-                        true,
-                        format!("PDF successfully exported to {export_path:?}"),
-                    ),
-                    Err(err) => (false, format!("PDF export failed: {err:?}")),
-                }
-            }
-            Err(err) => (false, format!("PDF export failed: {err:?}")),
-        },
-        Err(err) => (false, format!("PDF export failed: {err:?}")),
-    }
+    todo!()
+    // let html_content = convert_to_html(&text_to_convert);
+
+    // if let Ok(pdf_app) = PdfApplication::new() {
+    //     let export_path = md_file_path
+    //         .clone()
+    //         .unwrap_or(PathBuf::from("export.md"))
+    //         .with_extension("pdf");
+    //     let pdfout = pdf_app
+    //         .builder()
+    //         .orientation(Orientation::Landscape)
+    //         .margin(Size::Inches(2))
+    //         .title(
+    //             &md_file_path
+    //                 .and_then(|filepath| {
+    //                     filepath
+    //                         .file_stem()
+    //                         .map(|os_str| os_str.to_str().map(|str_val| str_val.to_string()))
+    //                 })
+    //                 .flatten()
+    //                 .unwrap_or(String::from("No Title")),
+    //         )
+    //         .build_from_html(&html_content);
+    //     match pdfout {
+    //         Ok(mut pdfout) => match pdfout.save(export_path.clone()) {
+    //             Ok(_) => (
+    //                 true,
+    //                 format!("PDF successfully exported to {export_path:?}"),
+    //             ),
+    //             Err(err) => (false, format!("PDF export failed: {err:?}")),
+    //         },
+    //         Err(err) => (false, format!("PDF export failed: {err:?}")),
+    //     }
+    // } else {
+    //     (false, String::from("Failed to init PDF application"))
+    // }
+}
+
+pub fn convert_to_html(text_to_convert: &str) -> String {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_TABLES);
+    options.insert(Options::ENABLE_FOOTNOTES);
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    options.insert(Options::ENABLE_TASKLISTS);
+    let parser = pulldown_cmark::Parser::new_ext(text_to_convert, options);
+    let mut html_output = String::new();
+    pulldown_cmark::html::push_html(&mut html_output, parser);
+    html_output
 }
 
 pub async fn export_to_website(
     text_to_convert: String,
-    md_file_path: Option<PathBuf>,
+    md_file_path_option: Option<PathBuf>,
+    website_folder_option: Option<PathBuf>,
 ) -> (bool, String) {
-    let input_bytes = bytes::Bytes::from(text_to_convert);
-    match shiva::markdown::Transformer::parse(&input_bytes) {
-        Ok(document) => match shiva::html::Transformer::generate(&document) {
-            Ok(output_bytes) => {
-                let export_path = md_file_path
-                    .unwrap_or(PathBuf::from("export.md"))
-                    .with_extension("html");
-                match std::fs::write(export_path.clone(), output_bytes) {
-                    Ok(_) => {
-                        todo!();
-                        (
-                            true,
-                            format!("HTML successfully exported to {export_path:?}"),
-                        )
-                    }
-                    Err(err) => (false, format!("HTML export failed: {err:?}")),
-                }
-            }
-            Err(err) => (false, format!("HTML export failed: {err:?}")),
-        },
-        Err(err) => (false, format!("HTML export failed: {err:?}")),
+    if md_file_path_option.is_none() {
+        return (
+            false,
+            String::from("Can't export, filename for doc is not set"),
+        );
+    }
+    if website_folder_option.is_none() {
+        return (
+            false,
+            String::from("Can't export, folder for website files is not set"),
+        );
+    }
+    let md_file_path = md_file_path_option.expect("Can't fail");
+    let mut html_export_path = website_folder_option.clone().expect("Can't fail");
+    let mut markdown_export_path = website_folder_option.expect("Can't fail");
+    let converted_html = convert_to_html(&text_to_convert);
+
+    if let Some(file_export_filestem) = md_file_path.file_stem() {
+        let mut html_export_filename = file_export_filestem.to_os_string();
+        html_export_filename.push(OsStr::new(".html"));
+        html_export_path.push("www");
+
+        if let Err(err) = fs::create_dir_all(&html_export_path) {
+            return (
+                false,
+                format!("Can't export, failed to create folder for html files: {err:?}"),
+            );
+        };
+        html_export_path.push(html_export_filename);
+
+        let mut markdown_export_filename = file_export_filestem.to_os_string();
+        markdown_export_filename.push(OsStr::new(".md"));
+        markdown_export_path.push("markdown");
+        if let Err(err) = fs::create_dir_all(&markdown_export_path) {
+            return (
+                false,
+                format!("Can't export, failed to create folder for markdown files: {err:?}"),
+            );
+        };
+        markdown_export_path.push(markdown_export_filename);
+
+        if let Err(err) = fs::write(html_export_path, converted_html) {
+            return (
+                false,
+                format!("Can't export, failed to write html file: {err:?}"),
+            );
+        }
+        if let Err(err) = fs::write(markdown_export_path, text_to_convert) {
+            return (
+                false,
+                format!("Can't export, failed to write markdown file: {err:?}"),
+            );
+        }
+        (true, String::from("Successfully exported to website"))
+    } else {
+        (
+            false,
+            String::from("Can't export, markdown filename is not set"),
+        )
     }
 }

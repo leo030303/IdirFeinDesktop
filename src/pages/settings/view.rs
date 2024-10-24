@@ -142,6 +142,27 @@ fn notes_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                     ))
                 ]
                 .width(Length::Fill),
+                row![
+                    text(
+                        app_config
+                            .notes_config
+                            .website_folder
+                            .as_ref()
+                            .map(|value| format!("Website Folder: {value:?}"))
+                            .unwrap_or(String::from("No Website Folder Selected"))
+                    )
+                    .align_x(Alignment::Center)
+                    .width(Length::Fill),
+                    button(
+                        text("Select Website Folder")
+                            .width(Length::Fill)
+                            .align_x(Alignment::Center)
+                    )
+                    .on_press(Message::Settings(
+                        SettingsPageMessage::NotesPickWebsiteFolder
+                    ))
+                ]
+                .width(Length::Fill),
                 toggler(app_config.notes_config.show_sidebar_on_start)
                     .label("Show sidebar on startup")
                     .on_toggle(|b| Message::Settings(

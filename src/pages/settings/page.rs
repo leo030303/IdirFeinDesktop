@@ -67,6 +67,8 @@ pub enum SettingsPageMessage {
     NotesSetShowConfirmDelete(bool),
     NotesSetShowFormatToolbar(bool),
     NotesSetAutocompleteLists(bool),
+    NotesPickWebsiteFolder,
+    NotesSetWebsiteFolder(Option<PathBuf>),
     PasswordsPickDefaultDatabase,
     PasswordsSetDefaultDatabase(Option<PathBuf>),
     PasswordsSetShowSidebarOnStart(bool),
