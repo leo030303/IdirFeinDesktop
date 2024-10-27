@@ -3,7 +3,7 @@ use iced::{
     widget::{
         button, column, container,
         image::{self, Handle},
-        list, row, scrollable, stack, svg, text, Image, MouseArea, Space, Svg, Tooltip,
+        row, scrollable, stack, svg, text, Image, MouseArea, Space, Svg, Tooltip,
     },
     Alignment::Center,
     Element, Length,
@@ -52,37 +52,40 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
 }
 
 fn gallery_grid(state: &GalleryPage) -> Element<Message> {
-    scrollable(list(&state.gallery_list, |_index, photos_vec| {
-        row(photos_vec.iter().map(|(photo_path, handle_option)| {
-            if let Some(image_handle) = handle_option {
-                container(
-                    MouseArea::new(
-                        Image::new(image_handle).content_fit(iced::ContentFit::ScaleDown),
-                    )
-                    .on_press(Message::Gallery(
-                        GalleryPageMessage::SelectImageForBigView(Some(photo_path.to_path_buf())),
-                    )),
-                )
-                .height(Length::Fixed(IMAGE_HEIGHT))
-                .padding(20)
-                .width(Length::FillPortion(1))
-                .into()
-            } else {
-                container(
-                    text(photo_path.to_str().unwrap_or("File is loading"))
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .align_x(Center)
-                        .align_y(Center),
-                )
-                .height(Length::Fixed(IMAGE_HEIGHT))
-                .padding(20)
-                .width(Length::FillPortion(1))
-                .into()
-            }
-        }))
-        .into()
-    }))
+    scrollable(column![
+        Space::with_height(Length::Fixed(state.top_offset)),
+        column(
+            state
+                .gallery_list
+                .iter()
+                .filter(|(loaded, _)| *loaded)
+                .map(|(_, photos_vec)| {
+                    row(photos_vec.iter().map(|(photo_path, handle_option)| {
+                        if let Some(image_handle) = handle_option {
+                            container(
+                                MouseArea::new(
+                                    Image::new(image_handle)
+                                        .content_fit(iced::ContentFit::ScaleDown),
+                                )
+                                .on_press(Message::Gallery(
+                                    GalleryPageMessage::SelectImageForBigView(Some(
+                                        photo_path.to_path_buf(),
+                                    )),
+                                )),
+                            )
+                            .height(Length::Fixed(IMAGE_HEIGHT))
+                            .padding(20)
+                            .width(Length::FillPortion(1))
+                            .into()
+                        } else {
+                            Space::with_height(Length::Fixed(IMAGE_HEIGHT)).into()
+                        }
+                    }))
+                    .into()
+                })
+        ),
+        Space::with_height(Length::Fixed(state.bottom_offset))
+    ])
     .id(SCROLLABLE_ID.clone())
     .on_scroll(|viewport| Message::Gallery(GalleryPageMessage::GalleryScrolled(viewport)))
     .into()

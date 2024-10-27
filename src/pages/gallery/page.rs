@@ -4,8 +4,8 @@ use iced::event::Status;
 use iced::keyboard::key::Named;
 use iced::keyboard::Key;
 use iced::widget::image::Handle;
+use iced::widget::scrollable;
 use iced::widget::scrollable::Viewport;
-use iced::widget::{list, scrollable};
 use iced::{event, keyboard, Element, Event, Task};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -31,8 +31,10 @@ pub struct GalleryPage {
     pub(crate) selected_folder: Option<PathBuf>,
     pub(crate) selected_image: Option<PathBuf>,
     pub(crate) last_images_scrolled_past_val: i64,
-    pub(crate) gallery_list: list::Content<Vec<(PathBuf, Option<Handle>)>>,
+    pub(crate) gallery_list: Vec<(bool, Vec<(PathBuf, Option<Handle>)>)>,
     pub(crate) scrollable_viewport_option: Option<Viewport>,
+    pub(crate) top_offset: f32,
+    pub(crate) bottom_offset: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -42,8 +44,8 @@ pub enum GalleryPageMessage {
     LoadGalleryFolder,
     SelectImageForBigView(Option<PathBuf>),
     SetGalleryFilesList(Vec<Vec<PathBuf>>),
-    LoadImageHandle(usize, Vec<(PathBuf, Option<Handle>)>),
-    SetImageHandle(usize, PathBuf, Handle),
+    LoadImageHandles(Vec<(usize, (bool, Vec<(PathBuf, Option<Handle>)>))>),
+    SetImageHandles(Vec<(usize, PathBuf, Handle)>),
     UnloadImageHandle(usize, PathBuf),
     GalleryScrolled(Viewport),
     ArrowDownKeyPressed,
@@ -56,11 +58,13 @@ impl GalleryPage {
     pub fn new(config: &GalleryPageConfig) -> Self {
         Self {
             selected_folder: config.default_folder.clone(),
-            gallery_list: list::Content::new(),
+            gallery_list: vec![],
             last_images_scrolled_past_val: 0,
             loaded_image_indexes: vec![],
             scrollable_viewport_option: None,
             selected_image: None,
+            top_offset: 0.0,
+            bottom_offset: 0.0,
         }
     }
 

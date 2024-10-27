@@ -5,6 +5,7 @@ use std::{
 };
 
 use iced::{
+    futures::future,
     widget::{image::Handle, scrollable},
     Task,
 };
@@ -88,43 +89,70 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             state.gallery_list = gallery_files_list
                 .clone()
                 .into_iter()
-                .map(|photo_vec| photo_vec.into_iter().map(|file| (file, None)).collect())
+                .map(|photo_vec| {
+                    (
+                        false,
+                        photo_vec.into_iter().map(|file| (file, None)).collect(),
+                    )
+                })
                 .collect();
-            return Task::batch(gallery_files_list.into_iter().enumerate().take(3).map(
-                |(index, photo_path_vec)| {
-                    Task::done(Message::Gallery(GalleryPageMessage::LoadImageHandle(
-                        index,
-                        photo_path_vec
-                            .into_iter()
-                            .map(|photo_path| (photo_path, None))
-                            .collect(),
-                    )))
-                },
-            ));
-        }
-        GalleryPageMessage::LoadImageHandle(index, image_path_vec) => {
-            return Task::batch(image_path_vec.into_iter().map(|(image_path, _)| {
-                Task::perform(
-                    async move { (image_path.clone(), Handle::from_path(image_path)) },
-                    move |(image_path, image_handle)| {
-                        Message::Gallery(GalleryPageMessage::SetImageHandle(
+            state.top_offset = 0.0;
+            state.bottom_offset = (state.gallery_list.len() - 3) as f32 * IMAGE_HEIGHT;
+            return Task::done(Message::Gallery(GalleryPageMessage::LoadImageHandles(
+                gallery_files_list
+                    .into_iter()
+                    .enumerate()
+                    .take(3)
+                    .map(|(index, photo_path_vec)| {
+                        (
                             index,
-                            image_path,
-                            image_handle,
-                        ))
-                    },
-                )
-            }));
+                            (
+                                true,
+                                photo_path_vec
+                                    .into_iter()
+                                    .map(|photo_path| (photo_path, None))
+                                    .collect(),
+                            ),
+                        )
+                    })
+                    .collect(),
+            )));
         }
-        GalleryPageMessage::SetImageHandle(index, image_path, image_data) => {
-            state
-                .gallery_list
-                .get_mut(index)
-                .expect("Shouldn't fail")
-                .iter_mut()
-                .find(|(path, _)| *path == image_path)
-                .expect("Shouldn't fail")
-                .1 = Some(image_data);
+        GalleryPageMessage::LoadImageHandles(images_to_load_list) => {
+            return Task::perform(
+                async move {
+                    future::join_all(images_to_load_list.into_iter().map(
+                        |(index, row_images_list)| {
+                            future::join_all(row_images_list.1.into_iter().map(
+                                |(image_path, _)| async move {
+                                    (index, image_path.clone(), Handle::from_path(image_path))
+                                },
+                            ))
+                        },
+                    ))
+                    .await
+                    .concat()
+                },
+                |image_handles_list| {
+                    Message::Gallery(GalleryPageMessage::SetImageHandles(image_handles_list))
+                },
+            );
+        }
+        GalleryPageMessage::SetImageHandles(loaded_images_list) => {
+            loaded_images_list
+                .into_iter()
+                .for_each(|(index, image_path, image_data)| {
+                    state
+                        .gallery_list
+                        .get_mut(index)
+                        .expect("Shouldn't fail")
+                        .1
+                        .iter_mut()
+                        .find(|(path, _)| *path == image_path)
+                        .expect("Shouldn't fail")
+                        .1 = Some(image_data);
+                    state.gallery_list.get_mut(index).expect("Shouldn't fail").0 = true;
+                });
         }
         GalleryPageMessage::UnloadImageHandle(index, image_path) => {
             println!("Unload image index: {index:?}");
@@ -132,10 +160,12 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 .gallery_list
                 .get_mut(index)
                 .expect("Shouldn't fail")
+                .1
                 .iter_mut()
                 .find(|(path, _)| *path == image_path)
                 .expect("Shouldn't fail")
                 .1 = None;
+            state.gallery_list.get_mut(index).expect("Shouldn't fail").0 = false;
         }
         GalleryPageMessage::GalleryScrolled(viewport) => {
             let load_ahead_amount = 2;
@@ -155,28 +185,31 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                     .for_each(|index| {
                         if let Some(list_item) = state.gallery_list.get_mut(*index) {
                             list_item
+                                .1
                                 .iter_mut()
                                 .for_each(|(_path, image_handle)| *image_handle = None);
+                            list_item.0 = false;
                         }
                     });
-                let mut tasks_list = vec![];
+                let mut images_to_load_list = vec![];
                 image_indexes_to_load
                     .iter()
                     .filter(|index| image_indexes_to_load.contains(index))
                     .for_each(|index| {
                         if let Some(list_item) = state.gallery_list.get(*index) {
                             state.loaded_image_indexes.push(*index);
-                            tasks_list.push(Task::done(Message::Gallery(
-                                GalleryPageMessage::LoadImageHandle(*index, list_item.clone()),
-                            )));
+                            images_to_load_list.push((*index, list_item.clone()));
                         }
                     });
                 state.loaded_image_indexes = image_indexes_to_load;
-                return tasks_list
-                    .into_iter()
-                    .fold(Task::none(), |accumulator, task_item| {
-                        accumulator.chain(task_item)
-                    });
+                state.top_offset = images_scrolled_passed as f32 * IMAGE_HEIGHT;
+                state.bottom_offset = (state.gallery_list.len() as f32
+                    - ((load_ahead_amount * 2) + 1) as f32
+                    - images_scrolled_passed as f32)
+                    * IMAGE_HEIGHT;
+                return Task::done(Message::Gallery(GalleryPageMessage::LoadImageHandles(
+                    images_to_load_list,
+                )));
             }
         }
         GalleryPageMessage::ArrowDownKeyPressed => {
