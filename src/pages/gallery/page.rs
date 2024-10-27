@@ -15,7 +15,9 @@ use crate::app::Message;
 use super::update::update;
 use super::view::{main_view, tool_view};
 
+pub(crate) const NUM_IMAGES_IN_ROW: usize = 2;
 pub(crate) const IMAGE_HEIGHT: f32 = 550.0;
+pub(crate) const ROW_BATCH_SIZE: usize = 5;
 pub(crate) const ARROW_KEY_SCROLL_AMOUNT: f32 = 50.0;
 pub(crate) const PAGE_KEY_SCROLL_AMOUNT: f32 = 500.0;
 
@@ -27,14 +29,20 @@ pub struct GalleryPageConfig {
 }
 
 pub struct GalleryPage {
-    pub(crate) loaded_image_indexes: Vec<usize>,
     pub(crate) selected_folder: Option<PathBuf>,
     pub(crate) selected_image: Option<PathBuf>,
-    pub(crate) last_images_scrolled_past_val: i64,
-    pub(crate) gallery_list: Vec<(bool, Vec<(PathBuf, Option<Handle>)>)>,
+    pub(crate) loaded_batch_index: usize,
+    pub(crate) gallery_list: Vec<ImageRow>,
     pub(crate) scrollable_viewport_option: Option<Viewport>,
     pub(crate) top_offset: f32,
     pub(crate) bottom_offset: f32,
+}
+
+#[derive(Debug, Clone)]
+pub struct ImageRow {
+    pub loaded: bool,
+    pub index: usize,
+    pub images_data: Vec<(PathBuf, Option<Handle>)>,
 }
 
 #[derive(Debug, Clone)]
@@ -44,9 +52,9 @@ pub enum GalleryPageMessage {
     LoadGalleryFolder,
     SelectImageForBigView(Option<PathBuf>),
     SetGalleryFilesList(Vec<Vec<PathBuf>>),
-    LoadImageHandles(Vec<(usize, (bool, Vec<(PathBuf, Option<Handle>)>))>),
-    SetImageHandles(Vec<(usize, PathBuf, Handle)>),
-    UnloadImageHandle(usize, PathBuf),
+    LoadImageRows(Vec<ImageRow>),
+    UnloadImageRows(Vec<ImageRow>),
+    SetImageRows(Vec<ImageRow>),
     GalleryScrolled(Viewport),
     ArrowDownKeyPressed,
     ArrowUpKeyPressed,
@@ -59,8 +67,7 @@ impl GalleryPage {
         Self {
             selected_folder: config.default_folder.clone(),
             gallery_list: vec![],
-            last_images_scrolled_past_val: 0,
-            loaded_image_indexes: vec![],
+            loaded_batch_index: 0,
             scrollable_viewport_option: None,
             selected_image: None,
             top_offset: 0.0,

@@ -58,29 +58,34 @@ fn gallery_grid(state: &GalleryPage) -> Element<Message> {
             state
                 .gallery_list
                 .iter()
-                .filter(|(loaded, _)| *loaded)
-                .map(|(_, photos_vec)| {
-                    row(photos_vec.iter().map(|(photo_path, handle_option)| {
-                        if let Some(image_handle) = handle_option {
-                            container(
-                                MouseArea::new(
-                                    Image::new(image_handle)
-                                        .content_fit(iced::ContentFit::ScaleDown),
+                .filter(|image_row| image_row.loaded)
+                .map(|image_row| {
+                    row(image_row
+                        .images_data
+                        .iter()
+                        .map(|(photo_path, handle_option)| {
+                            if let Some(image_handle) = handle_option {
+                                container(
+                                    MouseArea::new(
+                                        Image::new(image_handle)
+                                            .content_fit(iced::ContentFit::ScaleDown),
+                                    )
+                                    .on_press(
+                                        Message::Gallery(
+                                            GalleryPageMessage::SelectImageForBigView(Some(
+                                                photo_path.to_path_buf(),
+                                            )),
+                                        ),
+                                    ),
                                 )
-                                .on_press(Message::Gallery(
-                                    GalleryPageMessage::SelectImageForBigView(Some(
-                                        photo_path.to_path_buf(),
-                                    )),
-                                )),
-                            )
-                            .height(Length::Fixed(IMAGE_HEIGHT))
-                            .padding(20)
-                            .width(Length::FillPortion(1))
-                            .into()
-                        } else {
-                            Space::with_height(Length::Fixed(IMAGE_HEIGHT)).into()
-                        }
-                    }))
+                                .height(Length::Fixed(IMAGE_HEIGHT))
+                                .padding(20)
+                                .width(Length::FillPortion(1))
+                                .into()
+                            } else {
+                                Space::with_height(Length::Fixed(IMAGE_HEIGHT)).into()
+                            }
+                        }))
                     .into()
                 })
         ),
