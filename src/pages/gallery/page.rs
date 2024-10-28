@@ -15,11 +15,13 @@ use crate::app::Message;
 use super::update::update;
 use super::view::{main_view, tool_view};
 
-pub(crate) const NUM_IMAGES_IN_ROW: usize = 2;
-pub(crate) const IMAGE_HEIGHT: f32 = 550.0;
-pub(crate) const ROW_BATCH_SIZE: usize = 5;
+pub(crate) const NUM_IMAGES_IN_ROW: usize = 4;
+pub(crate) const IMAGE_HEIGHT: f32 = 220.0;
+pub(crate) const ROW_BATCH_SIZE: usize = 10;
 pub(crate) const ARROW_KEY_SCROLL_AMOUNT: f32 = 50.0;
 pub(crate) const PAGE_KEY_SCROLL_AMOUNT: f32 = 500.0;
+pub(crate) const THUMBNAIL_SIZE: u32 = 200;
+pub(crate) const THUMBNAIL_FOLDER_NAME: &str = ".thumbnails";
 
 pub(crate) static SCROLLABLE_ID: Lazy<scrollable::Id> = Lazy::new(scrollable::Id::unique);
 

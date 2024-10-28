@@ -5,6 +5,7 @@ use std::{
 };
 
 use iced::{
+    advanced::graphics::image::image_rs,
     futures::future,
     widget::{image::Handle, scrollable},
     Task,
@@ -15,7 +16,7 @@ use crate::{app::Message, pages::gallery::page::IMAGE_HEIGHT};
 
 use super::page::{
     GalleryPage, GalleryPageMessage, ImageRow, ARROW_KEY_SCROLL_AMOUNT, NUM_IMAGES_IN_ROW,
-    PAGE_KEY_SCROLL_AMOUNT, ROW_BATCH_SIZE, SCROLLABLE_ID,
+    PAGE_KEY_SCROLL_AMOUNT, ROW_BATCH_SIZE, SCROLLABLE_ID, THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE,
 };
 
 pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Message> {
@@ -98,7 +99,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 })
                 .collect();
             state.top_offset = 0.0;
-            if !state.gallery_list.is_empty() {
+            if state.gallery_list.len() > ROW_BATCH_SIZE {
                 state.bottom_offset =
                     (state.gallery_list.len() - ROW_BATCH_SIZE) as f32 * IMAGE_HEIGHT;
             }
@@ -119,7 +120,22 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                             |image_row| {
                                 future::join_all(image_row.images_data.into_iter().map(
                                     |(image_path, _)| async move {
-                                        let handle = Handle::from_path(&image_path);
+                                        let file_name = image_path.file_name().unwrap();
+                                        let mut thumbnail_path =
+                                            image_path.parent().unwrap().to_path_buf();
+                                        thumbnail_path.push(THUMBNAIL_FOLDER_NAME);
+                                        if !thumbnail_path.exists() {
+                                            fs::create_dir_all(&thumbnail_path).unwrap();
+                                        }
+                                        thumbnail_path.push(file_name);
+                                        if !thumbnail_path.exists() {
+                                            let img = image_rs::open(&image_path).unwrap();
+
+                                            let cropped =
+                                                img.thumbnail(THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+                                            cropped.save(&thumbnail_path).unwrap();
+                                        }
+                                        let handle = Handle::from_path(thumbnail_path);
                                         (image_path, handle)
                                     },
                                 ))
@@ -181,19 +197,23 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             let batch_to_load = images_scrolled_passed as usize / ROW_BATCH_SIZE;
 
             if state.loaded_batch_index != batch_to_load {
-                let images_to_unload_list = state
+                let images_to_unload_list = if let Some(images_to_unload_iter) = state
                     .gallery_list
                     .chunks(ROW_BATCH_SIZE)
                     .nth(state.loaded_batch_index)
-                    .unwrap()
-                    .to_vec();
+                {
+                    images_to_unload_iter.to_vec()
+                } else {
+                    vec![]
+                };
                 state.loaded_batch_index = batch_to_load;
-                let images_to_load_list = state
-                    .gallery_list
-                    .chunks(ROW_BATCH_SIZE)
-                    .nth(batch_to_load)
-                    .unwrap()
-                    .to_vec();
+                let images_to_load_list = if let Some(images_to_load_iter) =
+                    state.gallery_list.chunks(ROW_BATCH_SIZE).nth(batch_to_load)
+                {
+                    images_to_load_iter.to_vec()
+                } else {
+                    vec![]
+                };
                 state.top_offset = images_scrolled_passed as f32 * IMAGE_HEIGHT;
                 state.bottom_offset = (state.gallery_list.len() as f32
                     - ROW_BATCH_SIZE as f32

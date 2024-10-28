@@ -68,7 +68,8 @@ fn gallery_grid(state: &GalleryPage) -> Element<Message> {
                                 container(
                                     MouseArea::new(
                                         Image::new(image_handle)
-                                            .content_fit(iced::ContentFit::ScaleDown),
+                                            .content_fit(iced::ContentFit::ScaleDown)
+                                            .filter_method(image::FilterMethod::Nearest),
                                     )
                                     .on_press(
                                         Message::Gallery(
