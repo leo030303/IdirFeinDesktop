@@ -129,11 +129,36 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                                         }
                                         thumbnail_path.push(file_name);
                                         if !thumbnail_path.exists() {
-                                            let img = image_rs::open(&image_path).unwrap();
+                                            if let Ok(img) = image_rs::open(&image_path) {
+                                                let original_height = img.height();
+                                                let original_width = img.width();
 
-                                            let cropped =
-                                                img.thumbnail(THUMBNAIL_SIZE, THUMBNAIL_SIZE);
-                                            cropped.save(&thumbnail_path).unwrap();
+                                                let new_width;
+                                                let new_height;
+                                                let x_val;
+                                                let y_val;
+                                                if original_height > original_width {
+                                                    new_width = original_width;
+                                                    new_height = original_width;
+                                                    x_val = 0;
+                                                    y_val = (original_height / 2)
+                                                        - (original_width / 2);
+                                                } else {
+                                                    new_width = original_height;
+                                                    new_height = original_height;
+                                                    x_val = (original_width / 2)
+                                                        - (original_height / 2);
+                                                    y_val = 0;
+                                                }
+                                                let cropped = img
+                                                    .crop_imm(x_val, y_val, new_width, new_height);
+                                                let resized = cropped.resize(
+                                                    THUMBNAIL_SIZE,
+                                                    THUMBNAIL_SIZE,
+                                                    image_rs::imageops::FilterType::Nearest,
+                                                );
+                                                resized.save(&thumbnail_path).unwrap();
+                                            };
                                         }
                                         let handle = Handle::from_path(thumbnail_path);
                                         (image_path, handle)
