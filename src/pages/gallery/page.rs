@@ -33,14 +33,12 @@ pub struct GalleryPageConfig {
 pub struct GalleryPage {
     pub(crate) selected_folder: Option<PathBuf>,
     pub(crate) selected_image: Option<PathBuf>,
-    pub(crate) loaded_batch_index: usize,
+    pub(crate) first_loaded_row_index: usize,
     pub(crate) gallery_list: Vec<ImageRow>,
     pub(crate) scrollable_viewport_option: Option<Viewport>,
-    pub(crate) top_offset: f32,
-    pub(crate) bottom_offset: f32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ImageRow {
     pub loaded: bool,
     pub index: usize,
@@ -69,11 +67,9 @@ impl GalleryPage {
         Self {
             selected_folder: config.default_folder.clone(),
             gallery_list: vec![],
-            loaded_batch_index: 0,
+            first_loaded_row_index: 0,
             scrollable_viewport_option: None,
             selected_image: None,
-            top_offset: 0.0,
-            bottom_offset: 0.0,
         }
     }
 

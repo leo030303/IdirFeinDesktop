@@ -43,37 +43,40 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             let selected_folder = state.selected_folder.clone();
             return Task::perform(
                 async {
-                    let gallery_files_list: Vec<Vec<PathBuf>> =
-                        if let Some(selected_folder) = selected_folder {
-                            let directory_iterator = WalkDir::new(selected_folder).into_iter();
-                            let mut all_image_files = directory_iterator
-                                .filter_map(|read_dir_object| read_dir_object.ok())
-                                .map(|read_dir_object| read_dir_object.into_path())
-                                .filter(|path| {
-                                    path.extension().is_some_and(|extension_os_str| {
-                                        extension_os_str.to_str().is_some_and(|extension| {
-                                            extension == "jpg"
-                                                || extension == "jpeg"
-                                                || extension == "png"
-                                        })
+                    let gallery_files_list: Vec<Vec<PathBuf>> = if let Some(selected_folder) =
+                        selected_folder
+                    {
+                        let directory_iterator = WalkDir::new(selected_folder)
+                            .into_iter()
+                            .filter_entry(|entry| !entry.path().ends_with(THUMBNAIL_FOLDER_NAME));
+                        let mut all_image_files = directory_iterator
+                            .filter_map(|read_dir_object| read_dir_object.ok())
+                            .map(|read_dir_object| read_dir_object.into_path())
+                            .filter(|path| {
+                                path.extension().is_some_and(|extension_os_str| {
+                                    extension_os_str.to_str().is_some_and(|extension| {
+                                        extension == "jpg"
+                                            || extension == "jpeg"
+                                            || extension == "png"
                                     })
                                 })
-                                .collect::<Vec<PathBuf>>();
-                            all_image_files.sort_unstable_by(|file_path1, file_path2| {
-                                file_path1
-                                    .metadata()
-                                    .unwrap()
-                                    .st_mtime()
-                                    .cmp(&file_path2.metadata().unwrap().st_mtime())
-                                    .reverse()
-                            });
-                            all_image_files
-                                .chunks(NUM_IMAGES_IN_ROW)
-                                .map(|item| item.to_vec())
-                                .collect()
-                        } else {
-                            vec![]
-                        };
+                            })
+                            .collect::<Vec<PathBuf>>();
+                        all_image_files.sort_unstable_by(|file_path1, file_path2| {
+                            file_path1
+                                .metadata()
+                                .unwrap()
+                                .st_mtime()
+                                .cmp(&file_path2.metadata().unwrap().st_mtime())
+                                .reverse()
+                        });
+                        all_image_files
+                            .chunks(NUM_IMAGES_IN_ROW)
+                            .map(|item| item.to_vec())
+                            .collect()
+                    } else {
+                        vec![]
+                    };
                     gallery_files_list
                 },
                 |gallery_files_list| {
@@ -92,11 +95,6 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                     images_data: photo_vec.into_iter().map(|file| (file, None)).collect(),
                 })
                 .collect();
-            state.top_offset = 0.0;
-            if state.gallery_list.len() > ROW_BATCH_SIZE {
-                state.bottom_offset =
-                    (state.gallery_list.len() - ROW_BATCH_SIZE) as f32 * IMAGE_HEIGHT;
-            }
             return Task::done(Message::Gallery(GalleryPageMessage::LoadImageRows(
                 state
                     .gallery_list
@@ -212,32 +210,28 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::GalleryScrolled(viewport) => {
             state.scrollable_viewport_option = Some(viewport);
-            let images_scrolled_passed = viewport.absolute_offset().y as i64 / IMAGE_HEIGHT as i64;
-            let batch_to_load = images_scrolled_passed as usize / ROW_BATCH_SIZE;
+            let view_height = viewport.bounds().height;
+            let displayed_images = ((view_height / IMAGE_HEIGHT).ceil() + 1.0) as usize;
+            let images_scrolled_passed =
+                (viewport.absolute_offset().y / IMAGE_HEIGHT).floor() as usize;
 
-            if state.loaded_batch_index != batch_to_load {
-                let images_to_unload_list = if let Some(images_to_unload_iter) = state
+            if state.first_loaded_row_index != images_scrolled_passed {
+                let mut images_to_unload_list: Vec<ImageRow> = state
                     .gallery_list
-                    .chunks(ROW_BATCH_SIZE)
-                    .nth(state.loaded_batch_index)
-                {
-                    images_to_unload_iter.to_vec()
-                } else {
-                    vec![]
-                };
-                state.loaded_batch_index = batch_to_load;
-                let images_to_load_list = if let Some(images_to_load_iter) =
-                    state.gallery_list.chunks(ROW_BATCH_SIZE).nth(batch_to_load)
-                {
-                    images_to_load_iter.to_vec()
-                } else {
-                    vec![]
-                };
-                state.top_offset = images_scrolled_passed as f32 * IMAGE_HEIGHT;
-                state.bottom_offset = (state.gallery_list.len() as f32
-                    - ROW_BATCH_SIZE as f32
-                    - images_scrolled_passed as f32)
-                    * IMAGE_HEIGHT;
+                    .iter()
+                    .skip(state.first_loaded_row_index)
+                    .take(displayed_images)
+                    .cloned()
+                    .collect();
+                state.first_loaded_row_index = images_scrolled_passed;
+                let images_to_load_list: Vec<ImageRow> = state
+                    .gallery_list
+                    .iter()
+                    .skip(images_scrolled_passed)
+                    .take(displayed_images)
+                    .cloned()
+                    .collect();
+                images_to_unload_list.retain(|image_row| !images_to_load_list.contains(image_row));
 
                 return Task::done(Message::Gallery(GalleryPageMessage::LoadImageRows(
                     images_to_load_list,

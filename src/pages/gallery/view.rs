@@ -52,46 +52,41 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
 }
 
 fn gallery_grid(state: &GalleryPage) -> Element<Message> {
-    scrollable(column![
-        Space::with_height(Length::Fixed(state.top_offset)),
-        column(
-            state
-                .gallery_list
+    scrollable(column(state.gallery_list.iter().map(|image_row| {
+        if image_row.loaded {
+            row(image_row
+                .images_data
                 .iter()
-                .filter(|image_row| image_row.loaded)
-                .map(|image_row| {
-                    row(image_row
-                        .images_data
-                        .iter()
-                        .map(|(photo_path, handle_option)| {
-                            if let Some(image_handle) = handle_option {
-                                container(
-                                    MouseArea::new(
-                                        Image::new(image_handle)
-                                            .content_fit(iced::ContentFit::ScaleDown)
-                                            .filter_method(image::FilterMethod::Nearest),
-                                    )
-                                    .on_press(
-                                        Message::Gallery(
-                                            GalleryPageMessage::SelectImageForBigView(Some(
-                                                photo_path.to_path_buf(),
-                                            )),
-                                        ),
-                                    ),
-                                )
-                                .height(Length::Fixed(IMAGE_HEIGHT))
-                                .padding(20)
-                                .width(Length::FillPortion(1))
-                                .into()
-                            } else {
-                                Space::with_height(Length::Fixed(IMAGE_HEIGHT)).into()
-                            }
-                        }))
-                    .into()
-                })
-        ),
-        Space::with_height(Length::Fixed(state.bottom_offset))
-    ])
+                .map(|(photo_path, handle_option)| {
+                    if let Some(image_handle) = handle_option {
+                        container(
+                            MouseArea::new(
+                                Image::new(image_handle)
+                                    .content_fit(iced::ContentFit::ScaleDown)
+                                    .filter_method(image::FilterMethod::Nearest),
+                            )
+                            .on_press(Message::Gallery(
+                                GalleryPageMessage::SelectImageForBigView(Some(
+                                    photo_path.to_path_buf(),
+                                )),
+                            )),
+                        )
+                        .height(Length::Fill)
+                        .padding(5)
+                        .width(Length::FillPortion(1))
+                        .into()
+                    } else {
+                        Space::with_height(Length::Fixed(IMAGE_HEIGHT)).into()
+                    }
+                }))
+            .height(Length::Fixed(IMAGE_HEIGHT))
+            .into()
+        } else {
+            row![text("LOADING").center().width(Length::Fill)]
+                .height(Length::Fixed(IMAGE_HEIGHT))
+                .into()
+        }
+    })))
     .id(SCROLLABLE_ID.clone())
     .on_scroll(|viewport| Message::Gallery(GalleryPageMessage::GalleryScrolled(viewport)))
     .into()
