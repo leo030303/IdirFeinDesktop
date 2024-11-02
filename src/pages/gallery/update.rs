@@ -298,7 +298,16 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             }
         }
         GalleryPageMessage::SelectImageForBigView(image_path_option) => {
-            state.selected_image = image_path_option
+            state.selected_image = image_path_option;
+            if let Some(viewport) = state.scrollable_viewport_option {
+                return scrollable::scroll_to(
+                    SCROLLABLE_ID.clone(),
+                    scrollable::AbsoluteOffset {
+                        x: viewport.absolute_offset().x,
+                        y: viewport.absolute_offset().y,
+                    },
+                );
+            }
         }
     }
     Task::none()
