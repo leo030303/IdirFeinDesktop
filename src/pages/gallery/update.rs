@@ -3,6 +3,7 @@ use std::{
     os::linux::fs::MetadataExt,
     path::PathBuf,
 };
+use walkdir::WalkDir;
 
 use iced::{
     advanced::graphics::image::image_rs,
@@ -44,39 +45,32 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 async {
                     let gallery_files_list: Vec<Vec<PathBuf>> =
                         if let Some(selected_folder) = selected_folder {
-                            match fs::read_dir(selected_folder) {
-                                Ok(directory_iterator) => {
-                                    let mut all_image_files = directory_iterator
-                                        .filter_map(|read_dir_object| read_dir_object.ok())
-                                        .map(|read_dir_object| read_dir_object.path())
-                                        .filter(|path| {
-                                            path.extension().is_some_and(|extension_os_str| {
-                                                extension_os_str.to_str().is_some_and(|extension| {
-                                                    extension == "jpg"
-                                                        || extension == "jpeg"
-                                                        || extension == "png"
-                                                })
-                                            })
+                            let directory_iterator = WalkDir::new(selected_folder).into_iter();
+                            let mut all_image_files = directory_iterator
+                                .filter_map(|read_dir_object| read_dir_object.ok())
+                                .map(|read_dir_object| read_dir_object.into_path())
+                                .filter(|path| {
+                                    path.extension().is_some_and(|extension_os_str| {
+                                        extension_os_str.to_str().is_some_and(|extension| {
+                                            extension == "jpg"
+                                                || extension == "jpeg"
+                                                || extension == "png"
                                         })
-                                        .collect::<Vec<PathBuf>>();
-                                    all_image_files.sort_unstable_by(|file_path1, file_path2| {
-                                        file_path1
-                                            .metadata()
-                                            .unwrap()
-                                            .st_mtime()
-                                            .cmp(&file_path2.metadata().unwrap().st_mtime())
-                                            .reverse()
-                                    });
-                                    all_image_files
-                                        .chunks(NUM_IMAGES_IN_ROW)
-                                        .map(|item| item.to_vec())
-                                        .collect()
-                                }
-                                Err(err) => {
-                                    println!("Error reading directory: {err:?}");
-                                    vec![]
-                                }
-                            }
+                                    })
+                                })
+                                .collect::<Vec<PathBuf>>();
+                            all_image_files.sort_unstable_by(|file_path1, file_path2| {
+                                file_path1
+                                    .metadata()
+                                    .unwrap()
+                                    .st_mtime()
+                                    .cmp(&file_path2.metadata().unwrap().st_mtime())
+                                    .reverse()
+                            });
+                            all_image_files
+                                .chunks(NUM_IMAGES_IN_ROW)
+                                .map(|item| item.to_vec())
+                                .collect()
                         } else {
                             vec![]
                         };
