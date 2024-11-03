@@ -309,6 +309,13 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 );
             }
         }
+        GalleryPageMessage::EscapeKeyPressed => {
+            if state.selected_image.is_some() {
+                return Task::done(Message::Gallery(GalleryPageMessage::SelectImageForBigView(
+                    None,
+                )));
+            }
+        }
     }
     Task::none()
 }

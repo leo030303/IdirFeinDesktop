@@ -60,6 +60,7 @@ pub enum GalleryPageMessage {
     ArrowUpKeyPressed,
     PageDownKeyPressed,
     PageUpKeyPressed,
+    EscapeKeyPressed,
 }
 
 impl GalleryPage {
@@ -91,6 +92,13 @@ impl GalleryPage {
     }
     pub fn subscription() -> iced::Subscription<Message> {
         event::listen_with(|event, status, _id| match (event, status) {
+            (
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: Key::Named(Named::Escape),
+                    ..
+                }),
+                Status::Ignored,
+            ) => Some(Message::Gallery(GalleryPageMessage::EscapeKeyPressed)),
             (
                 Event::Keyboard(keyboard::Event::KeyPressed {
                     key: Key::Named(Named::ArrowUp),

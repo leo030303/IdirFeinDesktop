@@ -38,7 +38,7 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
                     None
                 )))
                 .width(Length::Fixed(50.0)),
-                "Close Image View",
+                "Close Image View (Esc)",
                 iced::widget::tooltip::Position::Bottom
             ),
         ],
