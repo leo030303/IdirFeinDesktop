@@ -480,10 +480,6 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         }
         NotesPageMessage::Undo => {
             if state.undo_manager.undo(&state.note_crdt).is_ok() {
-                println!(
-                    "Undo {}",
-                    state.note_crdt.get_text(LORO_NOTE_ID).to_string()
-                );
                 let (cursor_y, cursor_x) = state.editor_content.cursor_position();
                 state.editor_content = text_editor::Content::with_text(
                     &state.note_crdt.get_text(LORO_NOTE_ID).to_string(),
@@ -497,10 +493,6 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         }
         NotesPageMessage::Redo => {
             if state.undo_manager.redo(&state.note_crdt).is_ok() {
-                println!(
-                    "Redo {}",
-                    state.note_crdt.get_text(LORO_NOTE_ID).to_string()
-                );
                 let (cursor_y, cursor_x) = state.editor_content.cursor_position();
                 state.editor_content = text_editor::Content::with_text(
                     &state.note_crdt.get_text(LORO_NOTE_ID).to_string(),

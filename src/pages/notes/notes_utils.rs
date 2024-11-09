@@ -97,10 +97,6 @@ pub fn apply_edit_to_note(state: &mut NotesPage, edit_action: text_editor::Edit)
         .undo_manager
         .record_new_checkpoint(&state.note_crdt)
         .unwrap();
-    println!(
-        "Current: {}",
-        state.note_crdt.get_text(LORO_NOTE_ID).to_string()
-    );
 }
 
 /// Returns the starting offset and the length of the current selection in the editor

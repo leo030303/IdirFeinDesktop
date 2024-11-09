@@ -18,7 +18,7 @@ use super::view::{main_view, tool_view};
 pub const NEW_NOTE_TEXT_INPUT_ID: &str = "NEW_NOTE_TEXT_INPUT_ID";
 pub const RENAME_NOTE_TEXT_INPUT_ID: &str = "RENAME_NOTE_TEXT_INPUT_ID";
 pub const LORO_NOTE_ID: &str = "LORO_NOTE_ID";
-pub const MAX_UNDO_STEPS: usize = 1000;
+pub const MAX_UNDO_STEPS: usize = 10000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NoteCategory {
