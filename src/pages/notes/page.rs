@@ -18,6 +18,7 @@ use super::view::{main_view, tool_view};
 pub const NEW_NOTE_TEXT_INPUT_ID: &str = "NEW_NOTE_TEXT_INPUT_ID";
 pub const RENAME_NOTE_TEXT_INPUT_ID: &str = "RENAME_NOTE_TEXT_INPUT_ID";
 pub const LORO_NOTE_ID: &str = "LORO_NOTE_ID";
+pub const INITIAL_ORIGIN_STR: &str = "initial";
 pub const MAX_UNDO_STEPS: usize = 10000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -178,7 +179,7 @@ impl NotesPage {
         let loro_doc = LoroDoc::new();
         let mut undo_manager = UndoManager::new(&loro_doc);
         undo_manager.set_max_undo_steps(MAX_UNDO_STEPS);
-        undo_manager.add_exclude_origin_prefix("initial");
+        undo_manager.add_exclude_origin_prefix(INITIAL_ORIGIN_STR);
 
         Self {
             editor_content: text_editor::Content::with_text(""),

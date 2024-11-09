@@ -17,8 +17,8 @@ use super::{
         read_notes_from_folder, NoteStatistics,
     },
     page::{
-        NoteCategory, NotesPage, NotesPageMessage, SerializableColour, LORO_NOTE_ID,
-        MAX_UNDO_STEPS, NEW_NOTE_TEXT_INPUT_ID, RENAME_NOTE_TEXT_INPUT_ID,
+        NoteCategory, NotesPage, NotesPageMessage, SerializableColour, INITIAL_ORIGIN_STR,
+        LORO_NOTE_ID, MAX_UNDO_STEPS, NEW_NOTE_TEXT_INPUT_ID, RENAME_NOTE_TEXT_INPUT_ID,
     },
 };
 
@@ -155,11 +155,16 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             let _ = temp_crdt.get_text(LORO_NOTE_ID).insert(0, &new_content);
             state
                 .note_crdt
-                .import_with(&temp_crdt.export_from(&VersionVector::new()), "initial")
+                .import_with(
+                    &temp_crdt.export_from(&VersionVector::new()),
+                    INITIAL_ORIGIN_STR,
+                )
                 .unwrap();
             state.undo_manager = UndoManager::new(&state.note_crdt);
             state.undo_manager.set_max_undo_steps(MAX_UNDO_STEPS);
-            state.undo_manager.add_exclude_origin_prefix("initial");
+            state
+                .undo_manager
+                .add_exclude_origin_prefix(INITIAL_ORIGIN_STR);
             state.markdown_preview_items = markdown::parse(&state.editor_content.text()).collect();
             state.is_loading_note = false;
         }
@@ -231,7 +236,9 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                 state.note_crdt = LoroDoc::new();
                 state.undo_manager = UndoManager::new(&state.note_crdt);
                 state.undo_manager.set_max_undo_steps(MAX_UNDO_STEPS);
-                state.undo_manager.add_exclude_origin_prefix("initial");
+                state
+                    .undo_manager
+                    .add_exclude_origin_prefix(INITIAL_ORIGIN_STR);
                 state.markdown_preview_items =
                     markdown::parse(&state.editor_content.text()).collect();
                 let mut new_path = selected_folder.clone();
@@ -310,7 +317,9 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                 state.note_crdt = LoroDoc::new();
                 state.undo_manager = UndoManager::new(&state.note_crdt);
                 state.undo_manager.set_max_undo_steps(MAX_UNDO_STEPS);
-                state.undo_manager.add_exclude_origin_prefix("initial");
+                state
+                    .undo_manager
+                    .add_exclude_origin_prefix(INITIAL_ORIGIN_STR);
                 state.markdown_preview_items =
                     markdown::parse(&state.editor_content.text()).collect();
                 return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList)).chain(
