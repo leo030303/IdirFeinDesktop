@@ -97,7 +97,6 @@ impl SettingsPage {
     }
 
     pub fn closing_task(&mut self) -> Task<Message> {
-        println!("Closing task from settings");
         Task::none()
     }
 

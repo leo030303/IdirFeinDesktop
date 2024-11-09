@@ -1,3 +1,4 @@
+use iced::widget::text_editor;
 use regex::Regex;
 use std::{
     error::Error,
@@ -10,7 +11,7 @@ use std::{
 use pulldown_cmark::Options;
 use walkdir::WalkDir;
 
-use super::page::{Note, NoteCategory, NotesPage, SerializableColour};
+use super::page::{Note, NoteCategory, NotesPage, SerializableColour, LORO_NOTE_ID};
 
 #[derive(Debug, Clone)]
 pub struct NoteStatistics {
@@ -35,6 +36,124 @@ pub enum ListAction {
     NoAction,
     AddUnorderedListItem(char),
     DeleteUnorderedListItem(usize),
+}
+
+pub fn apply_edit_to_note(state: &mut NotesPage, edit_action: text_editor::Edit) {
+    let mut editor_offset = get_editor_offset(&state.editor_content);
+    let selected_text_option = get_selection_location(&state.editor_content, editor_offset);
+    let skip_deletes_due_to_selections = selected_text_option.is_some();
+    if let Some((start_offset, selection_length)) = selected_text_option {
+        state
+            .note_crdt
+            .get_text(LORO_NOTE_ID)
+            .delete_utf8(start_offset, selection_length)
+            .unwrap();
+        editor_offset = start_offset;
+    }
+    state
+        .editor_content
+        .perform(text_editor::Action::Edit(edit_action.clone()));
+
+    match edit_action {
+        text_editor::Edit::Insert(insert_content) => {
+            state
+                .note_crdt
+                .get_text(LORO_NOTE_ID)
+                .insert(editor_offset, &insert_content.to_string())
+                .unwrap();
+        }
+        text_editor::Edit::Paste(paste_content) => {
+            state
+                .note_crdt
+                .get_text(LORO_NOTE_ID)
+                .insert(editor_offset, &paste_content)
+                .unwrap();
+        }
+        text_editor::Edit::Enter => {
+            state
+                .note_crdt
+                .get_text(LORO_NOTE_ID)
+                .insert(editor_offset, "\n")
+                .unwrap();
+        }
+        text_editor::Edit::Backspace => {
+            if !skip_deletes_due_to_selections && editor_offset > 0 {
+                let _ = state
+                    .note_crdt
+                    .get_text(LORO_NOTE_ID)
+                    .delete(editor_offset - 1, 1);
+            }
+        }
+        text_editor::Edit::Delete => {
+            if !skip_deletes_due_to_selections {
+                let _ = state
+                    .note_crdt
+                    .get_text(LORO_NOTE_ID)
+                    .delete(editor_offset, 1);
+            }
+        }
+    }
+    state
+        .undo_manager
+        .record_new_checkpoint(&state.note_crdt)
+        .unwrap();
+    println!(
+        "Current: {}",
+        state.note_crdt.get_text(LORO_NOTE_ID).to_string()
+    );
+}
+
+/// Returns the starting offset and the length of the current selection in the editor
+fn get_selection_location(
+    editor_content: &text_editor::Content,
+    editor_offset: usize,
+) -> Option<(usize, usize)> {
+    if let Some(selected_text) = editor_content.selection() {
+        let pattern = Regex::new(&regex::escape(&selected_text)).unwrap();
+        let mut matches_vec = vec![];
+        let editor_text = editor_content.text();
+        let mut editor_text_str = editor_text.as_str();
+        while let Some(matched) = pattern.find(editor_text_str) {
+            matches_vec.push(matched);
+            if let Some(new_text_tuple) = editor_text_str.split_at_checked(matched.start() + 1) {
+                editor_text_str = new_text_tuple.0;
+            } else {
+                break;
+            }
+        }
+        let selected_matched = matches_vec
+            .into_iter()
+            .find(|match_val| (match_val.start()..(match_val.end() + 1)).contains(&editor_offset));
+        selected_matched.map(|match_val| (match_val.start(), match_val.len()))
+    } else {
+        None
+    }
+}
+
+fn get_editor_offset(editor_content: &text_editor::Content) -> usize {
+    let (cursor_y, cursor_x) = editor_content.cursor_position();
+    editor_content
+        .lines()
+        .take(cursor_y)
+        .fold(cursor_x, |accumulator, current_line| {
+            accumulator + current_line.len() + 1
+        })
+}
+
+pub fn move_cursor_to_position(
+    editor_content: &mut text_editor::Content,
+    x_pos: usize,
+    y_pos: usize,
+) {
+    editor_content.perform(text_editor::Action::Move(
+        text_editor::Motion::DocumentStart,
+    ));
+    for _ in 0..y_pos {
+        editor_content.perform(text_editor::Action::Move(text_editor::Motion::Down));
+    }
+    for _ in 0..x_pos {
+        editor_content.perform(text_editor::Action::Move(text_editor::Motion::Right));
+    }
 }
 
 // TODO Get this working for ordered lists
@@ -139,7 +258,10 @@ pub fn find_nested_folder_name(original_folder: &PathBuf, file_path: &Path) -> O
     None
 }
 
-pub async fn export_pdf(text_to_convert: String, md_file_path: Option<PathBuf>) -> (bool, String) {
+pub async fn export_pdf(
+    _text_to_convert: String,
+    _md_file_path: Option<PathBuf>,
+) -> (bool, String) {
     todo!()
     // let html_content = convert_to_html(&text_to_convert);
 

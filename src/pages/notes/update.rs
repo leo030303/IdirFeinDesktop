@@ -2,18 +2,23 @@ use iced::{
     widget::{markdown, text_editor, text_input},
     Task,
 };
+use loro::{LoroDoc, UndoManager, VersionVector};
 use rfd::FileDialog;
 use std::{fs, path::PathBuf};
 
-use crate::{app::Message, pages::notes::notes_utils::parse_markdown_lists};
+use crate::{
+    app::Message,
+    pages::notes::notes_utils::{move_cursor_to_position, parse_markdown_lists},
+};
 
 use super::{
     notes_utils::{
-        export_pdf, export_to_website, read_file_to_note, read_notes_from_folder, NoteStatistics,
+        apply_edit_to_note, export_pdf, export_to_website, read_file_to_note,
+        read_notes_from_folder, NoteStatistics,
     },
     page::{
-        NoteCategory, NotesPage, NotesPageMessage, SerializableColour, NEW_NOTE_TEXT_INPUT_ID,
-        RENAME_NOTE_TEXT_INPUT_ID,
+        NoteCategory, NotesPage, NotesPageMessage, SerializableColour, LORO_NOTE_ID,
+        MAX_UNDO_STEPS, NEW_NOTE_TEXT_INPUT_ID, RENAME_NOTE_TEXT_INPUT_ID,
     },
 };
 
@@ -27,53 +32,37 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                     let list_action = parse_markdown_lists(state);
                     match list_action {
                         crate::pages::notes::notes_utils::ListAction::NoAction => {
-                            state
-                                .editor_content
-                                .perform(text_editor::Action::Edit(text_editor::Edit::Enter));
+                            apply_edit_to_note(state, text_editor::Edit::Enter);
                         }
                         crate::pages::notes::notes_utils::ListAction::AddUnorderedListItem(
                             list_char,
                         ) => {
-                            state
-                                .editor_content
-                                .perform(text_editor::Action::Edit(text_editor::Edit::Enter));
-                            state.editor_content.perform(text_editor::Action::Edit(
-                                text_editor::Edit::Insert(list_char),
-                            ));
-                            state
-                                .editor_content
-                                .perform(text_editor::Action::Edit(text_editor::Edit::Insert(' ')));
+                            apply_edit_to_note(state, text_editor::Edit::Enter);
+                            apply_edit_to_note(state, text_editor::Edit::Insert(list_char));
+                            apply_edit_to_note(state, text_editor::Edit::Insert(' '));
                         }
                         crate::pages::notes::notes_utils::ListAction::DeleteUnorderedListItem(
                             cursor_position_in_line,
                         ) => {
                             if cursor_position_in_line == 0 {
-                                state
-                                    .editor_content
-                                    .perform(text_editor::Action::Edit(text_editor::Edit::Delete));
-                                state
-                                    .editor_content
-                                    .perform(text_editor::Action::Edit(text_editor::Edit::Delete));
+                                apply_edit_to_note(state, text_editor::Edit::Delete);
+                                apply_edit_to_note(state, text_editor::Edit::Delete);
                             } else if cursor_position_in_line == 1 {
-                                state
-                                    .editor_content
-                                    .perform(text_editor::Action::Edit(text_editor::Edit::Delete));
-                                state.editor_content.perform(text_editor::Action::Edit(
-                                    text_editor::Edit::Backspace,
-                                ));
+                                apply_edit_to_note(state, text_editor::Edit::Delete);
+                                apply_edit_to_note(state, text_editor::Edit::Backspace);
                             } else {
-                                state.editor_content.perform(text_editor::Action::Edit(
-                                    text_editor::Edit::Backspace,
-                                ));
-                                state.editor_content.perform(text_editor::Action::Edit(
-                                    text_editor::Edit::Backspace,
-                                ));
+                                apply_edit_to_note(state, text_editor::Edit::Backspace);
+                                apply_edit_to_note(state, text_editor::Edit::Backspace);
                             }
                         }
                     }
+                } else if let text_editor::Action::Edit(edit_action) = action {
+                    apply_edit_to_note(state, edit_action);
                 } else {
                     state.editor_content.perform(action);
                 }
+            } else if let text_editor::Action::Edit(edit_action) = action {
+                apply_edit_to_note(state, edit_action);
             } else {
                 state.editor_content.perform(action);
             }
@@ -161,6 +150,16 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         }
         NotesPageMessage::SetTextEditorContent(new_content) => {
             state.editor_content = text_editor::Content::with_text(&new_content);
+            state.note_crdt = LoroDoc::new();
+            let temp_crdt = LoroDoc::new();
+            let _ = temp_crdt.get_text(LORO_NOTE_ID).insert(0, &new_content);
+            state
+                .note_crdt
+                .import_with(&temp_crdt.export_from(&VersionVector::new()), "initial")
+                .unwrap();
+            state.undo_manager = UndoManager::new(&state.note_crdt);
+            state.undo_manager.set_max_undo_steps(MAX_UNDO_STEPS);
+            state.undo_manager.add_exclude_origin_prefix("initial");
             state.markdown_preview_items = markdown::parse(&state.editor_content.text()).collect();
             state.is_loading_note = false;
         }
@@ -213,18 +212,6 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         NotesPageMessage::SetNoteStatistics(note_statistics) => {
             state.current_note_statistics = note_statistics;
         }
-        NotesPageMessage::InsertTitle => {
-            state.note_is_dirty = true;
-            state
-                .editor_content
-                .perform(text_editor::Action::Edit(text_editor::Edit::Enter));
-            state
-                .editor_content
-                .perform(text_editor::Action::Edit(text_editor::Edit::Insert('#')));
-            state
-                .editor_content
-                .perform(text_editor::Action::Edit(text_editor::Edit::Insert(' ')));
-        }
         NotesPageMessage::SetAutoCompleteLists(b) => {
             state.autocomplete_lists = b;
         }
@@ -241,6 +228,10 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                 };
                 state.note_is_dirty = true;
                 state.editor_content = text_editor::Content::new();
+                state.note_crdt = LoroDoc::new();
+                state.undo_manager = UndoManager::new(&state.note_crdt);
+                state.undo_manager.set_max_undo_steps(MAX_UNDO_STEPS);
+                state.undo_manager.add_exclude_origin_prefix("initial");
                 state.markdown_preview_items =
                     markdown::parse(&state.editor_content.text()).collect();
                 let mut new_path = selected_folder.clone();
@@ -316,6 +307,10 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                 }
                 state.current_note_being_managed_path = None;
                 state.editor_content = text_editor::Content::new();
+                state.note_crdt = LoroDoc::new();
+                state.undo_manager = UndoManager::new(&state.note_crdt);
+                state.undo_manager.set_max_undo_steps(MAX_UNDO_STEPS);
+                state.undo_manager.add_exclude_origin_prefix("initial");
                 state.markdown_preview_items =
                     markdown::parse(&state.editor_content.text()).collect();
                 return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList)).chain(
@@ -482,6 +477,40 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         }
         NotesPageMessage::SetWebsiteFolder(selected_folder) => {
             state.website_folder = selected_folder
+        }
+        NotesPageMessage::Undo => {
+            if state.undo_manager.undo(&state.note_crdt).is_ok() {
+                println!(
+                    "Undo {}",
+                    state.note_crdt.get_text(LORO_NOTE_ID).to_string()
+                );
+                let (cursor_y, cursor_x) = state.editor_content.cursor_position();
+                state.editor_content = text_editor::Content::with_text(
+                    &state.note_crdt.get_text(LORO_NOTE_ID).to_string(),
+                );
+                move_cursor_to_position(&mut state.editor_content, cursor_x, cursor_y);
+                state.note_is_dirty = true;
+
+                state.markdown_preview_items =
+                    markdown::parse(&state.editor_content.text()).collect();
+            }
+        }
+        NotesPageMessage::Redo => {
+            if state.undo_manager.redo(&state.note_crdt).is_ok() {
+                println!(
+                    "Redo {}",
+                    state.note_crdt.get_text(LORO_NOTE_ID).to_string()
+                );
+                let (cursor_y, cursor_x) = state.editor_content.cursor_position();
+                state.editor_content = text_editor::Content::with_text(
+                    &state.note_crdt.get_text(LORO_NOTE_ID).to_string(),
+                );
+                move_cursor_to_position(&mut state.editor_content, cursor_x, cursor_y);
+                state.note_is_dirty = true;
+
+                state.markdown_preview_items =
+                    markdown::parse(&state.editor_content.text()).collect();
+            }
         }
     }
     Task::none()

@@ -1,6 +1,6 @@
 use crate::pages::notes::notes_utils::get_colour_for_category;
 use iced::Alignment::Center;
-use iced_aw::{badge, color_picker, drop_down, style, DropDown};
+use iced_aw::{badge, color_picker, drop_down, DropDown};
 
 use iced::alignment::Horizontal;
 use iced::widget::{
@@ -165,7 +165,7 @@ fn rename_note_view(state: &NotesPage) -> Element<Message> {
     .into()
 }
 
-fn confirm_delete_note_view(state: &NotesPage) -> Element<Message> {
+fn confirm_delete_note_view(_state: &NotesPage) -> Element<Message> {
     row![
         button(text("Delete").width(Length::Fill).align_x(Center))
             .style(button::danger)
@@ -326,28 +326,13 @@ fn loading_note_view(_state: &NotesPage) -> Element<Message> {
 }
 
 fn editor_view(state: &NotesPage) -> Element<Message> {
-    column![
-        if state.show_format_toolbar {
-            row![Tooltip::new(
-                button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                    "../../../icons/header1.svg"
-                ))))
-                .on_press(Message::Notes(NotesPageMessage::InsertTitle)),
-                "Insert Title",
-                iced::widget::tooltip::Position::Bottom
-            ),]
-            .height(Length::Fixed(30.0))
-        } else {
-            row![]
-        },
-        text_editor(&state.editor_content)
-            .placeholder("Type your Markdown here...")
-            .on_action(|action| Message::Notes(NotesPageMessage::Edit(action)))
-            .height(Fill)
-            .padding(10)
-            .font(Font::MONOSPACE)
-            .highlight("markdown", highlighter::Theme::Base16Ocean)
-    ]
+    column![text_editor(&state.editor_content)
+        .placeholder("Type your Markdown here...")
+        .on_action(|action| Message::Notes(NotesPageMessage::Edit(action)))
+        .height(Fill)
+        .padding(10)
+        .font(Font::MONOSPACE)
+        .highlight("markdown", highlighter::Theme::Base16Ocean)]
     .into()
 }
 

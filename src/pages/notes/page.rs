@@ -6,6 +6,7 @@ use iced::keyboard::{Key, Modifiers};
 use iced::widget::{markdown, text_editor};
 use iced::{event, keyboard, time, Event, Subscription, Task};
 use iced::{Element, Theme};
+use loro::{LoroDoc, UndoManager};
 use serde::{Deserialize, Serialize};
 
 use crate::app::Message;
@@ -14,16 +15,10 @@ use super::notes_utils::NoteStatistics;
 use super::update::update;
 use super::view::{main_view, tool_view};
 
-// TODO Make it all look nice
-// TODO Format shortcut bar to insert markdown items
-// TODO Add ability to set category for note
-// TODO Add ability to set category colours
-// TODO Add category filter
-// TODO Sync scrolling between editor and preview
-// TODO Export as HTML and add to website
-
 pub const NEW_NOTE_TEXT_INPUT_ID: &str = "NEW_NOTE_TEXT_INPUT_ID";
 pub const RENAME_NOTE_TEXT_INPUT_ID: &str = "RENAME_NOTE_TEXT_INPUT_ID";
+pub const LORO_NOTE_ID: &str = "LORO_NOTE_ID";
+pub const MAX_UNDO_STEPS: usize = 1000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NoteCategory {
@@ -91,6 +86,8 @@ impl Default for NotesPageConfig {
 
 pub struct NotesPage {
     pub(crate) editor_content: text_editor::Content,
+    pub(crate) note_crdt: LoroDoc,
+    pub(crate) undo_manager: UndoManager,
     pub(crate) markdown_preview_items: Vec<markdown::Item>,
     pub(crate) theme: Theme,
     pub(crate) show_sidebar: bool,
@@ -145,7 +142,6 @@ pub enum NotesPageMessage {
     CalculateNoteStatistics,
     SetNoteStatistics(NoteStatistics),
     LoadFolderAsNotesList,
-    InsertTitle,
     SetAutoCompleteLists(bool),
     SetShowFormatToolbar(bool),
     SetConfirmBeforeDelete(bool),
@@ -171,14 +167,23 @@ pub enum NotesPageMessage {
     SetColourPickerColour(iced::Color),
     ToggleColourPicker,
     SetWebsiteFolder(Option<PathBuf>),
+    Undo,
+    Redo,
 }
 
 impl NotesPage {
     pub fn new(config: &NotesPageConfig) -> Self {
         let theme = Theme::TokyoNight;
 
+        let loro_doc = LoroDoc::new();
+        let mut undo_manager = UndoManager::new(&loro_doc);
+        undo_manager.set_max_undo_steps(MAX_UNDO_STEPS);
+        undo_manager.add_exclude_origin_prefix("initial");
+
         Self {
             editor_content: text_editor::Content::with_text(""),
+            undo_manager,
+            note_crdt: loro_doc,
             markdown_preview_items: markdown::parse("").collect(),
             theme,
             show_sidebar: config.show_sidebar_on_start,
@@ -255,6 +260,10 @@ impl NotesPage {
                         Some(Message::Notes(NotesPageMessage::ToggleMarkdown))
                     } else if pressed_char.as_ref() == "e" || pressed_char.as_ref() == "E" {
                         Some(Message::Notes(NotesPageMessage::ToggleEditor))
+                    } else if pressed_char.as_ref() == "z" || pressed_char.as_ref() == "Z" {
+                        Some(Message::Notes(NotesPageMessage::Undo))
+                    } else if pressed_char.as_ref() == "y" || pressed_char.as_ref() == "Y" {
+                        Some(Message::Notes(NotesPageMessage::Redo))
                     } else {
                         None
                     }

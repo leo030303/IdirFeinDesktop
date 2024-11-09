@@ -24,7 +24,6 @@ impl FileManagerPage {
     }
 
     pub fn closing_task(&mut self) -> Task<Message> {
-        println!("Closing task from files");
         Task::none()
     }
 
