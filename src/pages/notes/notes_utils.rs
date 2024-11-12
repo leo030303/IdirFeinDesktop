@@ -70,11 +70,27 @@ pub fn apply_edit_to_note(state: &mut NotesPage, edit_action: text_editor::Edit)
                 .unwrap();
         }
         text_editor::Edit::Enter => {
-            state
-                .note_crdt
-                .get_text(LORO_NOTE_ID)
-                .insert(editor_offset, "\n")
-                .unwrap();
+            if state.note_crdt.get_text(LORO_NOTE_ID).to_string().len() == editor_offset + 1 {
+                if let Some("\n") = state
+                    .note_crdt
+                    .get_text(LORO_NOTE_ID)
+                    .to_string()
+                    .get(editor_offset..(editor_offset + 1))
+                {
+                } else {
+                    state
+                        .note_crdt
+                        .get_text(LORO_NOTE_ID)
+                        .insert(editor_offset, "\n")
+                        .unwrap();
+                }
+            } else {
+                state
+                    .note_crdt
+                    .get_text(LORO_NOTE_ID)
+                    .insert(editor_offset, "\n")
+                    .unwrap();
+            }
         }
         text_editor::Edit::Backspace => {
             if !skip_deletes_due_to_selections && editor_offset > 0 {
@@ -93,6 +109,17 @@ pub fn apply_edit_to_note(state: &mut NotesPage, edit_action: text_editor::Edit)
             }
         }
     }
+    if let Some('\n') = state.note_crdt.get_text(LORO_NOTE_ID).to_string().pop() {
+    } else {
+        state
+            .note_crdt
+            .get_text(LORO_NOTE_ID)
+            .insert(
+                state.note_crdt.get_text(LORO_NOTE_ID).to_string().len(),
+                "\n",
+            )
+            .unwrap();
+    }
     state
         .undo_manager
         .record_new_checkpoint(&state.note_crdt)
@@ -109,18 +136,22 @@ fn get_selection_location(
         let mut matches_vec = vec![];
         let editor_text = editor_content.text();
         let mut editor_text_str = editor_text.as_str();
+        let mut editor_text_str_offset = 0;
         while let Some(matched) = pattern.find(editor_text_str) {
-            matches_vec.push(matched);
+            matches_vec.push((editor_text_str_offset, matched));
             if let Some(new_text_tuple) = editor_text_str.split_at_checked(matched.start() + 1) {
-                editor_text_str = new_text_tuple.0;
+                editor_text_str = new_text_tuple.1;
+                editor_text_str_offset += new_text_tuple.0.len();
             } else {
                 break;
             }
         }
-        let selected_matched = matches_vec
-            .into_iter()
-            .find(|match_val| (match_val.start()..(match_val.end() + 1)).contains(&editor_offset));
-        selected_matched.map(|match_val| (match_val.start(), match_val.len()))
+        let selected_matched = matches_vec.into_iter().find(|(match_offset, match_val)| {
+            (match_offset + match_val.start()..(match_offset + match_val.end() + 1))
+                .contains(&editor_offset)
+        });
+        selected_matched
+            .map(|(match_offset, match_val)| (match_offset + match_val.start(), match_val.len()))
     } else {
         None
     }
@@ -391,5 +422,212 @@ pub async fn export_to_website(
             false,
             String::from("Can't export, markdown filename is not set"),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use text_editor::Edit;
+
+    use crate::pages::notes::page::NotesPageConfig;
+
+    use super::*;
+    #[test]
+    fn loro_state_matches_editor_state() {
+        let mut test_state = NotesPage::new(&NotesPageConfig::default());
+        let list_of_actions = vec![
+            text_editor::Action::Edit(Edit::Insert('e')),
+            text_editor::Action::Edit(Edit::Insert('e')),
+            text_editor::Action::Edit(Edit::Delete),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("appleja".to_string()))),
+            text_editor::Action::Edit(Edit::Insert('x')),
+            text_editor::Action::Edit(Edit::Insert('p')),
+            text_editor::Action::Edit(Edit::Insert(' ')),
+            text_editor::Action::Edit(Edit::Insert('u')),
+            text_editor::Action::Edit(Edit::Insert('l')),
+            text_editor::Action::Edit(Edit::Enter),
+            text_editor::Action::Move(text_editor::Motion::Left),
+            text_editor::Action::Edit(Edit::Insert('C')),
+            text_editor::Action::Edit(Edit::Insert('T')),
+            text_editor::Action::Edit(Edit::Insert('Q')),
+            text_editor::Action::Select(text_editor::Motion::Left),
+            text_editor::Action::Edit(Edit::Backspace),
+            text_editor::Action::Edit(Edit::Insert('p')),
+            text_editor::Action::Edit(Edit::Delete),
+            text_editor::Action::Edit(Edit::Insert('9')),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("sancjncq".to_string()))),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("i\ncpiqnwoicnsancsa".to_string()))),
+            text_editor::Action::Edit(Edit::Insert('k')),
+            text_editor::Action::Edit(Edit::Insert('a')),
+            text_editor::Action::Edit(Edit::Enter),
+            text_editor::Action::Edit(Edit::Backspace),
+            text_editor::Action::Edit(Edit::Insert('e')),
+            text_editor::Action::Edit(Edit::Insert('g')),
+            text_editor::Action::Edit(Edit::Insert('K')),
+            text_editor::Action::Move(text_editor::Motion::Right),
+            text_editor::Action::Move(text_editor::Motion::WordLeft),
+            text_editor::Action::Select(text_editor::Motion::WordLeft),
+            text_editor::Action::Edit(Edit::Insert('3')),
+            text_editor::Action::Edit(Edit::Enter),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("pajspiajoifuewbewnvckd".to_string()))),
+            text_editor::Action::Edit(Edit::Backspace),
+            text_editor::Action::Edit(Edit::Delete),
+            text_editor::Action::Edit(Edit::Insert('e')),
+            text_editor::Action::Edit(Edit::Insert('e')),
+            text_editor::Action::Edit(Edit::Delete),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("appleja".to_string()))),
+            text_editor::Action::Select(text_editor::Motion::PageUp),
+            text_editor::Action::Edit(Edit::Insert('x')),
+            text_editor::Action::Edit(Edit::Insert('p')),
+            text_editor::Action::Edit(Edit::Insert('u')),
+            text_editor::Action::Move(text_editor::Motion::DocumentStart),
+            text_editor::Action::Edit(Edit::Insert('l')),
+            text_editor::Action::Edit(Edit::Enter),
+            text_editor::Action::Move(text_editor::Motion::Left),
+            text_editor::Action::Edit(Edit::Insert('C')),
+            text_editor::Action::Edit(Edit::Insert('T')),
+            text_editor::Action::Edit(Edit::Insert('Q')),
+            text_editor::Action::Edit(Edit::Enter),
+            text_editor::Action::Edit(Edit::Backspace),
+            text_editor::Action::Move(text_editor::Motion::Up),
+            text_editor::Action::Edit(Edit::Insert('p')),
+            text_editor::Action::Edit(Edit::Delete),
+            text_editor::Action::Edit(Edit::Insert('9')),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("sancjncq".to_string()))),
+            text_editor::Action::Move(text_editor::Motion::Down),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("i\ncpiqnwoicnsancsa".to_string()))),
+            text_editor::Action::Edit(Edit::Insert('k')),
+            text_editor::Action::Edit(Edit::Insert('a')),
+            text_editor::Action::Move(text_editor::Motion::PageDown),
+            text_editor::Action::Edit(Edit::Enter),
+            text_editor::Action::Edit(Edit::Backspace),
+            text_editor::Action::Edit(Edit::Insert('e')),
+            text_editor::Action::Edit(Edit::Insert('g')),
+            text_editor::Action::Move(text_editor::Motion::DocumentEnd),
+            text_editor::Action::Edit(Edit::Insert('K')),
+            text_editor::Action::Edit(Edit::Insert('3')),
+            text_editor::Action::Edit(Edit::Enter),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("pajspiajoifuewbewnvckd".to_string()))),
+            text_editor::Action::Edit(Edit::Backspace),
+            text_editor::Action::Edit(Edit::Delete),
+            text_editor::Action::Edit(Edit::Insert('e')),
+            text_editor::Action::Edit(Edit::Insert('e')),
+            text_editor::Action::Edit(Edit::Delete),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("appleja".to_string()))),
+            text_editor::Action::Edit(Edit::Insert('x')),
+            text_editor::Action::Edit(Edit::Insert('p')),
+            text_editor::Action::Edit(Edit::Insert(' ')),
+            text_editor::Action::Edit(Edit::Insert('u')),
+            text_editor::Action::Edit(Edit::Insert('l')),
+            text_editor::Action::Edit(Edit::Enter),
+            text_editor::Action::Move(text_editor::Motion::Left),
+            text_editor::Action::Edit(Edit::Insert('C')),
+            text_editor::Action::Edit(Edit::Insert('T')),
+            text_editor::Action::Edit(Edit::Insert('Q')),
+            text_editor::Action::Select(text_editor::Motion::Left),
+            text_editor::Action::Edit(Edit::Backspace),
+            text_editor::Action::Edit(Edit::Insert('p')),
+            text_editor::Action::Edit(Edit::Delete),
+            text_editor::Action::Edit(Edit::Insert('9')),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("sancjncq".to_string()))),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("i\ncpiqnwoicnsancsa".to_string()))),
+            text_editor::Action::Edit(Edit::Insert('k')),
+            text_editor::Action::Edit(Edit::Insert('a')),
+            text_editor::Action::Edit(Edit::Enter),
+            text_editor::Action::Edit(Edit::Backspace),
+            text_editor::Action::Edit(Edit::Insert('e')),
+            text_editor::Action::Edit(Edit::Insert('g')),
+            text_editor::Action::Edit(Edit::Insert('K')),
+            text_editor::Action::Move(text_editor::Motion::Right),
+            text_editor::Action::Move(text_editor::Motion::WordLeft),
+            text_editor::Action::Select(text_editor::Motion::WordLeft),
+            text_editor::Action::Edit(Edit::Insert('3')),
+            text_editor::Action::Edit(Edit::Enter),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("pajspiajoifuewbewnvckd".to_string()))),
+            text_editor::Action::Edit(Edit::Backspace),
+            text_editor::Action::Edit(Edit::Delete),
+            text_editor::Action::Edit(Edit::Insert('e')),
+            text_editor::Action::Edit(Edit::Insert('e')),
+            text_editor::Action::Edit(Edit::Delete),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("appleja".to_string()))),
+            text_editor::Action::Select(text_editor::Motion::PageUp),
+            text_editor::Action::Edit(Edit::Insert('x')),
+            text_editor::Action::Edit(Edit::Insert('p')),
+            text_editor::Action::Edit(Edit::Insert('u')),
+            text_editor::Action::Move(text_editor::Motion::DocumentStart),
+            text_editor::Action::Edit(Edit::Insert('l')),
+            text_editor::Action::Edit(Edit::Enter),
+            text_editor::Action::Move(text_editor::Motion::Left),
+            text_editor::Action::Edit(Edit::Insert('C')),
+            text_editor::Action::Edit(Edit::Insert('T')),
+            text_editor::Action::Edit(Edit::Insert('Q')),
+            text_editor::Action::Edit(Edit::Enter),
+            text_editor::Action::Edit(Edit::Backspace),
+            text_editor::Action::Move(text_editor::Motion::Up),
+            text_editor::Action::Edit(Edit::Insert('p')),
+            text_editor::Action::Edit(Edit::Delete),
+            text_editor::Action::Edit(Edit::Insert('9')),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("sancjncq".to_string()))),
+            text_editor::Action::Move(text_editor::Motion::Down),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("i\ncpiqnwoicnsancsa".to_string()))),
+            text_editor::Action::Edit(Edit::Insert('k')),
+            text_editor::Action::Edit(Edit::Insert('a')),
+            text_editor::Action::Move(text_editor::Motion::PageDown),
+            text_editor::Action::Edit(Edit::Enter),
+            text_editor::Action::Edit(Edit::Backspace),
+            text_editor::Action::Edit(Edit::Insert('e')),
+            text_editor::Action::Edit(Edit::Insert('g')),
+            text_editor::Action::Move(text_editor::Motion::DocumentEnd),
+            text_editor::Action::Edit(Edit::Insert('K')),
+            text_editor::Action::Edit(Edit::Insert('3')),
+            text_editor::Action::Edit(Edit::Enter),
+            text_editor::Action::Edit(Edit::Paste(Arc::new("pajspiajoifuewbewnvckd".to_string()))),
+            text_editor::Action::Edit(Edit::Backspace),
+            text_editor::Action::Edit(Edit::Delete),
+        ];
+        list_of_actions
+            .into_iter()
+            .enumerate()
+            .for_each(|(i, action)| {
+                println!("Running action {i}: {action:?}");
+                let _ =
+                    test_state.update(crate::pages::notes::page::NotesPageMessage::Edit(action));
+                println!(
+                    "Editor: {:?}\nLoro:   {:?}",
+                    test_state.editor_content.text(),
+                    test_state.note_crdt.get_text(LORO_NOTE_ID).to_string()
+                );
+                assert_eq!(
+                    test_state.editor_content.text(),
+                    test_state.note_crdt.get_text(LORO_NOTE_ID).to_string()
+                );
+            });
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Undo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Undo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Undo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Undo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Undo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Undo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Undo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Undo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Undo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Redo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Redo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Redo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Redo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Redo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Redo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Redo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Redo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Redo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Redo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Redo);
+        let _ = test_state.update(crate::pages::notes::page::NotesPageMessage::Redo);
+        assert_eq!(
+            test_state.editor_content.text(),
+            test_state.note_crdt.get_text(LORO_NOTE_ID).to_string()
+        );
     }
 }
