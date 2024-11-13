@@ -69,25 +69,27 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                         crate::pages::notes::notes_utils::ListAction::NoAction => {
                             apply_edit_to_note(state, text_editor::Edit::Enter);
                         }
-                        crate::pages::notes::notes_utils::ListAction::AddUnorderedListItem(
+                        crate::pages::notes::notes_utils::ListAction::AddUnorderedListItem {
                             list_char,
-                        ) => {
+                            indent_amount,
+                        } => {
                             apply_edit_to_note(state, text_editor::Edit::Enter);
+                            for _ in 0..indent_amount {
+                                apply_edit_to_note(state, text_editor::Edit::Insert(' '));
+                            }
                             apply_edit_to_note(state, text_editor::Edit::Insert(list_char));
                             apply_edit_to_note(state, text_editor::Edit::Insert(' '));
                         }
-                        crate::pages::notes::notes_utils::ListAction::DeleteUnorderedListItem(
-                            cursor_position_in_line,
-                        ) => {
-                            if cursor_position_in_line == 0 {
-                                apply_edit_to_note(state, text_editor::Edit::Delete);
-                                apply_edit_to_note(state, text_editor::Edit::Delete);
-                            } else if cursor_position_in_line == 1 {
-                                apply_edit_to_note(state, text_editor::Edit::Delete);
+                        crate::pages::notes::notes_utils::ListAction::DeleteUnorderedListItem {
+                            cursor_x_pos: cursor_position_in_line,
+                            indent_amount,
+                        } => {
+                            let num_chars_to_remove = indent_amount + 2;
+                            for _ in 0..cursor_position_in_line {
                                 apply_edit_to_note(state, text_editor::Edit::Backspace);
-                            } else {
-                                apply_edit_to_note(state, text_editor::Edit::Backspace);
-                                apply_edit_to_note(state, text_editor::Edit::Backspace);
+                            }
+                            for _ in cursor_position_in_line..num_chars_to_remove {
+                                apply_edit_to_note(state, text_editor::Edit::Delete);
                             }
                         }
                     }

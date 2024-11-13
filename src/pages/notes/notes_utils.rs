@@ -34,8 +34,14 @@ pub async fn read_file_to_note(
 #[derive(Debug, Clone)]
 pub enum ListAction {
     NoAction,
-    AddUnorderedListItem(char),
-    DeleteUnorderedListItem(usize),
+    AddUnorderedListItem {
+        list_char: char,
+        indent_amount: usize,
+    },
+    DeleteUnorderedListItem {
+        cursor_x_pos: usize,
+        indent_amount: usize,
+    },
 }
 
 pub fn apply_edit_to_note(state: &mut NotesPage, edit_action: text_editor::Edit) {
@@ -185,33 +191,57 @@ pub fn move_cursor_to_position(
 
 // TODO Get this working for ordered lists
 pub fn parse_markdown_lists(state: &mut NotesPage) -> ListAction {
-    if state
+    let asterisk_pattern = Regex::new(r"^([ ]*)\*[ ]").unwrap();
+    let asterisk_with_text_after_pattern = Regex::new(r"^([ ]*)\*[ ].").unwrap();
+    let dash_pattern = Regex::new(r"^([ ]*)\-[ ]").unwrap();
+    let dash_with_text_after_pattern = Regex::new(r"^([ ]*)\-[ ].").unwrap();
+    if let Some(indent_amount) = state
         .editor_content
         .line(state.editor_content.cursor_position().0)
-        .is_some_and(|current_line| current_line.starts_with("* "))
+        .and_then(|current_line| {
+            asterisk_pattern
+                .captures(&current_line)
+                .map(|caps| caps[1].len())
+        })
     {
         if state
             .editor_content
             .line(state.editor_content.cursor_position().0)
-            .is_some_and(|current_line| *current_line != *"* ")
+            .is_some_and(|current_line| asterisk_with_text_after_pattern.is_match(&current_line))
         {
-            ListAction::AddUnorderedListItem('*')
+            ListAction::AddUnorderedListItem {
+                list_char: '*',
+                indent_amount,
+            }
         } else {
-            ListAction::DeleteUnorderedListItem(state.editor_content.cursor_position().1)
+            ListAction::DeleteUnorderedListItem {
+                cursor_x_pos: state.editor_content.cursor_position().1,
+                indent_amount,
+            }
         }
-    } else if state
+    } else if let Some(indent_amount) = state
         .editor_content
         .line(state.editor_content.cursor_position().0)
-        .is_some_and(|current_line| current_line.starts_with("- "))
+        .and_then(|current_line| {
+            dash_pattern
+                .captures(&current_line)
+                .map(|caps| caps[1].len())
+        })
     {
         if state
             .editor_content
             .line(state.editor_content.cursor_position().0)
-            .is_some_and(|current_line| *current_line != *"- ")
+            .is_some_and(|current_line| dash_with_text_after_pattern.is_match(&current_line))
         {
-            ListAction::AddUnorderedListItem('-')
+            ListAction::AddUnorderedListItem {
+                list_char: '-',
+                indent_amount: 0,
+            }
         } else {
-            ListAction::DeleteUnorderedListItem(state.editor_content.cursor_position().1)
+            ListAction::DeleteUnorderedListItem {
+                cursor_x_pos: state.editor_content.cursor_position().1,
+                indent_amount,
+            }
         }
     } else {
         ListAction::NoAction
