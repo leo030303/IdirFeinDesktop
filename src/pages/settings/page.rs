@@ -65,7 +65,7 @@ pub enum SettingsPageMessage {
     NotesSetShowEditorOnStart(bool),
     NotesSetShowMarkdownOnStart(bool),
     NotesSetShowConfirmDelete(bool),
-    NotesSetShowFormatToolbar(bool),
+    NotesSetAutocompleteBrackets(bool),
     NotesSetAutocompleteLists(bool),
     NotesPickWebsiteFolder,
     NotesSetWebsiteFolder(Option<PathBuf>),

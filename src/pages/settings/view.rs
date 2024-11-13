@@ -183,10 +183,10 @@ fn notes_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::NotesSetShowConfirmDelete(b)
                     )),
-                toggler(app_config.notes_config.show_format_toolbar)
-                    .label("Show formatting toolbar")
+                toggler(app_config.notes_config.autocomplete_brackets_etc)
+                    .label("Autocomplete brackets, quotes, etc")
                     .on_toggle(|b| Message::Settings(
-                        SettingsPageMessage::NotesSetShowFormatToolbar(b)
+                        SettingsPageMessage::NotesSetAutocompleteBrackets(b)
                     )),
                 toggler(app_config.notes_config.autocomplete_lists)
                     .label("Autocomplete lists")

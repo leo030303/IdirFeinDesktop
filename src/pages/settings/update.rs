@@ -78,10 +78,10 @@ pub fn update(
                 NotesPageMessage::SetConfirmBeforeDelete(b),
             )));
         }
-        SettingsPageMessage::NotesSetShowFormatToolbar(b) => {
-            app_config.notes_config.show_format_toolbar = b;
+        SettingsPageMessage::NotesSetAutocompleteBrackets(b) => {
+            app_config.notes_config.autocomplete_brackets_etc = b;
             return Task::done(Message::SaveConfig).chain(Task::done(Message::Notes(
-                NotesPageMessage::SetShowFormatToolbar(b),
+                NotesPageMessage::SetAutocompleteBrackets(b),
             )));
         }
         SettingsPageMessage::NotesSetAutocompleteLists(b) => {

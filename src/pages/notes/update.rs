@@ -27,6 +27,41 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         NotesPageMessage::Edit(action) => {
             let is_edit = action.is_edit();
 
+            let mut is_action_performed = false;
+
+            if state.autocomplete_brackets_etc {
+                if let text_editor::Action::Edit(text_editor::Edit::Insert(inserted_char)) = action
+                {
+                    match inserted_char {
+                        '(' => {
+                            apply_edit_to_note(state, text_editor::Edit::Insert('('));
+                            apply_edit_to_note(state, text_editor::Edit::Insert(')'));
+                            is_action_performed = true;
+                        }
+                        '[' => {
+                            apply_edit_to_note(state, text_editor::Edit::Insert('['));
+                            apply_edit_to_note(state, text_editor::Edit::Insert(']'));
+                            is_action_performed = true;
+                        }
+                        '{' => {
+                            apply_edit_to_note(state, text_editor::Edit::Insert('{'));
+                            apply_edit_to_note(state, text_editor::Edit::Insert('}'));
+                            is_action_performed = true;
+                        }
+                        '"' => {
+                            apply_edit_to_note(state, text_editor::Edit::Insert('"'));
+                            apply_edit_to_note(state, text_editor::Edit::Insert('"'));
+                            is_action_performed = true;
+                        }
+                        '`' => {
+                            apply_edit_to_note(state, text_editor::Edit::Insert('`'));
+                            apply_edit_to_note(state, text_editor::Edit::Insert('`'));
+                            is_action_performed = true;
+                        }
+                        _ => (),
+                    }
+                }
+            }
             if state.autocomplete_lists {
                 if let text_editor::Action::Edit(text_editor::Edit::Enter) = action {
                     let list_action = parse_markdown_lists(state);
@@ -56,15 +91,15 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                             }
                         }
                     }
-                } else if let text_editor::Action::Edit(edit_action) = action {
+                    is_action_performed = true;
+                }
+            }
+            if !is_action_performed {
+                if let text_editor::Action::Edit(edit_action) = action {
                     apply_edit_to_note(state, edit_action);
                 } else {
                     state.editor_content.perform(action);
                 }
-            } else if let text_editor::Action::Edit(edit_action) = action {
-                apply_edit_to_note(state, edit_action);
-            } else {
-                state.editor_content.perform(action);
             }
 
             if is_edit {
@@ -219,9 +254,6 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         }
         NotesPageMessage::SetAutoCompleteLists(b) => {
             state.autocomplete_lists = b;
-        }
-        NotesPageMessage::SetShowFormatToolbar(b) => {
-            state.show_format_toolbar = b;
         }
         NotesPageMessage::SetConfirmBeforeDelete(b) => {
             state.confirm_before_delete_note = b;
@@ -513,6 +545,7 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                     markdown::parse(&state.editor_content.text()).collect();
             }
         }
+        NotesPageMessage::SetAutocompleteBrackets(b) => state.autocomplete_brackets_etc = b,
     }
     Task::none()
 }

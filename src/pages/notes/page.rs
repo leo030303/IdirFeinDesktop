@@ -65,7 +65,7 @@ pub struct NotesPageConfig {
     pub show_markdown_on_start: bool,
     pub show_editor_on_start: bool,
     pub confirm_before_delete: bool,
-    pub show_format_toolbar: bool,
+    pub autocomplete_brackets_etc: bool,
     pub autocomplete_lists: bool,
     pub website_folder: Option<PathBuf>,
 }
@@ -78,7 +78,7 @@ impl Default for NotesPageConfig {
             show_markdown_on_start: true,
             show_editor_on_start: true,
             confirm_before_delete: true,
-            show_format_toolbar: true,
+            autocomplete_brackets_etc: true,
             autocomplete_lists: true,
             website_folder: None,
         }
@@ -106,7 +106,6 @@ pub struct NotesPage {
     pub(crate) confirm_before_delete_note: bool,
     pub(crate) note_is_dirty: bool,
     pub(crate) autocomplete_lists: bool,
-    pub(crate) show_format_toolbar: bool,
     pub(crate) new_note_title_entry_content: String,
     pub(crate) is_creating_new_note: bool,
     pub(crate) current_note_being_managed_path: Option<PathBuf>,
@@ -119,6 +118,7 @@ pub struct NotesPage {
     pub(crate) current_color_picker_colour: iced::Color,
     pub(crate) show_colour_picker: bool,
     pub(crate) website_folder: Option<PathBuf>,
+    pub(crate) autocomplete_brackets_etc: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -144,7 +144,6 @@ pub enum NotesPageMessage {
     SetNoteStatistics(NoteStatistics),
     LoadFolderAsNotesList,
     SetAutoCompleteLists(bool),
-    SetShowFormatToolbar(bool),
     SetConfirmBeforeDelete(bool),
     CreateNewNote,
     UpdateNewNoteTitleEntry(String),
@@ -168,6 +167,7 @@ pub enum NotesPageMessage {
     SetColourPickerColour(iced::Color),
     ToggleColourPicker,
     SetWebsiteFolder(Option<PathBuf>),
+    SetAutocompleteBrackets(bool),
     Undo,
     Redo,
 }
@@ -205,7 +205,6 @@ impl NotesPage {
             show_manage_categories_view: false,
             confirm_before_delete_note: config.confirm_before_delete,
             note_is_dirty: false,
-            show_format_toolbar: config.show_format_toolbar,
             autocomplete_lists: config.autocomplete_lists,
             new_note_title_entry_content: String::new(),
             is_creating_new_note: false,
@@ -219,6 +218,7 @@ impl NotesPage {
             current_color_picker_colour: iced::Color::default(),
             show_colour_picker: false,
             website_folder: config.website_folder.clone(),
+            autocomplete_brackets_etc: config.autocomplete_brackets_etc,
         }
     }
 
