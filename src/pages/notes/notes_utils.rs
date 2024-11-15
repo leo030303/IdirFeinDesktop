@@ -3,7 +3,8 @@ use regex::Regex;
 use std::{
     error::Error,
     ffi::OsStr,
-    fs,
+    fs::{self, File},
+    io::BufWriter,
     os::linux::fs::MetadataExt,
     path::{Component, Path, PathBuf},
 };
@@ -315,46 +316,32 @@ pub fn find_nested_folder_name(original_folder: &PathBuf, file_path: &Path) -> O
     None
 }
 
-pub async fn export_pdf(
-    _text_to_convert: String,
-    _md_file_path: Option<PathBuf>,
-) -> (bool, String) {
-    todo!()
-    // let html_content = convert_to_html(&text_to_convert);
-
-    // if let Ok(pdf_app) = PdfApplication::new() {
-    //     let export_path = md_file_path
-    //         .clone()
-    //         .unwrap_or(PathBuf::from("export.md"))
-    //         .with_extension("pdf");
-    //     let pdfout = pdf_app
-    //         .builder()
-    //         .orientation(Orientation::Landscape)
-    //         .margin(Size::Inches(2))
-    //         .title(
-    //             &md_file_path
-    //                 .and_then(|filepath| {
-    //                     filepath
-    //                         .file_stem()
-    //                         .map(|os_str| os_str.to_str().map(|str_val| str_val.to_string()))
-    //                 })
-    //                 .flatten()
-    //                 .unwrap_or(String::from("No Title")),
-    //         )
-    //         .build_from_html(&html_content);
-    //     match pdfout {
-    //         Ok(mut pdfout) => match pdfout.save(export_path.clone()) {
-    //             Ok(_) => (
-    //                 true,
-    //                 format!("PDF successfully exported to {export_path:?}"),
-    //             ),
-    //             Err(err) => (false, format!("PDF export failed: {err:?}")),
-    //         },
-    //         Err(err) => (false, format!("PDF export failed: {err:?}")),
-    //     }
-    // } else {
-    //     (false, String::from("Failed to init PDF application"))
-    // }
+pub async fn export_pdf(text_to_convert: String, md_file_path: Option<PathBuf>) -> (bool, String) {
+    let mut pdf_config = mdproof::Config::default();
+    let export_path = md_file_path
+        .clone()
+        .unwrap_or(PathBuf::from("export.md"))
+        .with_extension("pdf");
+    pdf_config.title = String::from(
+        export_path
+            .file_stem()
+            .and_then(|os_str| os_str.to_str())
+            .unwrap_or("Title"),
+    );
+    if let Ok(pdf_document) = mdproof::markdown_to_pdf(&text_to_convert, &pdf_config) {
+        match File::create(&export_path) {
+            Ok(result_file) => match pdf_document.save(&mut BufWriter::new(result_file)) {
+                Ok(_) => (
+                    true,
+                    format!("PDF successfully exported to {export_path:?}"),
+                ),
+                Err(err) => (false, format!("PDF export failed: {err:?}")),
+            },
+            Err(err) => (false, format!("PDF export failed: {err:?}")),
+        }
+    } else {
+        (false, String::from("Failed to init PDF application"))
+    }
 }
 
 fn add_html_to_template(

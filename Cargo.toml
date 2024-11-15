@@ -9,6 +9,7 @@ bytes = "1.7.1"
 dirs = "5.0.1"
 iced = { git = "https://github.com/leo030303/iced", branch = "markdown_updates", features = ["markdown", "lazy", "highlighter", "svg", "tokio", "image", "debug"]}
 iced_aw = { git = "https://github.com/leo030303/iced_aw", default-features = false, features = ["badge", "drop_down", "spinner", "drag_and_drop", "color_picker"] }
+mdproof = { git = "https://github.com/leo030303/mdproof"}
 keepass = { version = "0.7.21", features = ["save_kdbx4"] }
 loro = "0.16.12"
 once_cell = "1.20.1"
