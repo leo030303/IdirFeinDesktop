@@ -74,6 +74,8 @@ pub enum SettingsPageMessage {
     PasswordsSetShowSidebarOnStart(bool),
     TasksPickDefaultProjectFolder,
     TasksSetDefaultProjectFolder(Option<PathBuf>),
+    TasksPickDefaultProjectFile,
+    TasksSetDefaultProjectFile(Option<PathBuf>),
     TasksSetKanbanTaskViewIsDefault(bool),
     TasksSetShowSidebarOnStart(bool),
     TasksSetConfirmBeforeDelete(bool),

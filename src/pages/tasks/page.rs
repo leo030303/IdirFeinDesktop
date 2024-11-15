@@ -113,7 +113,7 @@ pub enum TasksPageMessage {
     PickProjectsFolder,
     SetProjectsFolder(Option<PathBuf>),
     LoadProjectsList,
-    PickProjectFile(PathBuf),
+    PickProjectFile(Option<PathBuf>),
     SetProjectsList(Vec<PathBuf>),
     SetTasksList(Vec<TaskData>, PathBuf),
     SelectTaskToEdit(Option<Uuid>),

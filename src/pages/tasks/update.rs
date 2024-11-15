@@ -84,26 +84,53 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
             return Task::done(Message::Tasks(TasksPageMessage::LoadProjectsList));
         }
 
-        TasksPageMessage::PickProjectFile(path_to_file) => {
-            return Task::batch([
-                Task::done(Message::Tasks(TasksPageMessage::SaveProject)),
-                Task::perform(
-                    async move {
-                        if let Ok(task_json) = fs::read_to_string(&path_to_file) {
-                            let tasks_list: Vec<TaskData> =
-                                serde_json::from_str(&task_json).unwrap_or_default();
-                            (tasks_list, path_to_file)
+        TasksPageMessage::PickProjectFile(path_to_file_option) => {
+            if let Some(path_to_file) = path_to_file_option {
+                if let Some(selected_folder) = &state.selected_folder {
+                    // Check that the project file is a child of the projects folder before loading
+                    let canonicalised_folder_result = selected_folder.canonicalize();
+                    let canonicalised_file_result = path_to_file.canonicalize();
+                    if let Ok(canonicalised_folder) = canonicalised_folder_result {
+                        if let Ok(canonicalised_file) = canonicalised_file_result {
+                            if canonicalised_file.starts_with(canonicalised_folder) {
+                                return Task::batch([
+                                    Task::done(Message::Tasks(TasksPageMessage::SaveProject)),
+                                    Task::perform(
+                                        async move {
+                                            if let Ok(task_json) = fs::read_to_string(&path_to_file)
+                                            {
+                                                let tasks_list: Vec<TaskData> =
+                                                    serde_json::from_str(&task_json)
+                                                        .unwrap_or_default();
+                                                (tasks_list, path_to_file)
+                                            } else {
+                                                (vec![], path_to_file)
+                                            }
+                                        },
+                                        |(tasks_list, path_to_file)| {
+                                            Message::Tasks(TasksPageMessage::SetTasksList(
+                                                tasks_list,
+                                                path_to_file,
+                                            ))
+                                        },
+                                    ),
+                                ]);
+                            } else {
+                                state.current_project_file = None;
+                            }
                         } else {
-                            (vec![], path_to_file)
+                            state.current_project_file = None;
                         }
-                    },
-                    |(tasks_list, path_to_file)| {
-                        Message::Tasks(TasksPageMessage::SetTasksList(tasks_list, path_to_file))
-                    },
-                ),
-            ]);
+                    }
+                }
+            }
         }
-        TasksPageMessage::SetProjectsList(projects_list) => state.projects_list = projects_list,
+        TasksPageMessage::SetProjectsList(projects_list) => {
+            state.projects_list = projects_list;
+            return Task::done(Message::Tasks(TasksPageMessage::PickProjectFile(
+                state.current_project_file.clone(),
+            )));
+        }
         TasksPageMessage::SetTasksList(tasks_list, project_path) => {
             state.tasks_list = tasks_list;
             state.current_project_file = Some(project_path);

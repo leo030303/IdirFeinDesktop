@@ -255,6 +255,20 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
+            text(format!(
+                "Tasks: {}",
+                state
+                    .tasks_list
+                    .iter()
+                    .filter(|task| matches!(task.completion_state, TaskCompletionState::Backlog))
+                    .count()
+            ))
+            .font(Font {
+                style: iced::font::Style::Italic,
+                ..Default::default()
+            })
+            .width(Length::Fill)
+            .align_x(Center),
             scrollable(
                 column(
                     state
@@ -289,6 +303,20 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
+            text(format!(
+                "Tasks: {}",
+                state
+                    .tasks_list
+                    .iter()
+                    .filter(|task| matches!(task.completion_state, TaskCompletionState::ToDo))
+                    .count()
+            ))
+            .font(Font {
+                style: iced::font::Style::Italic,
+                ..Default::default()
+            })
+            .width(Length::Fill)
+            .align_x(Center),
             scrollable(
                 column(
                     state
@@ -320,6 +348,20 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
+            text(format!(
+                "Tasks: {}",
+                state
+                    .tasks_list
+                    .iter()
+                    .filter(|task| matches!(task.completion_state, TaskCompletionState::Doing))
+                    .count()
+            ))
+            .font(Font {
+                style: iced::font::Style::Italic,
+                ..Default::default()
+            })
+            .width(Length::Fill)
+            .align_x(Center),
             scrollable(
                 column(
                     state
@@ -351,6 +393,20 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
+            text(format!(
+                "Tasks: {}",
+                state
+                    .tasks_list
+                    .iter()
+                    .filter(|task| matches!(task.completion_state, TaskCompletionState::Done))
+                    .count()
+            ))
+            .font(Font {
+                style: iced::font::Style::Italic,
+                ..Default::default()
+            })
+            .width(Length::Fill)
+            .align_x(Center),
             scrollable(
                 column(
                     state
@@ -632,7 +688,7 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                         )
                         .width(Length::Fill)
                         .on_press(Message::Tasks(
-                            TasksPageMessage::PickProjectFile(project.to_path_buf(),)
+                            TasksPageMessage::PickProjectFile(Some(project.to_path_buf()),)
                         )),
                         Tooltip::new(
                             button(Svg::new(svg::Handle::from_memory(include_bytes!(

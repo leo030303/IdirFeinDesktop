@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use iced::Task;
 use rfd::FileDialog;
 
@@ -151,6 +153,32 @@ pub fn update(
             app_config.tasks_config.default_folder = selected_folder.clone();
             return Task::done(Message::SaveConfig).chain(Task::done(Message::Tasks(
                 TasksPageMessage::SetProjectsFolder(selected_folder),
+            )));
+        }
+        SettingsPageMessage::TasksPickDefaultProjectFile => {
+            let starting_dir = app_config
+                .tasks_config
+                .default_folder
+                .clone()
+                .unwrap_or(PathBuf::from("/"));
+            return Task::perform(
+                async move {
+                    FileDialog::new()
+                        .set_directory(starting_dir)
+                        .add_filter("json", &["json"])
+                        .pick_file()
+                },
+                |selected_file| {
+                    Message::Settings(SettingsPageMessage::TasksSetDefaultProjectFile(
+                        selected_file,
+                    ))
+                },
+            );
+        }
+        SettingsPageMessage::TasksSetDefaultProjectFile(selected_file) => {
+            app_config.tasks_config.default_project_file = selected_file.clone();
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::Tasks(
+                TasksPageMessage::PickProjectFile(selected_file),
             )));
         }
         SettingsPageMessage::TasksSetKanbanTaskViewIsDefault(b) => {

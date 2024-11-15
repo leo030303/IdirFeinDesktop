@@ -87,6 +87,27 @@ fn tasks_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                     ))
                 ]
                 .width(Length::Fill),
+                row![
+                    text(
+                        app_config
+                            .tasks_config
+                            .default_project_file
+                            .as_ref()
+                            .map(|value| format!("Default Tasks Project File: {value:?}"))
+                            .unwrap_or(String::from("No Default Tasks Project File Selected"))
+                    )
+                    .align_x(Alignment::Center)
+                    .width(Length::Fill),
+                    button(
+                        text("Select Default Tasks Project File")
+                            .width(Length::Fill)
+                            .align_x(Alignment::Center)
+                    )
+                    .on_press(Message::Settings(
+                        SettingsPageMessage::TasksPickDefaultProjectFile
+                    ))
+                ]
+                .width(Length::Fill),
                 toggler(app_config.tasks_config.kanban_task_view_is_default)
                     .label("Kanban task view as default")
                     .on_toggle(|b| Message::Settings(
