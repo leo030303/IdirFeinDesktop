@@ -2,8 +2,8 @@ use crate::pages::tasks::page::{TaskViewType, NEW_PROJECT_TEXT_INPUT_ID};
 use iced::{
     alignment::{Horizontal, Vertical},
     widget::{
-        button, column, container, row, scrollable, svg, text, text_editor, text_input, Row, Space,
-        Svg, Tooltip,
+        button, column, container, row, scrollable, svg, text, text_editor, text_input, MouseArea,
+        Row, Space, Svg, Tooltip,
     },
     Alignment::Center,
     Element, Font, Length,
@@ -75,14 +75,26 @@ pub fn main_view(state: &TasksPage) -> Element<Message> {
 }
 
 fn kanban_view_item<'a>(state: &'a TasksPage, task: &'a TaskData) -> Element<'a, Message> {
+    let task_details: Element<'a, Message> = column![
+        text(&task.title)
+            .size(20)
+            .width(Length::Fill)
+            .align_x(Center),
+        text(&task.description),
+    ]
+    .into();
     droppable(
         container(
             column![
-                text(&task.title)
-                    .size(20)
-                    .width(Length::Fill)
-                    .align_x(Center),
-                text(&task.description),
+                if state.right_click_to_edit_task {
+                    MouseArea::new(task_details)
+                        .on_right_release(Message::Tasks(TasksPageMessage::OpenEditDialogForTask(
+                            task.id,
+                        )))
+                        .into()
+                } else {
+                    task_details
+                },
                 if state.show_task_completion_toolbar {
                     let mut state_setter_row = Row::new();
                     if !matches!(task.completion_state, TaskCompletionState::Backlog) {

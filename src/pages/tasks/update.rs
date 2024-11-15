@@ -363,6 +363,9 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
         TasksPageMessage::SetConfirmBeforeDelete(b) => {
             state.confirm_before_delete = b;
         }
+        TasksPageMessage::SetRightClickToEditTask(b) => {
+            state.right_click_to_edit_task = b;
+        }
     }
     Task::none()
 }

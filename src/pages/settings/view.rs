@@ -107,6 +107,11 @@ fn tasks_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::TasksSetShowTaskCompletionToolbar(b)
                     )),
+                toggler(app_config.tasks_config.right_click_to_edit_task)
+                    .label("Whether right clicking on a task should open it for editing")
+                    .on_toggle(|b| Message::Settings(
+                        SettingsPageMessage::TasksSetRightClickToEditTask(b)
+                    )),
             ]
             .padding(20)
             .spacing(30),

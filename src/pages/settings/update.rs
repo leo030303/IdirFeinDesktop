@@ -171,6 +171,12 @@ pub fn update(
                 TasksPageMessage::SetShowTaskCompletionToolbar(b),
             )));
         }
+        SettingsPageMessage::TasksSetRightClickToEditTask(b) => {
+            app_config.tasks_config.right_click_to_edit_task = b;
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::Tasks(
+                TasksPageMessage::SetRightClickToEditTask(b),
+            )));
+        }
         SettingsPageMessage::GalleryPickDefaultFolder => {
             return Task::perform(
                 async {

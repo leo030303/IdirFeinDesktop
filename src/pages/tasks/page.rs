@@ -62,6 +62,7 @@ pub struct TaskPageConfig {
     pub show_sidebar_on_start: bool,
     pub confirm_before_delete: bool,
     pub show_task_completion_toolbar: bool,
+    pub right_click_to_edit_task: bool,
 }
 
 impl Default for TaskPageConfig {
@@ -73,6 +74,7 @@ impl Default for TaskPageConfig {
             show_sidebar_on_start: true,
             confirm_before_delete: true,
             show_task_completion_toolbar: false,
+            right_click_to_edit_task: true,
         }
     }
 }
@@ -99,6 +101,7 @@ pub struct TasksPage {
     pub(crate) display_rename_view: bool,
     pub(crate) display_delete_view: bool,
     pub(crate) rename_project_entry_text: String,
+    pub(crate) right_click_to_edit_task: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -140,6 +143,7 @@ pub enum TasksPageMessage {
     ToggleDeleteProjectView,
     SetShowTaskCompletionToolbar(bool),
     SetConfirmBeforeDelete(bool),
+    SetRightClickToEditTask(bool),
 }
 
 impl TasksPage {
@@ -170,6 +174,7 @@ impl TasksPage {
             display_rename_view: false,
             display_delete_view: false,
             rename_project_entry_text: String::new(),
+            right_click_to_edit_task: config.right_click_to_edit_task,
         }
     }
 

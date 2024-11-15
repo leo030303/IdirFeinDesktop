@@ -77,6 +77,7 @@ pub enum SettingsPageMessage {
     TasksSetKanbanTaskViewIsDefault(bool),
     TasksSetShowSidebarOnStart(bool),
     TasksSetConfirmBeforeDelete(bool),
+    TasksSetRightClickToEditTask(bool),
     TasksSetShowTaskCompletionToolbar(bool),
     GalleryPickDefaultFolder,
     GallerySetDefaultFolder(Option<PathBuf>),
