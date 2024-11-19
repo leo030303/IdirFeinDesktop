@@ -449,55 +449,62 @@ fn existing_database_selected_and_locked_view(state: &PasswordsPage) -> Element<
         )
         .width(Length::Fill)
         .align_x(Horizontal::Center),
-        text("Enter the master password:")
-            .width(Length::Fill)
-            .align_x(Horizontal::Left),
-        row![
-            text_input("Master Password", &state.master_password_field_text)
-                .secure(state.hide_master_password_entry)
-                .on_input(
-                    |s| Message::Passwords(PasswordsPageMessage::UpdateMasterPasswordField(s))
-                )
-                .on_submit(Message::Passwords(PasswordsPageMessage::TryUnlock))
-                .width(Length::FillPortion(9)),
-            Tooltip::new(
-                button(if state.hide_master_password_entry {
-                    Svg::new(svg::Handle::from_memory(include_bytes!(
-                        "../../../icons/eye.svg"
-                    )))
-                    .height(Length::Fill)
+        container(
+            column![
+                text("Enter the master password:")
+                    .width(Length::Fill)
+                    .align_x(Horizontal::Left),
+                row![
+                    text_input("Master Password", &state.master_password_field_text)
+                        .secure(state.hide_master_password_entry)
+                        .on_input(|s| Message::Passwords(
+                            PasswordsPageMessage::UpdateMasterPasswordField(s)
+                        ))
+                        .on_submit(Message::Passwords(PasswordsPageMessage::TryUnlock))
+                        .width(Length::FillPortion(9)),
+                    Tooltip::new(
+                        button(if state.hide_master_password_entry {
+                            Svg::new(svg::Handle::from_memory(include_bytes!(
+                                "../../../icons/eye.svg"
+                            )))
+                            .height(Length::Fill)
+                        } else {
+                            Svg::new(svg::Handle::from_memory(include_bytes!(
+                                "../../../icons/eye-blocked.svg"
+                            )))
+                            .height(Length::Fill)
+                        })
+                        .on_press(Message::Passwords(
+                            PasswordsPageMessage::ToggleHideMasterPassword
+                        ))
+                        .width(Length::FillPortion(1))
+                        .height(Length::Fill)
+                        .style(if state.hide_master_password_entry {
+                            button::primary
+                        } else {
+                            button::secondary
+                        }),
+                        if state.hide_master_password_entry {
+                            "Show Password"
+                        } else {
+                            "Hide Password"
+                        },
+                        iced::widget::tooltip::Position::Bottom,
+                    )
+                ]
+                .height(Length::Shrink),
+                text(if state.incorrect_password_entered {
+                    "Incorrect master password/keyfile, try again."
                 } else {
-                    Svg::new(svg::Handle::from_memory(include_bytes!(
-                        "../../../icons/eye-blocked.svg"
-                    )))
-                    .height(Length::Fill)
+                    ""
                 })
-                .on_press(Message::Passwords(
-                    PasswordsPageMessage::ToggleHideMasterPassword
-                ))
-                .width(Length::FillPortion(1))
-                .height(Length::Fill)
-                .style(if state.hide_master_password_entry {
-                    button::primary
-                } else {
-                    button::secondary
-                }),
-                if state.hide_master_password_entry {
-                    "Show Password"
-                } else {
-                    "Hide Password"
-                },
-                iced::widget::tooltip::Position::Bottom,
-            )
-        ]
-        .height(Length::Shrink),
-        text(if state.incorrect_password_entered {
-            "Incorrect master password/keyfile, try again."
-        } else {
-            ""
-        })
+                .width(Length::Fill)
+                .align_x(Horizontal::Center)
+            ]
+            .max_width(500)
+        )
         .width(Length::Fill)
-        .align_x(Horizontal::Center),
+        .align_x(Center),
         container(
             row![
                 button(text("Close Database"))
