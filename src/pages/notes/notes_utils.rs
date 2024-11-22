@@ -170,7 +170,7 @@ fn get_editor_offset(editor_content: &text_editor::Content) -> usize {
         .lines()
         .take(cursor_y)
         .fold(cursor_x, |accumulator, current_line| {
-            accumulator + current_line.len() + 1
+            accumulator + current_line.chars().count() + 1
         })
 }
 
