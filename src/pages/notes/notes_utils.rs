@@ -77,7 +77,7 @@ pub fn apply_edit_to_note(state: &mut NotesPage, edit_action: text_editor::Edit)
                 .unwrap();
         }
         text_editor::Edit::Enter => {
-            if state.note_crdt.get_text(LORO_NOTE_ID).to_string().len() == editor_offset + 1 {
+            if state.note_crdt.get_text(LORO_NOTE_ID).len_unicode() == editor_offset + 1 {
                 if let Some("\n") = state
                     .note_crdt
                     .get_text(LORO_NOTE_ID)
@@ -121,10 +121,7 @@ pub fn apply_edit_to_note(state: &mut NotesPage, edit_action: text_editor::Edit)
         state
             .note_crdt
             .get_text(LORO_NOTE_ID)
-            .insert(
-                state.note_crdt.get_text(LORO_NOTE_ID).to_string().len(),
-                "\n",
-            )
+            .insert(state.note_crdt.get_text(LORO_NOTE_ID).len_unicode(), "\n")
             .unwrap();
     }
     state
