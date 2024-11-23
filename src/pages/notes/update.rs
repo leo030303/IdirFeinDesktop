@@ -36,26 +36,41 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                         '(' => {
                             apply_edit_to_note(state, text_editor::Edit::Insert('('));
                             apply_edit_to_note(state, text_editor::Edit::Insert(')'));
+                            state
+                                .editor_content
+                                .perform(text_editor::Action::Move(text_editor::Motion::Left));
                             is_action_performed = true;
                         }
                         '[' => {
                             apply_edit_to_note(state, text_editor::Edit::Insert('['));
                             apply_edit_to_note(state, text_editor::Edit::Insert(']'));
+                            state
+                                .editor_content
+                                .perform(text_editor::Action::Move(text_editor::Motion::Left));
                             is_action_performed = true;
                         }
                         '{' => {
                             apply_edit_to_note(state, text_editor::Edit::Insert('{'));
                             apply_edit_to_note(state, text_editor::Edit::Insert('}'));
+                            state
+                                .editor_content
+                                .perform(text_editor::Action::Move(text_editor::Motion::Left));
                             is_action_performed = true;
                         }
                         '"' => {
                             apply_edit_to_note(state, text_editor::Edit::Insert('"'));
                             apply_edit_to_note(state, text_editor::Edit::Insert('"'));
+                            state
+                                .editor_content
+                                .perform(text_editor::Action::Move(text_editor::Motion::Left));
                             is_action_performed = true;
                         }
                         '`' => {
                             apply_edit_to_note(state, text_editor::Edit::Insert('`'));
                             apply_edit_to_note(state, text_editor::Edit::Insert('`'));
+                            state
+                                .editor_content
+                                .perform(text_editor::Action::Move(text_editor::Motion::Left));
                             is_action_performed = true;
                         }
                         _ => (),
