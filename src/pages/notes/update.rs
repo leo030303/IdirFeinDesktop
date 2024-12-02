@@ -14,7 +14,7 @@ use crate::{
 use super::{
     notes_utils::{
         apply_edit_to_note, export_pdf, export_to_website, read_file_to_note,
-        read_notes_from_folder, NoteStatistics,
+        read_notes_from_folder, select_specific_string_in_editor, NoteStatistics,
     },
     page::{
         NoteCategory, NotesPage, NotesPageMessage, SerializableColour, INITIAL_ORIGIN_STR,
@@ -563,6 +563,32 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             }
         }
         NotesPageMessage::SetAutocompleteBrackets(b) => state.autocomplete_brackets_etc = b,
+        NotesPageMessage::CalculateSpellingCorrectionsList => {
+            let dictionary = state.spell_check_dictionary.clone();
+            let editor_content = state.editor_content.text();
+            return Task::perform(
+                async move {
+                    dictionary
+                        .check_indices(&editor_content)
+                        .map(|(index, str_value)| (index, str_value.to_string()))
+                        .collect()
+                },
+                |spelling_corrections_list| {
+                    Message::Notes(NotesPageMessage::SetSpellingCorrectionsList(
+                        spelling_corrections_list,
+                    ))
+                },
+            );
+        }
+        NotesPageMessage::ToggleSpellCheckView => {
+            state.show_spell_check_view = !state.show_spell_check_view
+        }
+        NotesPageMessage::SetSpellingCorrectionsList(spelling_corrections_list) => {
+            state.spelling_corrections_list = spelling_corrections_list;
+        }
+        NotesPageMessage::GoToSpellingMistake(index, _spelling_mistake_string) => {
+            select_specific_string_in_editor(&mut state.editor_content, index);
+        }
     }
     Task::none()
 }

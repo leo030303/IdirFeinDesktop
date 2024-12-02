@@ -34,7 +34,8 @@ pub struct GalleryPage {
     pub(crate) selected_folder: Option<PathBuf>,
     pub(crate) selected_image: Option<PathBuf>,
     pub(crate) first_loaded_row_index: usize,
-    pub(crate) gallery_list: Vec<ImageRow>,
+    pub(crate) gallery_row_list: Vec<ImageRow>,
+    pub(crate) gallery_paths_list: Vec<PathBuf>,
     pub(crate) scrollable_viewport_option: Option<Viewport>,
 }
 
@@ -61,16 +62,19 @@ pub enum GalleryPageMessage {
     PageDownKeyPressed,
     PageUpKeyPressed,
     EscapeKeyPressed,
+    SelectPreviousImage,
+    SelectNextImage,
 }
 
 impl GalleryPage {
     pub fn new(config: &GalleryPageConfig) -> Self {
         Self {
             selected_folder: config.default_folder.clone(),
-            gallery_list: vec![],
+            gallery_row_list: vec![],
             first_loaded_row_index: 0,
             scrollable_viewport_option: None,
             selected_image: None,
+            gallery_paths_list: vec![],
         }
     }
 

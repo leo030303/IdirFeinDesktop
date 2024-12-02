@@ -13,7 +13,7 @@ use iced::{Element, Fill, Font};
 use crate::app::Message;
 use crate::pages::notes::page::NEW_NOTE_TEXT_INPUT_ID;
 
-use super::page::{Note, NotesPage, NotesPageMessage, RENAME_NOTE_TEXT_INPUT_ID};
+use super::page::{Note, NotesPage, NotesPageMessage, RENAME_NOTE_TEXT_INPUT_ID, TEXT_EDITOR_ID};
 
 pub fn main_view(state: &NotesPage) -> Element<Message> {
     row![
@@ -51,6 +51,15 @@ pub fn main_view(state: &NotesPage) -> Element<Message> {
             .spacing(10),
                 if state.current_file.is_some(){
                     row![
+                        if state.show_spell_check_view{
+                            if state.is_loading_note {
+                                loading_note_view(state)
+                            } else {
+                                spell_check_view(state)
+                            }
+                        } else {
+                            column![].into()
+                        },
                         if state.show_editor {
                             if state.is_loading_note {
                                 loading_note_view(state)
@@ -174,6 +183,32 @@ fn confirm_delete_note_view(_state: &NotesPage) -> Element<Message> {
         button(text("Cancel").width(Length::Fill).align_x(Center))
             .width(Length::Fill)
             .on_press(Message::Notes(NotesPageMessage::ToggleDeleteNoteView)),
+    ]
+    .into()
+}
+
+fn spell_check_view(state: &NotesPage) -> Element<Message> {
+    column![
+        button(text("Run Spell Check").width(Length::Fill).align_x(Center)).on_press(
+            Message::Notes(NotesPageMessage::CalculateSpellingCorrectionsList)
+        ),
+        if state.spelling_corrections_list.is_empty() {
+            column![text("No Errors").width(Length::Fill).align_x(Center)]
+        } else {
+            column![Scrollable::new(column(
+                state
+                    .spelling_corrections_list
+                    .iter()
+                    .map(|(index, spelling_mistake_string)| {
+                        button(text(spelling_mistake_string))
+                            .on_press(Message::Notes(NotesPageMessage::GoToSpellingMistake(
+                                *index,
+                                spelling_mistake_string.to_string(),
+                            )))
+                            .into()
+                    },)
+            ))]
+        },
     ]
     .into()
 }
@@ -327,6 +362,7 @@ fn loading_note_view(_state: &NotesPage) -> Element<Message> {
 
 fn editor_view(state: &NotesPage) -> Element<Message> {
     column![text_editor(&state.editor_content)
+        .id(TEXT_EDITOR_ID)
         .placeholder("Type your Markdown here...")
         .on_action(|action| Message::Notes(NotesPageMessage::Edit(action)))
         .height(Fill)
@@ -545,6 +581,19 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
                 button::primary
             }),
             "Toggle Editor (Ctrl+E)",
+            iced::widget::tooltip::Position::Bottom
+        ),
+        Tooltip::new(
+            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                "../../../icons/spell_check.svg"
+            ))))
+            .on_press(Message::Notes(NotesPageMessage::ToggleSpellCheckView))
+            .style(if state.show_spell_check_view {
+                button::secondary
+            } else {
+                button::primary
+            }),
+            "Toggle Spell Check View (Ctrl+K)",
             iced::widget::tooltip::Position::Bottom
         ),
         drop_down

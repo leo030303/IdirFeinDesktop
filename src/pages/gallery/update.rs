@@ -85,7 +85,8 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             );
         }
         GalleryPageMessage::SetGalleryFilesList(gallery_files_list) => {
-            state.gallery_list = gallery_files_list
+            state.gallery_paths_list = gallery_files_list.clone().into_iter().flatten().collect();
+            state.gallery_row_list = gallery_files_list
                 .clone()
                 .into_iter()
                 .enumerate()
@@ -97,7 +98,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 .collect();
             return Task::done(Message::Gallery(GalleryPageMessage::LoadImageRows(
                 state
-                    .gallery_list
+                    .gallery_row_list
                     .iter()
                     .take(ROW_BATCH_SIZE)
                     .cloned()
@@ -203,7 +204,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             loaded_images_list.into_iter().for_each(|image_row| {
                 let image_row_index = image_row.index;
                 *state
-                    .gallery_list
+                    .gallery_row_list
                     .get_mut(image_row_index)
                     .expect("Shouldn't fail") = image_row;
             });
@@ -217,7 +218,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
 
             if state.first_loaded_row_index != images_scrolled_passed {
                 let mut images_to_unload_list: Vec<ImageRow> = state
-                    .gallery_list
+                    .gallery_row_list
                     .iter()
                     .skip(state.first_loaded_row_index)
                     .take(displayed_images)
@@ -225,7 +226,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                     .collect();
                 state.first_loaded_row_index = images_scrolled_passed;
                 let images_to_load_list: Vec<ImageRow> = state
-                    .gallery_list
+                    .gallery_row_list
                     .iter()
                     .skip(images_scrolled_passed)
                     .take(displayed_images)
@@ -314,6 +315,42 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 return Task::done(Message::Gallery(GalleryPageMessage::SelectImageForBigView(
                     None,
                 )));
+            }
+        }
+        GalleryPageMessage::SelectPreviousImage => {
+            if let Some(selected_image) = &state.selected_image {
+                if let Some(current_index) = state
+                    .gallery_paths_list
+                    .iter()
+                    .position(|current_path| current_path == selected_image)
+                {
+                    return Task::done(Message::Gallery(
+                        GalleryPageMessage::SelectImageForBigView(
+                            state
+                                .gallery_paths_list
+                                .get(current_index.saturating_sub(1))
+                                .cloned(),
+                        ),
+                    ));
+                }
+            }
+        }
+        GalleryPageMessage::SelectNextImage => {
+            if let Some(selected_image) = &state.selected_image {
+                if let Some(current_index) = state
+                    .gallery_paths_list
+                    .iter()
+                    .position(|current_path| current_path == selected_image)
+                {
+                    let new_index = current_index + 1;
+                    if new_index < state.gallery_paths_list.len() {
+                        return Task::done(Message::Gallery(
+                            GalleryPageMessage::SelectImageForBigView(
+                                state.gallery_paths_list.get(new_index).cloned(),
+                            ),
+                        ));
+                    }
+                }
             }
         }
     }

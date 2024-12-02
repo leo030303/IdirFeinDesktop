@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::time::Duration;
+use zspell::Dictionary;
 
 use iced::event::Status;
 use iced::keyboard::{Key, Modifiers};
@@ -15,6 +16,7 @@ use super::notes_utils::NoteStatistics;
 use super::update::update;
 use super::view::{main_view, tool_view};
 
+pub const TEXT_EDITOR_ID: &str = "TEXT_EDITOR_ID";
 pub const NEW_NOTE_TEXT_INPUT_ID: &str = "NEW_NOTE_TEXT_INPUT_ID";
 pub const RENAME_NOTE_TEXT_INPUT_ID: &str = "RENAME_NOTE_TEXT_INPUT_ID";
 pub const LORO_NOTE_ID: &str = "LORO_NOTE_ID";
@@ -119,6 +121,9 @@ pub struct NotesPage {
     pub(crate) show_colour_picker: bool,
     pub(crate) website_folder: Option<PathBuf>,
     pub(crate) autocomplete_brackets_etc: bool,
+    pub(crate) spelling_corrections_list: Vec<(usize, String)>,
+    pub(crate) show_spell_check_view: bool,
+    pub(crate) spell_check_dictionary: Dictionary,
 }
 
 #[derive(Debug, Clone)]
@@ -170,6 +175,10 @@ pub enum NotesPageMessage {
     SetAutocompleteBrackets(bool),
     Undo,
     Redo,
+    CalculateSpellingCorrectionsList,
+    ToggleSpellCheckView,
+    SetSpellingCorrectionsList(Vec<(usize, String)>),
+    GoToSpellingMistake(usize, String),
 }
 
 impl NotesPage {
@@ -180,6 +189,16 @@ impl NotesPage {
         let mut undo_manager = UndoManager::new(&loro_doc);
         undo_manager.set_max_undo_steps(MAX_UNDO_STEPS);
         undo_manager.add_exclude_origin_prefix(INITIAL_ORIGIN_STR);
+
+        let aff_content = include_str!("../../../resources/spelling_dictionaries/english_gb.aff");
+
+        let dic_content = include_str!("../../../resources/spelling_dictionaries/english_gb.dic");
+
+        let spell_check_dictionary: Dictionary = zspell::builder()
+            .config_str(aff_content)
+            .dict_str(dic_content)
+            .build()
+            .expect("failed to build dictionary!");
 
         Self {
             editor_content: text_editor::Content::with_text(""),
@@ -219,6 +238,9 @@ impl NotesPage {
             show_colour_picker: false,
             website_folder: config.website_folder.clone(),
             autocomplete_brackets_etc: config.autocomplete_brackets_etc,
+            spelling_corrections_list: vec![],
+            show_spell_check_view: false,
+            spell_check_dictionary,
         }
     }
 
@@ -265,6 +287,8 @@ impl NotesPage {
                         Some(Message::Notes(NotesPageMessage::Undo))
                     } else if pressed_char.as_ref() == "y" || pressed_char.as_ref() == "Y" {
                         Some(Message::Notes(NotesPageMessage::Redo))
+                    } else if pressed_char.as_ref() == "k" || pressed_char.as_ref() == "K" {
+                        Some(Message::Notes(NotesPageMessage::ToggleSpellCheckView))
                     } else {
                         None
                     }

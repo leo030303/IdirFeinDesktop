@@ -42,17 +42,37 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
                 iced::widget::tooltip::Position::Bottom
             ),
         ],
-        image::viewer(Handle::from_path(
-            state.selected_image.clone().expect("Shouldn't fail"),
-        ))
-        .width(Length::Fill)
-        .height(Length::Fill)
+        row![
+            Tooltip::new(
+                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/previous.svg"
+                ))))
+                .on_press(Message::Gallery(GalleryPageMessage::SelectPreviousImage))
+                .width(Length::Fixed(50.0)),
+                "Previous Image",
+                iced::widget::tooltip::Position::Bottom
+            ),
+            image::viewer(Handle::from_path(
+                state.selected_image.clone().expect("Shouldn't fail"),
+            ))
+            .width(Length::Fill)
+            .height(Length::Fill),
+            Tooltip::new(
+                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/next.svg"
+                ))))
+                .on_press(Message::Gallery(GalleryPageMessage::SelectNextImage))
+                .width(Length::Fixed(50.0)),
+                "Next Image",
+                iced::widget::tooltip::Position::Bottom
+            ),
+        ],
     ]
     .into()
 }
 
 fn gallery_grid(state: &GalleryPage) -> Element<Message> {
-    scrollable(column(state.gallery_list.iter().map(|image_row| {
+    scrollable(column(state.gallery_row_list.iter().map(|image_row| {
         if image_row.loaded {
             row(image_row
                 .images_data

@@ -187,6 +187,35 @@ pub fn move_cursor_to_position(
     }
 }
 
+pub fn select_specific_string_in_editor(
+    editor_content: &mut text_editor::Content,
+    string_start_index: usize,
+) {
+    editor_content.perform(text_editor::Action::Move(
+        text_editor::Motion::DocumentStart,
+    ));
+    let mut offset_so_far: usize = 0;
+    let mut lines_to_move_down = 0;
+    editor_content.lines().for_each(|line| {
+        if line.len() < (string_start_index - offset_so_far) {
+            lines_to_move_down += 1;
+            offset_so_far += line.len();
+        }
+    });
+    lines_to_move_down -= 1;
+    println!("Lines to move down: {lines_to_move_down}");
+    (0..lines_to_move_down).for_each(|_| {
+        println!("Moved down");
+        editor_content.perform(text_editor::Action::Move(text_editor::Motion::Down));
+    });
+    println!("Remaining offset: {}", (string_start_index - offset_so_far));
+    (0..(string_start_index - offset_so_far)).for_each(|_| {
+        println!("Moved right");
+        editor_content.perform(text_editor::Action::Move(text_editor::Motion::Right));
+    });
+    editor_content.perform(text_editor::Action::Select(text_editor::Motion::Right));
+}
+
 // TODO Get this working for ordered lists
 pub fn parse_markdown_lists(state: &mut NotesPage) -> ListAction {
     let asterisk_pattern = Regex::new(r"^([ ]*)\*[ ]").unwrap();
