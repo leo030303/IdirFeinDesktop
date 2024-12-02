@@ -7,7 +7,7 @@ edition = "2021"
 arboard = "3.4.0"
 bytes = "1.7.1"
 dirs = "5.0.1"
-iced = { git = "https://github.com/leo030303/iced", branch = "markdown_updates", features = ["markdown", "lazy", "highlighter", "svg", "tokio", "image", "debug"]}
+iced = { git = "https://github.com/leo030303/iced", branch = "markdown_updates", features = ["markdown", "lazy", "highlighter", "svg", "tokio", "image", "debug", "unconditional-rendering"]}
 iced_aw = { git = "https://github.com/leo030303/iced_aw", default-features = false, features = ["badge", "drop_down", "spinner", "drag_and_drop", "color_picker"] }
 mdproof = { git = "https://github.com/leo030303/mdproof"}
 keepass = { version = "0.7.21", features = ["save_kdbx4"] }
@@ -23,8 +23,18 @@ serde_json = "1.0.128"
 uuid = { version = "1.10.0", features = ["v4"] }
 walkdir = "2.5.0"
 zspell = "0.5.5"
+opencv = "0.93.5"
 
 [profile.release]
 lto = true
 codegen-units = 1
 panic = "abort"
+
+[profile.quick-release]
+inherits = "dev"
+opt-level = 0
+debug = 0
+strip = "none"
+lto = false
+codegen-units = 256
+incremental = true

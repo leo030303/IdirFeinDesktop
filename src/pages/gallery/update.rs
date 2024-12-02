@@ -243,58 +243,66 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             }
         }
         GalleryPageMessage::ArrowDownKeyPressed => {
-            if let Some(viewport) = state.scrollable_viewport_option {
-                let new_y = viewport.absolute_offset().y + ARROW_KEY_SCROLL_AMOUNT;
-                if new_y < viewport.content_bounds().height {
-                    return scrollable::scroll_to(
-                        SCROLLABLE_ID.clone(),
-                        scrollable::AbsoluteOffset {
-                            x: viewport.absolute_offset().x,
-                            y: new_y,
-                        },
-                    );
+            if state.selected_image.is_none() {
+                if let Some(viewport) = state.scrollable_viewport_option {
+                    let new_y = viewport.absolute_offset().y + ARROW_KEY_SCROLL_AMOUNT;
+                    if new_y < viewport.content_bounds().height {
+                        return scrollable::scroll_to(
+                            SCROLLABLE_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: new_y,
+                            },
+                        );
+                    }
                 }
             }
         }
         GalleryPageMessage::ArrowUpKeyPressed => {
-            if let Some(viewport) = state.scrollable_viewport_option {
-                let new_y = viewport.absolute_offset().y - ARROW_KEY_SCROLL_AMOUNT;
-                if new_y > 0.0 {
-                    return scrollable::scroll_to(
-                        SCROLLABLE_ID.clone(),
-                        scrollable::AbsoluteOffset {
-                            x: viewport.absolute_offset().x,
-                            y: new_y,
-                        },
-                    );
+            if state.selected_image.is_none() {
+                if let Some(viewport) = state.scrollable_viewport_option {
+                    let new_y = viewport.absolute_offset().y - ARROW_KEY_SCROLL_AMOUNT;
+                    if new_y > 0.0 {
+                        return scrollable::scroll_to(
+                            SCROLLABLE_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: new_y,
+                            },
+                        );
+                    }
                 }
             }
         }
         GalleryPageMessage::PageDownKeyPressed => {
-            if let Some(viewport) = state.scrollable_viewport_option {
-                let new_y = viewport.absolute_offset().y + PAGE_KEY_SCROLL_AMOUNT;
-                if new_y < viewport.content_bounds().height {
-                    return scrollable::scroll_to(
-                        SCROLLABLE_ID.clone(),
-                        scrollable::AbsoluteOffset {
-                            x: viewport.absolute_offset().x,
-                            y: new_y,
-                        },
-                    );
+            if state.selected_image.is_none() {
+                if let Some(viewport) = state.scrollable_viewport_option {
+                    let new_y = viewport.absolute_offset().y + PAGE_KEY_SCROLL_AMOUNT;
+                    if new_y < viewport.content_bounds().height {
+                        return scrollable::scroll_to(
+                            SCROLLABLE_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: new_y,
+                            },
+                        );
+                    }
                 }
             }
         }
         GalleryPageMessage::PageUpKeyPressed => {
-            if let Some(viewport) = state.scrollable_viewport_option {
-                let new_y = viewport.absolute_offset().y - PAGE_KEY_SCROLL_AMOUNT;
-                if new_y > 0.0 {
-                    return scrollable::scroll_to(
-                        SCROLLABLE_ID.clone(),
-                        scrollable::AbsoluteOffset {
-                            x: viewport.absolute_offset().x,
-                            y: new_y,
-                        },
-                    );
+            if state.selected_image.is_none() {
+                if let Some(viewport) = state.scrollable_viewport_option {
+                    let new_y = viewport.absolute_offset().y - PAGE_KEY_SCROLL_AMOUNT;
+                    if new_y > 0.0 {
+                        return scrollable::scroll_to(
+                            SCROLLABLE_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: new_y,
+                            },
+                        );
+                    }
                 }
             }
         }

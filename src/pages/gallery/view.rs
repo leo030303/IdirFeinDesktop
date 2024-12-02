@@ -27,7 +27,7 @@ pub fn main_view(state: &GalleryPage) -> Element<Message> {
 }
 
 fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
-    column![
+    container(column![
         row![
             Space::with_width(Length::Fill),
             Tooltip::new(
@@ -44,18 +44,18 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
         ],
         row![
             column![
-                Space::with_width(Length::Fill),
+                Space::with_height(Length::Fill),
                 Tooltip::new(
                     button(Svg::new(svg::Handle::from_memory(include_bytes!(
                         "../../../icons/previous.svg"
                     ))))
                     .on_press(Message::Gallery(GalleryPageMessage::SelectPreviousImage))
-                    .height(Length::Fixed(100.0))
+                    .height(Length::Fixed(40.0))
                     .width(Length::Fixed(50.0)),
                     "Previous Image (Left Arrow)",
                     iced::widget::tooltip::Position::Bottom
                 ),
-                Space::with_width(Length::Fill),
+                Space::with_height(Length::Fill),
             ],
             image::viewer(Handle::from_path(
                 state.selected_image.clone().expect("Shouldn't fail"),
@@ -63,21 +63,24 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
             .width(Length::Fill)
             .height(Length::Fill),
             column![
-                Space::with_width(Length::Fill),
+                Space::with_height(Length::Fill),
                 Tooltip::new(
                     button(Svg::new(svg::Handle::from_memory(include_bytes!(
                         "../../../icons/next.svg"
                     ))))
                     .on_press(Message::Gallery(GalleryPageMessage::SelectNextImage))
-                    .height(Length::Fixed(100.0))
+                    .height(Length::Fixed(40.0))
                     .width(Length::Fixed(50.0)),
                     "Next Image (Right Arrow)",
                     iced::widget::tooltip::Position::Bottom
                 ),
-                Space::with_width(Length::Fill),
+                Space::with_height(Length::Fill),
             ],
         ],
-    ]
+    ])
+    .width(Length::Fill)
+    .height(Length::Fill)
+    .style(container::dark)
     .into()
 }
 
