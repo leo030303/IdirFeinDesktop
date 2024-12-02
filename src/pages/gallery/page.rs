@@ -130,6 +130,20 @@ impl GalleryPage {
                 }),
                 Status::Ignored,
             ) => Some(Message::Gallery(GalleryPageMessage::PageDownKeyPressed)),
+            (
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: Key::Named(Named::ArrowRight),
+                    ..
+                }),
+                Status::Ignored,
+            ) => Some(Message::Gallery(GalleryPageMessage::SelectNextImage)),
+            (
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: Key::Named(Named::ArrowLeft),
+                    ..
+                }),
+                Status::Ignored,
+            ) => Some(Message::Gallery(GalleryPageMessage::SelectPreviousImage)),
             _ => None,
         })
     }
