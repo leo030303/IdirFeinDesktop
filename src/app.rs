@@ -21,8 +21,11 @@ use crate::{
         },
         tasks::page::{TasksPage, TasksPageMessage},
     },
+    utils::socket_utils::{self, ServerMessage},
     Page,
 };
+
+pub const APP_ID: &str = "idirfein_desktop";
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -38,6 +41,8 @@ pub enum Message {
     ShowToast(bool, String),
     ToastExpired,
     SaveConfig,
+    ServerMessageEvent(socket_utils::Event),
+    SendServerMessage(String),
 }
 
 pub struct AppState {
@@ -53,6 +58,7 @@ pub struct AppState {
     show_toast: bool,
     is_good_toast: bool,
     toast_text: String,
+    server_connection_state: ServerConnectionState,
 }
 
 impl AppState {
@@ -72,6 +78,7 @@ impl AppState {
                 show_toast: false,
                 is_good_toast: true,
                 toast_text: String::new(),
+                server_connection_state: ServerConnectionState::Disconnected,
             },
             Task::batch([
                 widget::focus_next(),
@@ -125,10 +132,31 @@ impl AppState {
                     Message::Settings(SettingsPageMessage::ResultFromSave(success))
                 });
             }
+            Message::ServerMessageEvent(event) => match event {
+                socket_utils::Event::Connected(connection) => {
+                    self.server_connection_state = ServerConnectionState::Connected(connection);
+                }
+                socket_utils::Event::Disconnected => {
+                    self.server_connection_state = ServerConnectionState::Disconnected;
+                }
+                socket_utils::Event::MessageReceived(message) => {
+                    println!("Recieved update: {message:?}");
+                }
+            },
+            Message::SendServerMessage(message_string) => {
+                if let ServerConnectionState::Connected(connection) =
+                    &mut self.server_connection_state
+                {
+                    connection.send(ServerMessage::User(message_string));
+                } else {
+                    println!("Disconnected");
+                }
+            }
             Message::None => (),
         }
         Task::none()
     }
+
     pub fn subscription(&self) -> Subscription<Message> {
         let mut subscriptions_vec = vec![event::listen_with(|event, status, _id| {
             match (event, status) {
@@ -178,6 +206,8 @@ impl AppState {
                 subscriptions_vec.push(TasksPage::subscription());
             }
         }
+        subscriptions_vec
+            .push(Subscription::run(socket_utils::connect).map(Message::ServerMessageEvent));
         Subscription::batch(subscriptions_vec)
     }
 
@@ -288,4 +318,9 @@ fn navbar_button(page: Page, selected: bool, index: u8) -> iced::Element<'static
         Position::Bottom,
     )
     .into()
+}
+
+enum ServerConnectionState {
+    Disconnected,
+    Connected(socket_utils::Connection),
 }

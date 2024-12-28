@@ -59,7 +59,11 @@ fn general_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Elemen
 }
 
 fn sync_tab<'a>(_state: &'a SettingsPage, _app_configg: &'a AppConfig) -> Element<'a, Message> {
-    text("sync tab").into()
+    column![
+        text("sync tab"),
+        button("Test sync").on_press(Message::SendServerMessage(String::from("Test")))
+    ]
+    .into()
 }
 
 fn tasks_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {

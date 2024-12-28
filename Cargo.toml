@@ -24,6 +24,9 @@ uuid = { version = "1.10.0", features = ["v4"] }
 walkdir = "2.5.0"
 zspell = "0.5.5"
 opencv = "0.93.5"
+rust-faces = { version = "1.0.0", features = ["viz"] }
+async-tungstenite = { version = "0.28.2", features = ["tokio-rustls-webpki-roots"] }
+tokio = { version = "1.42.0", features = ["time"] }
 
 [profile.release]
 lto = true
