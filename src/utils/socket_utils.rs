@@ -9,16 +9,16 @@ use futures::stream::{Stream, StreamExt};
 use async_tungstenite::tungstenite;
 use std::fmt;
 
-const LORO_SERVER: &str = "ws://127.0.0.1:8000/loro";
+// const LORO_SERVER: &str = "ws://127.0.0.1:8000/loro";
 
-pub fn connect() -> impl Stream<Item = Event> {
+pub fn connect(server_url: String) -> impl Stream<Item = Event> {
     stream::channel(100, |mut output| async move {
         let mut state = ConnectionState::Disconnected;
 
         loop {
             match &mut state {
                 ConnectionState::Disconnected => {
-                    match async_tungstenite::tokio::connect_async(LORO_SERVER).await {
+                    match async_tungstenite::tokio::connect_async(&server_url).await {
                         Ok((websocket, _)) => {
                             let (sender, receiver) = mpsc::channel(100);
 

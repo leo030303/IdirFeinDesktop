@@ -7,6 +7,7 @@ use crate::{
         notes::page::NotesPageConfig, passwords::page::PasswordPageConfig,
         tasks::page::TaskPageConfig,
     },
+    utils::sync_config::SyncConfig,
     Page,
 };
 
@@ -19,6 +20,7 @@ pub struct AppConfig {
     pub gallery_config: GalleryPageConfig,
     pub tasks_config: TaskPageConfig,
     pub file_manager_config: FileManagerPageConfig,
+    pub sync_config: SyncConfig,
 }
 
 impl Default for AppConfig {
@@ -31,6 +33,7 @@ impl Default for AppConfig {
             gallery_config: GalleryPageConfig::default(),
             tasks_config: TaskPageConfig::default(),
             file_manager_config: FileManagerPageConfig::default(),
+            sync_config: SyncConfig::default(),
         }
     }
 }

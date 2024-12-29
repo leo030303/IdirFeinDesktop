@@ -50,6 +50,9 @@ pub struct SettingsPage {
     pub(crate) save_was_successful: bool,
     pub(crate) save_message: String,
     pub(crate) current_tab: SettingsTab,
+    pub(crate) server_url_editor_text: String,
+    pub(crate) ignore_list_editor_text: String,
+    pub is_connected_to_server: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -83,15 +86,26 @@ pub enum SettingsPageMessage {
     TasksSetShowTaskCompletionToolbar(bool),
     GalleryPickDefaultFolder,
     GallerySetDefaultFolder(Option<PathBuf>),
+    SyncUpdateServerUrl(String),
+    SyncSetServerUrl,
+    SyncUpdateIgnoreListEditor(String),
+    SyncAddToIgnoreList,
+    SyncDeleteFromIgnoreList(usize),
+    SyncPickNewSyncListFolder,
+    SyncSetNewSyncListFolder(Option<PathBuf>),
+    SyncDeleteFromFolderList(usize),
 }
 
 impl SettingsPage {
-    pub fn new() -> Self {
+    pub fn new(app_config: &AppConfig) -> Self {
         Self {
             is_saving: false,
             save_was_successful: true,
             current_tab: SettingsTab::General,
             save_message: String::from("Settings saved"),
+            is_connected_to_server: false,
+            server_url_editor_text: app_config.sync_config.server_url.clone(),
+            ignore_list_editor_text: String::new(),
         }
     }
 
@@ -117,11 +131,5 @@ impl SettingsPage {
 
     pub fn tool_view(&self) -> Element<Message> {
         tool_view(self)
-    }
-}
-
-impl Default for SettingsPage {
-    fn default() -> Self {
-        Self::new()
     }
 }

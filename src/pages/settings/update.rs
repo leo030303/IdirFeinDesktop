@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use iced::Task;
 use rfd::FileDialog;
+use uuid::Uuid;
 
 use crate::config::AppConfig;
 use crate::pages::gallery::page::GalleryPageMessage;
@@ -224,6 +225,75 @@ pub fn update(
             app_config.gallery_config.default_folder = selected_folder.clone();
             return Task::done(Message::SaveConfig).chain(Task::done(Message::Gallery(
                 GalleryPageMessage::SetGalleryFolder(selected_folder),
+            )));
+        }
+        SettingsPageMessage::SyncUpdateServerUrl(s) => state.server_url_editor_text = s,
+        SettingsPageMessage::SyncSetServerUrl => {
+            app_config.sync_config.server_url = state.server_url_editor_text.clone();
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::ShowToast(
+                true,
+                String::from("Close and reopen the app to start using the new server url"),
+            )));
+        }
+        SettingsPageMessage::SyncUpdateIgnoreListEditor(s) => state.ignore_list_editor_text = s,
+        SettingsPageMessage::SyncAddToIgnoreList => {
+            if !state.ignore_list_editor_text.is_empty() {
+                app_config
+                    .sync_config
+                    .ignore_string_list
+                    .push(state.ignore_list_editor_text.clone());
+                state.ignore_list_editor_text = String::new();
+                return Task::done(Message::SaveConfig).chain(Task::done(Message::ShowToast(
+                    true,
+                    String::from("Close and reopen the app to start using the new ignore list"),
+                )));
+            }
+        }
+        SettingsPageMessage::SyncDeleteFromIgnoreList(index_of_item_to_delete) => {
+            app_config
+                .sync_config
+                .ignore_string_list
+                .remove(index_of_item_to_delete);
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::ShowToast(
+                true,
+                String::from("Close and reopen the app to start using the new ignore list"),
+            )));
+        }
+        SettingsPageMessage::SyncPickNewSyncListFolder => {
+            return Task::perform(
+                async {
+                    FileDialog::new()
+                        .set_directory("/")
+                        .set_can_create_directories(true)
+                        .pick_folder()
+                },
+                |selected_folder| {
+                    Message::Settings(SettingsPageMessage::SyncSetNewSyncListFolder(
+                        selected_folder,
+                    ))
+                },
+            );
+        }
+        SettingsPageMessage::SyncSetNewSyncListFolder(selected_folder_option) => {
+            if let Some(selected_folder) = selected_folder_option {
+                app_config
+                    .sync_config
+                    .folders_to_sync
+                    .push((Uuid::new_v4(), selected_folder));
+                return Task::done(Message::SaveConfig).chain(Task::done(Message::ShowToast(
+                    true,
+                    String::from("Close and reopen the app to start using the new sync list"),
+                )));
+            }
+        }
+        SettingsPageMessage::SyncDeleteFromFolderList(index_of_item_to_delete) => {
+            app_config
+                .sync_config
+                .folders_to_sync
+                .remove(index_of_item_to_delete);
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::ShowToast(
+                true,
+                String::from("Close and reopen the app to start using the new sync list"),
             )));
         }
     }

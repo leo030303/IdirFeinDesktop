@@ -1,6 +1,9 @@
 use iced::{
     border,
-    widget::{button, column, container, pick_list, row, scrollable, text, toggler},
+    widget::{
+        button, column, container, pick_list, row, scrollable, svg, text, text_input, toggler, Svg,
+        Tooltip,
+    },
     Alignment, Background, Element, Length, Theme,
 };
 use iced_aw::Spinner;
@@ -58,10 +61,102 @@ fn general_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Elemen
     .into()
 }
 
-fn sync_tab<'a>(_state: &'a SettingsPage, _app_configg: &'a AppConfig) -> Element<'a, Message> {
+fn sync_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
     column![
-        text("sync tab"),
-        button("Test sync").on_press(Message::SendServerMessage(String::from("Test")))
+        if state.is_connected_to_server {
+            row![
+                text("Connected to server").style(text::success),
+                Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/connection.svg"
+                )))
+            ]
+        } else {
+            row![
+                text("Disconnected from server").style(text::danger),
+                Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/no_connection.svg"
+                )))
+            ]
+        },
+        row![
+            text_input("Server Url", &state.server_url_editor_text)
+                .width(Length::Fixed(200.0))
+                .on_input(|s| Message::Settings(SettingsPageMessage::SyncUpdateServerUrl(s)))
+                .on_submit(Message::Settings(SettingsPageMessage::SyncSetServerUrl)),
+            button("Set Url").on_press(Message::Settings(SettingsPageMessage::SyncSetServerUrl))
+        ],
+        row![
+            row![
+                text_input("New ignore list entry", &state.ignore_list_editor_text)
+                    .width(Length::Fixed(200.0))
+                    .on_input(|s| Message::Settings(
+                        SettingsPageMessage::SyncUpdateIgnoreListEditor(s)
+                    ))
+                    .on_submit(Message::Settings(SettingsPageMessage::SyncAddToIgnoreList)),
+                button("Add").on_press(Message::Settings(SettingsPageMessage::SyncAddToIgnoreList))
+            ],
+            column(
+                app_config
+                    .sync_config
+                    .ignore_string_list
+                    .iter()
+                    .enumerate()
+                    .map(|(index, ignore_list_item)| {
+                        row![
+                            text(ignore_list_item),
+                            Tooltip::new(
+                                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                    "../../../icons/delete.svg"
+                                ))))
+                                .on_press(Message::Settings(
+                                    SettingsPageMessage::SyncDeleteFromIgnoreList(index)
+                                ))
+                                .style(button::danger)
+                                .width(Length::Fixed(50.0))
+                                .height(Length::Fixed(30.0)),
+                                "Remove",
+                                iced::widget::tooltip::Position::Bottom
+                            ),
+                        ]
+                        .into()
+                    })
+            )
+        ],
+        row![
+            row![
+                button("Add folder to sync list").on_press(Message::Settings(
+                    SettingsPageMessage::SyncPickNewSyncListFolder
+                ))
+            ],
+            column(
+                app_config
+                    .sync_config
+                    .folders_to_sync
+                    .iter()
+                    .enumerate()
+                    .map(|(index, (_folder_id, folder_path))| {
+                        row![
+                            text(folder_path.to_str().unwrap_or("Error reading folder path")),
+                            Tooltip::new(
+                                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                    "../../../icons/delete.svg"
+                                ))))
+                                .on_press(Message::Settings(
+                                    SettingsPageMessage::SyncDeleteFromFolderList(index)
+                                ))
+                                .style(button::danger)
+                                .width(Length::Fixed(50.0))
+                                .height(Length::Fixed(30.0)),
+                                "Remove",
+                                iced::widget::tooltip::Position::Bottom
+                            ),
+                        ]
+                        .into()
+                    })
+            )
+        ],
+        button("Test sync (this button will be removed)")
+            .on_press(Message::SendServerMessage(String::from("Test")))
     ]
     .into()
 }

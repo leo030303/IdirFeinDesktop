@@ -67,12 +67,12 @@ impl AppState {
         (
             Self {
                 config: config.clone(),
-                current_page: config.default_page_on_open,
+                current_page: config.default_page_on_open.clone(),
                 is_closing: false,
                 notes_page: NotesPage::new(&config.notes_config),
                 passwords_page: PasswordsPage::new(&config.passwords_config),
                 tasks_page: TasksPage::new(&config.tasks_config),
-                settings_page: SettingsPage::new(),
+                settings_page: SettingsPage::new(&config),
                 file_manager_page: FileManagerPage::new(&config.file_manager_config),
                 gallery_page: GalleryPage::new(&config.gallery_config),
                 show_toast: false,
@@ -135,9 +135,11 @@ impl AppState {
             Message::ServerMessageEvent(event) => match event {
                 socket_utils::Event::Connected(connection) => {
                     self.server_connection_state = ServerConnectionState::Connected(connection);
+                    self.settings_page.is_connected_to_server = true;
                 }
                 socket_utils::Event::Disconnected => {
                     self.server_connection_state = ServerConnectionState::Disconnected;
+                    self.settings_page.is_connected_to_server = false;
                 }
                 socket_utils::Event::MessageReceived(message) => {
                     println!("Recieved update: {message:?}");
@@ -206,8 +208,13 @@ impl AppState {
                 subscriptions_vec.push(TasksPage::subscription());
             }
         }
-        subscriptions_vec
-            .push(Subscription::run(socket_utils::connect).map(Message::ServerMessageEvent));
+        subscriptions_vec.push(
+            Subscription::run_with_id(
+                "server_connection_subscription",
+                socket_utils::connect(self.config.sync_config.server_url.clone()),
+            )
+            .map(Message::ServerMessageEvent),
+        );
         Subscription::batch(subscriptions_vec)
     }
 
