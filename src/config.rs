@@ -3,11 +3,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     pages::{
-        file_manager::page::FileManagerPageConfig, gallery::page::GalleryPageConfig,
-        notes::page::NotesPageConfig, passwords::page::PasswordPageConfig,
+        gallery::page::GalleryPageConfig, notes::page::NotesPageConfig,
+        passwords::page::PasswordPageConfig, sync::page::SyncPageConfig,
         tasks::page::TaskPageConfig,
     },
-    utils::sync_config::SyncConfig,
     Page,
 };
 
@@ -19,21 +18,19 @@ pub struct AppConfig {
     pub passwords_config: PasswordPageConfig,
     pub gallery_config: GalleryPageConfig,
     pub tasks_config: TaskPageConfig,
-    pub file_manager_config: FileManagerPageConfig,
-    pub sync_config: SyncConfig,
+    pub sync_config: SyncPageConfig,
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
             theme_string: Self::get_string_from_theme(Theme::Light),
-            default_page_on_open: Page::FileManager,
+            default_page_on_open: Page::Notes,
             notes_config: NotesPageConfig::default(),
             passwords_config: PasswordPageConfig::default(),
             gallery_config: GalleryPageConfig::default(),
             tasks_config: TaskPageConfig::default(),
-            file_manager_config: FileManagerPageConfig::default(),
-            sync_config: SyncConfig::default(),
+            sync_config: SyncPageConfig::default(),
         }
     }
 }

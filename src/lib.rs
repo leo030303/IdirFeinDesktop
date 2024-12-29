@@ -12,7 +12,7 @@ pub mod utils;
 pub enum Page {
     Settings,
     Passwords,
-    FileManager,
+    Sync,
     Gallery,
     Notes,
     Tasks,
@@ -23,7 +23,7 @@ impl Display for Page {
         match self {
             Page::Settings => write!(f, "Settings"),
             Page::Passwords => write!(f, "Passwords"),
-            Page::FileManager => write!(f, "File Manager"),
+            Page::Sync => write!(f, "Sync"),
             Page::Gallery => write!(f, "Gallery"),
             Page::Notes => write!(f, "Notes"),
             Page::Tasks => write!(f, "Tasks"),
@@ -38,7 +38,7 @@ impl Page {
             Page::Notes,
             Page::Passwords,
             Page::Tasks,
-            Page::FileManager,
+            Page::Sync,
             Page::Gallery,
         ]
     }
@@ -47,7 +47,7 @@ impl Page {
         match self {
             Page::Settings => "Settings",
             Page::Passwords => "Passwords",
-            Page::FileManager => "File Manager",
+            Page::Sync => "Sync",
             Page::Gallery => "Gallery",
             Page::Notes => "Notes",
             Page::Tasks => "Tasks",
@@ -58,9 +58,7 @@ impl Page {
         match self {
             Page::Settings => svg::Handle::from_memory(include_bytes!("../icons/settings.svg")),
             Page::Passwords => svg::Handle::from_memory(include_bytes!("../icons/key.svg")),
-            Page::FileManager => {
-                svg::Handle::from_memory(include_bytes!("../icons/file-manager.svg"))
-            }
+            Page::Sync => svg::Handle::from_memory(include_bytes!("../icons/sync.svg")),
             Page::Gallery => svg::Handle::from_memory(include_bytes!("../icons/image-round.svg")),
             Page::Notes => svg::Handle::from_memory(include_bytes!("../icons/notepad.svg")),
             Page::Tasks => svg::Handle::from_memory(include_bytes!("../icons/task.svg")),

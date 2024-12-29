@@ -12,7 +12,6 @@ use super::view::{main_view, tool_view};
 pub enum SettingsTab {
     General,
     Sync,
-    FileManager,
     Gallery,
     Passwords,
     Notes,
@@ -20,11 +19,10 @@ pub enum SettingsTab {
 }
 
 impl SettingsTab {
-    pub fn get_all() -> [SettingsTab; 7] {
+    pub fn get_all() -> [SettingsTab; 6] {
         [
             SettingsTab::General,
             SettingsTab::Sync,
-            SettingsTab::FileManager,
             SettingsTab::Gallery,
             SettingsTab::Passwords,
             SettingsTab::Notes,
@@ -35,7 +33,6 @@ impl SettingsTab {
         match self {
             SettingsTab::General => "General",
             SettingsTab::Sync => "Sync",
-            SettingsTab::FileManager => "File Manager",
             SettingsTab::Gallery => "Gallery",
             SettingsTab::Passwords => "Passwords",
             SettingsTab::Notes => "Notes",
@@ -51,8 +48,6 @@ pub struct SettingsPage {
     pub(crate) save_message: String,
     pub(crate) current_tab: SettingsTab,
     pub(crate) server_url_editor_text: String,
-    pub(crate) ignore_list_editor_text: String,
-    pub is_connected_to_server: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -88,12 +83,6 @@ pub enum SettingsPageMessage {
     GallerySetDefaultFolder(Option<PathBuf>),
     SyncUpdateServerUrl(String),
     SyncSetServerUrl,
-    SyncUpdateIgnoreListEditor(String),
-    SyncAddToIgnoreList,
-    SyncDeleteFromIgnoreList(usize),
-    SyncPickNewSyncListFolder,
-    SyncSetNewSyncListFolder(Option<PathBuf>),
-    SyncDeleteFromFolderList(usize),
 }
 
 impl SettingsPage {
@@ -103,9 +92,7 @@ impl SettingsPage {
             save_was_successful: true,
             current_tab: SettingsTab::General,
             save_message: String::from("Settings saved"),
-            is_connected_to_server: false,
             server_url_editor_text: app_config.sync_config.server_url.clone(),
-            ignore_list_editor_text: String::new(),
         }
     }
 

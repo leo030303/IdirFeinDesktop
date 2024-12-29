@@ -11,7 +11,6 @@ use iced::{
 use crate::{
     config::AppConfig,
     pages::{
-        file_manager::page::{FileManagerPage, FileManagerPageMessage},
         gallery::page::{GalleryPage, GalleryPageMessage},
         notes::page::{NotesPage, NotesPageMessage},
         passwords::page::{PasswordsPage, PasswordsPageMessage},
@@ -19,6 +18,7 @@ use crate::{
             page::{SettingsPage, SettingsPageMessage},
             settings_utils::{load_settings_from_file, save_settings_to_file},
         },
+        sync::page::{SyncPage, SyncPageMessage},
         tasks::page::{TasksPage, TasksPageMessage},
     },
     utils::socket_utils::{self, ServerMessage},
@@ -36,7 +36,7 @@ pub enum Message {
     Notes(NotesPageMessage),
     Tasks(TasksPageMessage),
     Gallery(GalleryPageMessage),
-    FileManager(FileManagerPageMessage),
+    Sync(SyncPageMessage),
     Settings(SettingsPageMessage),
     ShowToast(bool, String),
     ToastExpired,
@@ -53,7 +53,7 @@ pub struct AppState {
     passwords_page: PasswordsPage,
     tasks_page: TasksPage,
     settings_page: SettingsPage,
-    file_manager_page: FileManagerPage,
+    sync_page: SyncPage,
     gallery_page: GalleryPage,
     show_toast: bool,
     is_good_toast: bool,
@@ -73,7 +73,7 @@ impl AppState {
                 passwords_page: PasswordsPage::new(&config.passwords_config),
                 tasks_page: TasksPage::new(&config.tasks_config),
                 settings_page: SettingsPage::new(&config),
-                file_manager_page: FileManagerPage::new(&config.file_manager_config),
+                sync_page: SyncPage::new(&config.sync_config),
                 gallery_page: GalleryPage::new(&config.gallery_config),
                 show_toast: false,
                 is_good_toast: true,
@@ -87,7 +87,7 @@ impl AppState {
                 PasswordsPage::opening_task(),
                 SettingsPage::opening_task(),
                 GalleryPage::opening_task(),
-                FileManagerPage::opening_task(),
+                SyncPage::opening_task(),
             ]),
         )
     }
@@ -99,7 +99,7 @@ impl AppState {
             Message::Notes(m) => return self.notes_page.update(m),
             Message::Tasks(m) => return self.tasks_page.update(m),
             Message::Gallery(m) => return self.gallery_page.update(m),
-            Message::FileManager(m) => return self.file_manager_page.update(m),
+            Message::Sync(m) => return self.sync_page.update(m),
             Message::Settings(m) => return self.settings_page.update(m, &mut self.config),
             Message::ShowToast(is_good_toast, content) => {
                 self.show_toast = true;
@@ -122,7 +122,7 @@ impl AppState {
                     self.notes_page.closing_task(),
                     self.gallery_page.closing_task(),
                     self.tasks_page.closing_task(),
-                    self.file_manager_page.closing_task(),
+                    self.sync_page.closing_task(),
                     self.settings_page.closing_task(),
                 ])
                 .chain(window::get_latest().and_then(window::close));
@@ -135,11 +135,11 @@ impl AppState {
             Message::ServerMessageEvent(event) => match event {
                 socket_utils::Event::Connected(connection) => {
                     self.server_connection_state = ServerConnectionState::Connected(connection);
-                    self.settings_page.is_connected_to_server = true;
+                    self.sync_page.is_connected_to_server = true;
                 }
                 socket_utils::Event::Disconnected => {
                     self.server_connection_state = ServerConnectionState::Disconnected;
-                    self.settings_page.is_connected_to_server = false;
+                    self.sync_page.is_connected_to_server = false;
                 }
                 socket_utils::Event::MessageReceived(message) => {
                     println!("Recieved update: {message:?}");
@@ -180,7 +180,7 @@ impl AppState {
                     } else if pressed_char.as_ref() == "3" {
                         Some(Message::ChangePage(Page::Passwords))
                     } else if pressed_char.as_ref() == "4" {
-                        Some(Message::ChangePage(Page::FileManager))
+                        Some(Message::ChangePage(Page::Sync))
                     } else if pressed_char.as_ref() == "5" {
                         Some(Message::ChangePage(Page::Gallery))
                     } else if pressed_char.as_ref() == "6" {
@@ -197,7 +197,7 @@ impl AppState {
             Page::Passwords => {
                 subscriptions_vec.push(PasswordsPage::subscription());
             }
-            Page::FileManager => (),
+            Page::Sync => (),
             Page::Gallery => {
                 subscriptions_vec.push(GalleryPage::subscription());
             }
@@ -223,7 +223,7 @@ impl AppState {
             navbar_button(Page::Notes, self.current_page == Page::Notes, 1),
             navbar_button(Page::Tasks, self.current_page == Page::Tasks, 2),
             navbar_button(Page::Passwords, self.current_page == Page::Passwords, 3),
-            navbar_button(Page::FileManager, self.current_page == Page::FileManager, 4),
+            navbar_button(Page::Sync, self.current_page == Page::Sync, 4),
             navbar_button(Page::Gallery, self.current_page == Page::Gallery, 5),
             navbar_button(Page::Settings, self.current_page == Page::Settings, 6),
         ]
@@ -232,7 +232,7 @@ impl AppState {
         let tool_view = match self.current_page {
             Page::Settings => self.settings_page.tool_view(),
             Page::Passwords => self.passwords_page.tool_view(),
-            Page::FileManager => self.file_manager_page.tool_view(),
+            Page::Sync => self.sync_page.tool_view(),
             Page::Gallery => self.gallery_page.tool_view(),
             Page::Notes => self.notes_page.tool_view(),
             Page::Tasks => self.tasks_page.tool_view(),
@@ -241,7 +241,7 @@ impl AppState {
         let main_view = match self.current_page {
             Page::Settings => self.settings_page.view(&self.config),
             Page::Passwords => self.passwords_page.view(),
-            Page::FileManager => self.file_manager_page.view(),
+            Page::Sync => self.sync_page.view(),
             Page::Gallery => self.gallery_page.view(),
             Page::Notes => self.notes_page.view(),
             Page::Tasks => self.tasks_page.view(),

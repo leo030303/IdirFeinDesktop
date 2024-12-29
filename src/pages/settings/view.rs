@@ -1,8 +1,7 @@
 use iced::{
     border,
     widget::{
-        button, column, container, pick_list, row, scrollable, svg, text, text_input, toggler, Svg,
-        Tooltip,
+        button, column, container, pick_list, row, scrollable, text, text_input, toggler, Space,
     },
     Alignment, Background, Element, Length, Theme,
 };
@@ -38,7 +37,6 @@ pub fn main_view<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Elem
         match state.current_tab {
             SettingsTab::General => general_tab(state, app_config),
             SettingsTab::Sync => sync_tab(state, app_config),
-            SettingsTab::FileManager => file_manager_tab(state, app_config),
             SettingsTab::Gallery => gallery_tab(state, app_config),
             SettingsTab::Passwords => passwords_tab(state, app_config),
             SettingsTab::Notes => notes_tab(state, app_config),
@@ -61,103 +59,26 @@ fn general_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Elemen
     .into()
 }
 
-fn sync_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
-    column![
-        if state.is_connected_to_server {
-            row![
-                text("Connected to server").style(text::success),
-                Svg::new(svg::Handle::from_memory(include_bytes!(
-                    "../../../icons/connection.svg"
-                )))
-            ]
-        } else {
-            row![
-                text("Disconnected from server").style(text::danger),
-                Svg::new(svg::Handle::from_memory(include_bytes!(
-                    "../../../icons/no_connection.svg"
-                )))
-            ]
-        },
-        row![
-            text_input("Server Url", &state.server_url_editor_text)
-                .width(Length::Fixed(200.0))
-                .on_input(|s| Message::Settings(SettingsPageMessage::SyncUpdateServerUrl(s)))
-                .on_submit(Message::Settings(SettingsPageMessage::SyncSetServerUrl)),
-            button("Set Url").on_press(Message::Settings(SettingsPageMessage::SyncSetServerUrl))
-        ],
-        row![
-            row![
-                text_input("New ignore list entry", &state.ignore_list_editor_text)
+fn sync_tab<'a>(state: &'a SettingsPage, _app_config: &'a AppConfig) -> Element<'a, Message> {
+    scrollable(
+        container(
+            column![row![
+                text("Server Url:"),
+                Space::with_width(Length::Fixed(20.0)),
+                text_input("Server Url", &state.server_url_editor_text)
                     .width(Length::Fixed(200.0))
-                    .on_input(|s| Message::Settings(
-                        SettingsPageMessage::SyncUpdateIgnoreListEditor(s)
-                    ))
-                    .on_submit(Message::Settings(SettingsPageMessage::SyncAddToIgnoreList)),
-                button("Add").on_press(Message::Settings(SettingsPageMessage::SyncAddToIgnoreList))
-            ],
-            column(
-                app_config
-                    .sync_config
-                    .ignore_string_list
-                    .iter()
-                    .enumerate()
-                    .map(|(index, ignore_list_item)| {
-                        row![
-                            text(ignore_list_item),
-                            Tooltip::new(
-                                button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                                    "../../../icons/delete.svg"
-                                ))))
-                                .on_press(Message::Settings(
-                                    SettingsPageMessage::SyncDeleteFromIgnoreList(index)
-                                ))
-                                .style(button::danger)
-                                .width(Length::Fixed(50.0))
-                                .height(Length::Fixed(30.0)),
-                                "Remove",
-                                iced::widget::tooltip::Position::Bottom
-                            ),
-                        ]
-                        .into()
-                    })
-            )
-        ],
-        row![
-            row![
-                button("Add folder to sync list").on_press(Message::Settings(
-                    SettingsPageMessage::SyncPickNewSyncListFolder
-                ))
-            ],
-            column(
-                app_config
-                    .sync_config
-                    .folders_to_sync
-                    .iter()
-                    .enumerate()
-                    .map(|(index, (_folder_id, folder_path))| {
-                        row![
-                            text(folder_path.to_str().unwrap_or("Error reading folder path")),
-                            Tooltip::new(
-                                button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                                    "../../../icons/delete.svg"
-                                ))))
-                                .on_press(Message::Settings(
-                                    SettingsPageMessage::SyncDeleteFromFolderList(index)
-                                ))
-                                .style(button::danger)
-                                .width(Length::Fixed(50.0))
-                                .height(Length::Fixed(30.0)),
-                                "Remove",
-                                iced::widget::tooltip::Position::Bottom
-                            ),
-                        ]
-                        .into()
-                    })
-            )
-        ],
-        button("Test sync (this button will be removed)")
-            .on_press(Message::SendServerMessage(String::from("Test")))
-    ]
+                    .on_input(|s| Message::Settings(SettingsPageMessage::SyncUpdateServerUrl(s)))
+                    .on_submit(Message::Settings(SettingsPageMessage::SyncSetServerUrl)),
+                button("Set Url")
+                    .on_press(Message::Settings(SettingsPageMessage::SyncSetServerUrl))
+            ]
+            .width(Length::Fill),]
+            .padding(20)
+            .spacing(30),
+        )
+        .style(container::bordered_box)
+        .width(Length::Fill),
+    )
     .into()
 }
 
@@ -399,13 +320,6 @@ fn gallery_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Eleme
         .width(Length::Fill),
     )
     .into()
-}
-
-fn file_manager_tab<'a>(
-    _state: &'a SettingsPage,
-    _app_config: &'a AppConfig,
-) -> Element<'a, Message> {
-    text("file manager tab").into()
 }
 
 fn default_page_picker<'a>(
