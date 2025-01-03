@@ -15,9 +15,11 @@ use rfd::FileDialog;
 
 use crate::{app::Message, pages::gallery::page::IMAGE_HEIGHT};
 
+use super::gallery_utils::{self, get_detected_faces_for_image};
 use super::page::{
-    GalleryPage, GalleryPageMessage, ImageRow, ARROW_KEY_SCROLL_AMOUNT, NUM_IMAGES_IN_ROW,
-    PAGE_KEY_SCROLL_AMOUNT, ROW_BATCH_SIZE, SCROLLABLE_ID, THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE,
+    GalleryPage, GalleryPageMessage, ImageRow, ARROW_KEY_SCROLL_AMOUNT, FACE_DATA_FOLDER_NAME,
+    NUM_IMAGES_IN_ROW, PAGE_KEY_SCROLL_AMOUNT, ROW_BATCH_SIZE, SCROLLABLE_ID,
+    THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE,
 };
 
 pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Message> {
@@ -43,40 +45,42 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             let selected_folder = state.selected_folder.clone();
             return Task::perform(
                 async {
-                    let gallery_files_list: Vec<Vec<PathBuf>> = if let Some(selected_folder) =
-                        selected_folder
-                    {
-                        let directory_iterator = WalkDir::new(selected_folder)
-                            .into_iter()
-                            .filter_entry(|entry| !entry.path().ends_with(THUMBNAIL_FOLDER_NAME));
-                        let mut all_image_files = directory_iterator
-                            .filter_map(|read_dir_object| read_dir_object.ok())
-                            .map(|read_dir_object| read_dir_object.into_path())
-                            .filter(|path| {
-                                path.extension().is_some_and(|extension_os_str| {
-                                    extension_os_str.to_str().is_some_and(|extension| {
-                                        extension == "jpg"
-                                            || extension == "jpeg"
-                                            || extension == "png"
+                    let gallery_files_list: Vec<Vec<PathBuf>> =
+                        if let Some(selected_folder) = selected_folder {
+                            let directory_iterator = WalkDir::new(selected_folder)
+                                .into_iter()
+                                .filter_entry(|entry| {
+                                    !entry.path().ends_with(THUMBNAIL_FOLDER_NAME)
+                                        && !entry.path().ends_with(FACE_DATA_FOLDER_NAME)
+                                });
+                            let mut all_image_files = directory_iterator
+                                .filter_map(|read_dir_object| read_dir_object.ok())
+                                .map(|read_dir_object| read_dir_object.into_path())
+                                .filter(|path| {
+                                    path.extension().is_some_and(|extension_os_str| {
+                                        extension_os_str.to_str().is_some_and(|extension| {
+                                            extension == "jpg"
+                                                || extension == "jpeg"
+                                                || extension == "png"
+                                        })
                                     })
                                 })
-                            })
-                            .collect::<Vec<PathBuf>>();
-                        all_image_files.sort_unstable_by(|file_path1, file_path2| {
-                            file_path1
-                                .metadata()
-                                .unwrap()
-                                .st_mtime()
-                                .cmp(&file_path2.metadata().unwrap().st_mtime())
-                                .reverse()
-                        });
-                        all_image_files
-                            .chunks(NUM_IMAGES_IN_ROW)
-                            .map(|item| item.to_vec())
-                            .collect()
-                    } else {
-                        vec![]
-                    };
+                                .collect::<Vec<PathBuf>>();
+                            all_image_files.sort_unstable_by(|file_path1, file_path2| {
+                                file_path1
+                                    .metadata()
+                                    .unwrap()
+                                    .st_mtime()
+                                    .cmp(&file_path2.metadata().unwrap().st_mtime())
+                                    .reverse()
+                            });
+                            all_image_files
+                                .chunks(NUM_IMAGES_IN_ROW)
+                                .map(|item| item.to_vec())
+                                .collect()
+                        } else {
+                            vec![]
+                        };
                     gallery_files_list
                 },
                 |gallery_files_list| {
@@ -307,7 +311,13 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             }
         }
         GalleryPageMessage::SelectImageForBigView(image_path_option) => {
-            state.selected_image = image_path_option;
+            if image_path_option.is_none() {
+                state.selected_image = None;
+            } else {
+                let image_path = image_path_option.expect("Can't fail");
+                let faces_vec = get_detected_faces_for_image(&image_path);
+                state.selected_image = Some((image_path, faces_vec));
+            }
             if let Some(viewport) = state.scrollable_viewport_option {
                 return scrollable::scroll_to(
                     SCROLLABLE_ID.clone(),
@@ -330,7 +340,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 if let Some(current_index) = state
                     .gallery_paths_list
                     .iter()
-                    .position(|current_path| current_path == selected_image)
+                    .position(|current_path| *current_path == selected_image.0)
                 {
                     return Task::done(Message::Gallery(
                         GalleryPageMessage::SelectImageForBigView(
@@ -348,7 +358,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 if let Some(current_index) = state
                     .gallery_paths_list
                     .iter()
-                    .position(|current_path| current_path == selected_image)
+                    .position(|current_path| *current_path == selected_image.0)
                 {
                     let new_index = current_index + 1;
                     if new_index < state.gallery_paths_list.len() {
@@ -359,6 +369,21 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                         ));
                     }
                 }
+            }
+        }
+        GalleryPageMessage::ExtractAllFaces => {
+            let image_paths = state.gallery_paths_list.clone();
+            return Task::run(gallery_utils::extract_all_faces(image_paths), |progress| {
+                Message::Gallery(GalleryPageMessage::ShowFaceExtractionProgress(
+                    progress.unwrap_or_default(),
+                ))
+            });
+        }
+        GalleryPageMessage::ShowFaceExtractionProgress(progress) => {
+            if progress >= 100.0 {
+                state.face_extraction_progress = None;
+            } else {
+                state.face_extraction_progress = Some(progress);
             }
         }
     }

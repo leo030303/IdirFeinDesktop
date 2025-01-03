@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::app::Message;
 
+use super::gallery_utils::FaceData;
 use super::update::update;
 use super::view::{main_view, tool_view};
 
@@ -22,6 +23,8 @@ pub(crate) const ARROW_KEY_SCROLL_AMOUNT: f32 = 50.0;
 pub(crate) const PAGE_KEY_SCROLL_AMOUNT: f32 = 500.0;
 pub(crate) const THUMBNAIL_SIZE: u32 = 200;
 pub(crate) const THUMBNAIL_FOLDER_NAME: &str = ".thumbnails";
+pub(crate) const FACE_DATA_FOLDER_NAME: &str = ".face_data";
+pub(crate) const FACE_DATA_FILE_NAME: &str = "extracted_faces.json";
 
 pub(crate) static SCROLLABLE_ID: Lazy<scrollable::Id> = Lazy::new(scrollable::Id::unique);
 
@@ -32,11 +35,12 @@ pub struct GalleryPageConfig {
 
 pub struct GalleryPage {
     pub(crate) selected_folder: Option<PathBuf>,
-    pub(crate) selected_image: Option<PathBuf>,
+    pub(crate) selected_image: Option<(PathBuf, Vec<FaceData>)>,
     pub(crate) first_loaded_row_index: usize,
     pub(crate) gallery_row_list: Vec<ImageRow>,
     pub(crate) gallery_paths_list: Vec<PathBuf>,
     pub(crate) scrollable_viewport_option: Option<Viewport>,
+    pub(crate) face_extraction_progress: Option<f32>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -64,6 +68,8 @@ pub enum GalleryPageMessage {
     EscapeKeyPressed,
     SelectPreviousImage,
     SelectNextImage,
+    ExtractAllFaces,
+    ShowFaceExtractionProgress(f32),
 }
 
 impl GalleryPage {
@@ -75,6 +81,7 @@ impl GalleryPage {
             scrollable_viewport_option: None,
             selected_image: None,
             gallery_paths_list: vec![],
+            face_extraction_progress: None,
         }
     }
 

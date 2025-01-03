@@ -24,9 +24,10 @@ uuid = { version = "1.10.0", features = ["v4"] }
 walkdir = "2.5.0"
 zspell = "0.5.5"
 opencv = "0.93.5"
-rust-faces = { version = "1.0.0", features = ["viz"] }
+rust-faces = {git = "https://github.com/blissd/fotema-rust-faces.git", tag = "v1.0.0", features = ["viz"]}
 async-tungstenite = { version = "0.28.2", features = ["tokio-rustls-webpki-roots"] }
 tokio = { version = "1.42.0", features = ["time"] }
+image = "0.25.5"
 
 [profile.release]
 lto = true

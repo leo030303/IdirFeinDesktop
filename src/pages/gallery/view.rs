@@ -3,7 +3,7 @@ use iced::{
     widget::{
         button, column, container,
         image::{self, Handle},
-        row, scrollable, stack, svg, text, Image, MouseArea, Space, Svg, Tooltip,
+        progress_bar, row, scrollable, stack, svg, text, Image, MouseArea, Space, Svg, Tooltip,
     },
     Alignment::Center,
     Element, Length,
@@ -44,6 +44,52 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
         ],
         row![
             column![
+                text("People").size(18).width(Length::Fill).center(),
+                if state
+                    .selected_image
+                    .as_ref()
+                    .expect("Can't fail")
+                    .1
+                    .iter()
+                    .any(|face_data| !face_data.is_ignored)
+                {
+                    scrollable(
+                        column(
+                            state
+                                .selected_image
+                                .as_ref()
+                                .expect("Can't fail")
+                                .1
+                                .iter()
+                                .filter(|face_data| !face_data.is_ignored)
+                                .map(|face_data| {
+                                    column![
+                                        Image::new(image::Handle::from_path(
+                                            face_data.thumbnail_path.clone()
+                                        ))
+                                        .content_fit(iced::ContentFit::ScaleDown)
+                                        .filter_method(image::FilterMethod::Nearest),
+                                        text(
+                                            face_data
+                                                .name_of_person
+                                                .as_ref()
+                                                .map_or("Unnamed", |v| v)
+                                        )
+                                        .width(Length::Fill)
+                                        .center()
+                                    ]
+                                    .into()
+                                }),
+                        )
+                        .padding(5)
+                        .spacing(10),
+                    )
+                } else {
+                    scrollable(column![text("None found").width(Length::Fill).center()])
+                },
+            ]
+            .width(Length::Fixed(100.0)),
+            column![
                 Space::with_height(Length::Fill),
                 Tooltip::new(
                     button(Svg::new(svg::Handle::from_memory(include_bytes!(
@@ -58,7 +104,12 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
                 Space::with_height(Length::Fill),
             ],
             image::viewer(Handle::from_path(
-                state.selected_image.clone().expect("Shouldn't fail"),
+                state
+                    .selected_image
+                    .as_ref()
+                    .expect("Shouldn't fail")
+                    .0
+                    .clone(),
             ))
             .width(Length::Fill)
             .height(Length::Fill),
@@ -85,43 +136,70 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
 }
 
 fn gallery_grid(state: &GalleryPage) -> Element<Message> {
-    scrollable(column(state.gallery_row_list.iter().map(|image_row| {
-        if image_row.loaded {
-            row(image_row
-                .images_data
-                .iter()
-                .map(|(photo_path, handle_option)| {
-                    if let Some(image_handle) = handle_option {
-                        container(
-                            MouseArea::new(
-                                Image::new(image_handle)
-                                    .content_fit(iced::ContentFit::ScaleDown)
-                                    .filter_method(image::FilterMethod::Nearest),
-                            )
-                            .on_press(Message::Gallery(
-                                GalleryPageMessage::SelectImageForBigView(Some(
-                                    photo_path.to_path_buf(),
-                                )),
-                            )),
-                        )
-                        .height(Length::Fill)
-                        .padding(5)
-                        .width(Length::FillPortion(1))
-                        .into()
-                    } else {
-                        Space::with_height(Length::Fixed(IMAGE_HEIGHT)).into()
-                    }
-                }))
-            .height(Length::Fixed(IMAGE_HEIGHT))
-            .into()
+    column![
+        if state.face_extraction_progress.is_some() {
+            container(
+                row![
+                    text("Extracting Faces").height(Length::Fixed(20.0)),
+                    Space::with_width(Length::Fixed(20.0)),
+                    container(
+                        progress_bar(0.0..=100.0, state.face_extraction_progress.unwrap())
+                            .width(Length::Fill)
+                            .height(Length::Fixed(10.0))
+                            .style(progress_bar::primary)
+                    )
+                    .height(Length::Fixed(20.0))
+                    .align_y(Center),
+                    Space::with_width(Length::Fixed(10.0)),
+                    text(format!("{:.2}%", state.face_extraction_progress.unwrap()))
+                        .height(Length::Fixed(20.0))
+                ]
+                .padding(10),
+            )
+            .style(container::bordered_box)
         } else {
-            row![text("LOADING").center().width(Length::Fill)]
+            container(row![])
+        },
+        scrollable(column(state.gallery_row_list.iter().map(|image_row| {
+            if image_row.loaded {
+                row(image_row
+                    .images_data
+                    .iter()
+                    .map(|(photo_path, handle_option)| {
+                        if let Some(image_handle) = handle_option {
+                            container(
+                                MouseArea::new(
+                                    Image::new(image_handle)
+                                        .content_fit(iced::ContentFit::ScaleDown)
+                                        .filter_method(image::FilterMethod::Nearest),
+                                )
+                                .on_press(Message::Gallery(
+                                    GalleryPageMessage::SelectImageForBigView(Some(
+                                        photo_path.to_path_buf(),
+                                    )),
+                                )),
+                            )
+                            .height(Length::Fill)
+                            .padding(5)
+                            .width(Length::FillPortion(1))
+                            .into()
+                        } else {
+                            Space::with_height(Length::Fixed(IMAGE_HEIGHT)).into()
+                        }
+                    }))
                 .height(Length::Fixed(IMAGE_HEIGHT))
                 .into()
-        }
-    })))
-    .id(SCROLLABLE_ID.clone())
-    .on_scroll(|viewport| Message::Gallery(GalleryPageMessage::GalleryScrolled(viewport)))
+            } else {
+                row![text("LOADING").center().width(Length::Fill)]
+                    .height(Length::Fixed(IMAGE_HEIGHT))
+                    .into()
+            }
+        })))
+        .id(SCROLLABLE_ID.clone())
+        .on_scroll(|viewport| Message::Gallery(GalleryPageMessage::GalleryScrolled(viewport)))
+    ]
+    .padding(5)
+    .spacing(10)
     .into()
 }
 
@@ -146,5 +224,7 @@ fn no_gallery_folder_selected_view(_state: &GalleryPage) -> Element<Message> {
 }
 
 pub fn tool_view(_state: &GalleryPage) -> Element<Message> {
-    row![].width(Length::FillPortion(1)).into()
+    row![button("Extract faces").on_press(Message::Gallery(GalleryPageMessage::ExtractAllFaces)),]
+        .width(Length::FillPortion(1))
+        .into()
 }
