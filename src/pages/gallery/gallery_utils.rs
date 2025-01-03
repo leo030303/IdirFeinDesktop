@@ -1,4 +1,5 @@
 use iced::{
+    advanced::graphics::image::image_rs,
     futures::{SinkExt, Stream},
     stream::try_channel,
     Error,
@@ -19,7 +20,7 @@ use rust_faces::{
 
 use crate::pages::gallery::page::FACE_DATA_FOLDER_NAME;
 
-use super::page::FACE_DATA_FILE_NAME;
+use super::page::{FACE_DATA_FILE_NAME, THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Rect {
@@ -332,12 +333,14 @@ impl FaceExtractor {
 
 pub fn extract_all_faces(
     image_paths_to_extract: Vec<PathBuf>,
-) -> impl Stream<Item = Result<f32, Error>> {
+) -> impl Stream<Item = Result<PhotoProcessingProgress, Error>> {
     try_channel(1, move |mut progress_percentage_output| async move {
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
 
         tokio::spawn(async move {
-            tx.send(0.0).await.unwrap();
+            if tx.send(0.0).await.is_err() {
+                return;
+            }
             let face_extractor = FaceExtractor::build().unwrap();
             let mut face_data_vecs_map: HashMap<PathBuf, Vec<(OsString, Option<FaceData>)>> =
                 HashMap::new();
@@ -410,19 +413,31 @@ pub fn extract_all_faces(
                         face_data_vecs_map.insert(parent_pathbuf, face_data_vec);
                     }
                 };
-                tx.send(image_index as f32 / total_number_of_images as f32)
+                if tx
+                    .send(image_index as f32 / total_number_of_images as f32)
                     .await
-                    .unwrap();
+                    .is_err()
+                {
+                    return;
+                }
             }
-            tx.send(1.0).await.unwrap();
+            let _ = tx.send(1.0).await;
         });
 
         while let Some(received) = rx.recv().await {
-            let _ = progress_percentage_output.send(received * 100.0).await;
+            let _ = progress_percentage_output
+                .send(PhotoProcessingProgress::FaceExtraction(received * 100.0))
+                .await;
             if received >= 1.0 {
+                let _ = progress_percentage_output
+                    .send(PhotoProcessingProgress::None)
+                    .await;
                 break;
             }
         }
+        let _ = progress_percentage_output
+            .send(PhotoProcessingProgress::None)
+            .await;
 
         Ok(())
     })
@@ -448,5 +463,99 @@ pub fn get_detected_faces_for_image(image_path: &Path) -> Vec<FaceData> {
         }
     } else {
         vec![]
+    }
+}
+
+pub fn generate_thumbnails(
+    image_paths_to_process: Vec<PathBuf>,
+) -> impl Stream<Item = Result<PhotoProcessingProgress, Error>> {
+    try_channel(1, move |mut progress_percentage_output| async move {
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+
+        tokio::spawn(async move {
+            if tx.send(0.0).await.is_err() {
+                return;
+            }
+            let total_number_of_images = image_paths_to_process.len();
+            for (image_index, image_path) in image_paths_to_process.into_iter().enumerate() {
+                let file_name = image_path.file_name().unwrap();
+                let mut thumbnail_path = image_path.parent().unwrap().to_path_buf();
+                thumbnail_path.push(THUMBNAIL_FOLDER_NAME);
+                if !thumbnail_path.exists() {
+                    fs::create_dir_all(&thumbnail_path).unwrap();
+                }
+                thumbnail_path.push(file_name);
+                if !thumbnail_path.exists() {
+                    if let Ok(img) = image_rs::open(&image_path) {
+                        let original_height = img.height();
+                        let original_width = img.width();
+
+                        let new_width;
+                        let new_height;
+                        let x_val;
+                        let y_val;
+                        if original_height > original_width {
+                            new_width = original_width;
+                            new_height = original_width;
+                            x_val = 0;
+                            y_val = (original_height / 2) - (original_width / 2);
+                        } else {
+                            new_width = original_height;
+                            new_height = original_height;
+                            x_val = (original_width / 2) - (original_height / 2);
+                            y_val = 0;
+                        }
+                        let cropped = img.crop_imm(x_val, y_val, new_width, new_height);
+                        let resized = cropped.resize(
+                            THUMBNAIL_SIZE,
+                            THUMBNAIL_SIZE,
+                            image_rs::imageops::FilterType::Nearest,
+                        );
+                        resized.save(&thumbnail_path).unwrap();
+                    };
+                }
+                if tx
+                    .send(image_index as f32 / total_number_of_images as f32)
+                    .await
+                    .is_err()
+                {
+                    return;
+                };
+            }
+            let _ = tx.send(1.0).await;
+        });
+
+        while let Some(received) = rx.recv().await {
+            let _ = progress_percentage_output
+                .send(PhotoProcessingProgress::ThumbnailGeneration(
+                    received * 100.0,
+                ))
+                .await;
+            if received >= 1.0 {
+                let _ = progress_percentage_output
+                    .send(PhotoProcessingProgress::None)
+                    .await;
+                break;
+            }
+        }
+        let _ = progress_percentage_output
+            .send(PhotoProcessingProgress::None)
+            .await;
+
+        Ok(())
+    })
+}
+
+#[derive(Debug, Clone)]
+pub enum PhotoProcessingProgress {
+    ThumbnailGeneration(f32),
+    FaceExtraction(f32),
+    FaceRecognition(f32),
+    None,
+}
+
+impl Default for PhotoProcessingProgress {
+    fn default() -> Self {
+        Self::None
     }
 }

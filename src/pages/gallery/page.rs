@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::app::Message;
 
-use super::gallery_utils::FaceData;
+use super::gallery_utils::{FaceData, PhotoProcessingProgress};
 use super::update::update;
 use super::view::{main_view, tool_view};
 
@@ -40,7 +40,8 @@ pub struct GalleryPage {
     pub(crate) gallery_row_list: Vec<ImageRow>,
     pub(crate) gallery_paths_list: Vec<PathBuf>,
     pub(crate) scrollable_viewport_option: Option<Viewport>,
-    pub(crate) face_extraction_progress: Option<f32>,
+    pub(crate) photo_process_progress: PhotoProcessingProgress,
+    pub(crate) photo_process_abort_handle: Option<iced::task::Handle>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -69,7 +70,9 @@ pub enum GalleryPageMessage {
     SelectPreviousImage,
     SelectNextImage,
     ExtractAllFaces,
-    ShowFaceExtractionProgress(f32),
+    GenerateAllThumbnails,
+    SetPhotoProcessProgress(PhotoProcessingProgress),
+    AbortProcess,
 }
 
 impl GalleryPage {
@@ -81,7 +84,8 @@ impl GalleryPage {
             scrollable_viewport_option: None,
             selected_image: None,
             gallery_paths_list: vec![],
-            face_extraction_progress: None,
+            photo_process_progress: PhotoProcessingProgress::None,
+            photo_process_abort_handle: None,
         }
     }
 

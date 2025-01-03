@@ -11,7 +11,10 @@ use iced::{
 
 use crate::app::Message;
 
-use super::page::{GalleryPage, GalleryPageMessage, IMAGE_HEIGHT, SCROLLABLE_ID};
+use super::{
+    gallery_utils::PhotoProcessingProgress,
+    page::{GalleryPage, GalleryPageMessage, IMAGE_HEIGHT, SCROLLABLE_ID},
+};
 
 pub fn main_view(state: &GalleryPage) -> Element<Message> {
     if state.selected_folder.is_none() {
@@ -137,29 +140,7 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
 
 fn gallery_grid(state: &GalleryPage) -> Element<Message> {
     column![
-        if state.face_extraction_progress.is_some() {
-            container(
-                row![
-                    text("Extracting Faces").height(Length::Fixed(20.0)),
-                    Space::with_width(Length::Fixed(20.0)),
-                    container(
-                        progress_bar(0.0..=100.0, state.face_extraction_progress.unwrap())
-                            .width(Length::Fill)
-                            .height(Length::Fixed(10.0))
-                            .style(progress_bar::primary)
-                    )
-                    .height(Length::Fixed(20.0))
-                    .align_y(Center),
-                    Space::with_width(Length::Fixed(10.0)),
-                    text(format!("{:.2}%", state.face_extraction_progress.unwrap()))
-                        .height(Length::Fixed(20.0))
-                ]
-                .padding(10),
-            )
-            .style(container::bordered_box)
-        } else {
-            container(row![])
-        },
+        photo_processing_progress_bar(state),
         scrollable(column(state.gallery_row_list.iter().map(|image_row| {
             if image_row.loaded {
                 row(image_row
@@ -203,6 +184,97 @@ fn gallery_grid(state: &GalleryPage) -> Element<Message> {
     .into()
 }
 
+fn photo_processing_progress_bar(state: &GalleryPage) -> Element<Message> {
+    match state.photo_process_progress {
+        PhotoProcessingProgress::ThumbnailGeneration(progress) => container(
+            row![
+                text("Generating Thumbnails").height(Length::Fixed(20.0)),
+                Space::with_width(Length::Fixed(20.0)),
+                container(
+                    progress_bar(0.0..=100.0, progress)
+                        .width(Length::Fill)
+                        .height(Length::Fixed(10.0))
+                        .style(progress_bar::primary)
+                )
+                .height(Length::Fixed(20.0))
+                .align_y(Center),
+                Space::with_width(Length::Fixed(10.0)),
+                text(format!("{:.2}%", progress)).height(Length::Fixed(20.0)),
+                Space::with_width(Length::Fixed(10.0)),
+                Tooltip::new(
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/close.svg"
+                    ))))
+                    .on_press(Message::Gallery(GalleryPageMessage::AbortProcess))
+                    .width(Length::Fixed(40.0)),
+                    "Cancel Process",
+                    iced::widget::tooltip::Position::Bottom
+                ),
+            ]
+            .padding(10),
+        )
+        .style(container::bordered_box),
+        PhotoProcessingProgress::FaceExtraction(progress) => container(
+            row![
+                text("Extracting Faces").height(Length::Fixed(20.0)),
+                Space::with_width(Length::Fixed(20.0)),
+                container(
+                    progress_bar(0.0..=100.0, progress)
+                        .width(Length::Fill)
+                        .height(Length::Fixed(10.0))
+                        .style(progress_bar::primary)
+                )
+                .height(Length::Fixed(20.0))
+                .align_y(Center),
+                Space::with_width(Length::Fixed(10.0)),
+                text(format!("{:.2}%", progress)).height(Length::Fixed(20.0)),
+                Space::with_width(Length::Fixed(10.0)),
+                Tooltip::new(
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/close.svg"
+                    ))))
+                    .on_press(Message::Gallery(GalleryPageMessage::AbortProcess))
+                    .width(Length::Fixed(40.0)),
+                    "Cancel Process",
+                    iced::widget::tooltip::Position::Bottom
+                ),
+            ]
+            .padding(10),
+        )
+        .style(container::bordered_box),
+        PhotoProcessingProgress::FaceRecognition(progress) => container(
+            row![
+                text("Recognising Faces").height(Length::Fixed(20.0)),
+                Space::with_width(Length::Fixed(20.0)),
+                container(
+                    progress_bar(0.0..=100.0, progress)
+                        .width(Length::Fill)
+                        .height(Length::Fixed(10.0))
+                        .style(progress_bar::primary)
+                )
+                .height(Length::Fixed(20.0))
+                .align_y(Center),
+                Space::with_width(Length::Fixed(10.0)),
+                text(format!("{:.2}%", progress)).height(Length::Fixed(20.0)),
+                Space::with_width(Length::Fixed(10.0)),
+                Tooltip::new(
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/close.svg"
+                    ))))
+                    .on_press(Message::Gallery(GalleryPageMessage::AbortProcess))
+                    .width(Length::Fixed(40.0)),
+                    "Cancel Process",
+                    iced::widget::tooltip::Position::Bottom
+                ),
+            ]
+            .padding(10),
+        )
+        .style(container::bordered_box),
+        PhotoProcessingProgress::None => container(row![]),
+    }
+    .into()
+}
+
 fn no_gallery_folder_selected_view(_state: &GalleryPage) -> Element<Message> {
     container(
         button(
@@ -224,7 +296,11 @@ fn no_gallery_folder_selected_view(_state: &GalleryPage) -> Element<Message> {
 }
 
 pub fn tool_view(_state: &GalleryPage) -> Element<Message> {
-    row![button("Extract faces").on_press(Message::Gallery(GalleryPageMessage::ExtractAllFaces)),]
-        .width(Length::FillPortion(1))
-        .into()
+    row![
+        button("Extract faces").on_press(Message::Gallery(GalleryPageMessage::ExtractAllFaces)),
+        button("Generate thumbnails")
+            .on_press(Message::Gallery(GalleryPageMessage::GenerateAllThumbnails))
+    ]
+    .width(Length::FillPortion(1))
+    .into()
 }

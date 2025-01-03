@@ -15,7 +15,7 @@ use rfd::FileDialog;
 
 use crate::{app::Message, pages::gallery::page::IMAGE_HEIGHT};
 
-use super::gallery_utils::{self, get_detected_faces_for_image};
+use super::gallery_utils::{self, get_detected_faces_for_image, PhotoProcessingProgress};
 use super::page::{
     GalleryPage, GalleryPageMessage, ImageRow, ARROW_KEY_SCROLL_AMOUNT, FACE_DATA_FOLDER_NAME,
     NUM_IMAGES_IN_ROW, PAGE_KEY_SCROLL_AMOUNT, ROW_BATCH_SIZE, SCROLLABLE_ID,
@@ -86,7 +86,10 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 |gallery_files_list| {
                     Message::Gallery(GalleryPageMessage::SetGalleryFilesList(gallery_files_list))
                 },
-            );
+            )
+            .chain(Task::done(Message::Gallery(
+                GalleryPageMessage::GenerateAllThumbnails,
+            )));
         }
         GalleryPageMessage::SetGalleryFilesList(gallery_files_list) => {
             state.gallery_paths_list = gallery_files_list.clone().into_iter().flatten().collect();
@@ -372,18 +375,60 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             }
         }
         GalleryPageMessage::ExtractAllFaces => {
-            let image_paths = state.gallery_paths_list.clone();
-            return Task::run(gallery_utils::extract_all_faces(image_paths), |progress| {
-                Message::Gallery(GalleryPageMessage::ShowFaceExtractionProgress(
-                    progress.unwrap_or_default(),
-                ))
-            });
-        }
-        GalleryPageMessage::ShowFaceExtractionProgress(progress) => {
-            if progress >= 100.0 {
-                state.face_extraction_progress = None;
+            if matches!(state.photo_process_progress, PhotoProcessingProgress::None) {
+                let image_paths = state.gallery_paths_list.clone();
+                let (new_task, abort_handle) =
+                    Task::run(gallery_utils::extract_all_faces(image_paths), |progress| {
+                        Message::Gallery(GalleryPageMessage::SetPhotoProcessProgress(
+                            progress.unwrap_or_default(),
+                        ))
+                    })
+                    .abortable();
+                state.photo_process_abort_handle = Some(abort_handle);
+                return new_task;
             } else {
-                state.face_extraction_progress = Some(progress);
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Can't run multiple photo processes at once"),
+                ));
+            }
+        }
+        GalleryPageMessage::GenerateAllThumbnails => {
+            if matches!(state.photo_process_progress, PhotoProcessingProgress::None) {
+                let image_paths = state.gallery_paths_list.clone();
+                let (new_task, abort_handle) = Task::run(
+                    gallery_utils::generate_thumbnails(image_paths),
+                    |progress| {
+                        Message::Gallery(GalleryPageMessage::SetPhotoProcessProgress(
+                            progress.unwrap_or_default(),
+                        ))
+                    },
+                )
+                .abortable();
+                state.photo_process_abort_handle = Some(abort_handle);
+                return new_task;
+            } else {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Can't run multiple photo processes at once"),
+                ));
+            }
+        }
+        GalleryPageMessage::SetPhotoProcessProgress(progress) => {
+            if matches!(progress, PhotoProcessingProgress::None) {
+                state.photo_process_abort_handle = None;
+            }
+            state.photo_process_progress = progress;
+        }
+        GalleryPageMessage::AbortProcess => {
+            if let Some(abort_handle) = state.photo_process_abort_handle.as_ref() {
+                abort_handle.abort();
+                state.photo_process_progress = PhotoProcessingProgress::None;
+            } else {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("No process handle found"),
+                ));
             }
         }
     }
