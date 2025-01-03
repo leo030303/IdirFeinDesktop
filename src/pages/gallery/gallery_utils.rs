@@ -384,31 +384,35 @@ pub fn extract_all_faces(
                             } else {
                                 vec![]
                             };
+                        if !face_data_vec
+                            .iter()
+                            .any(|face_data| face_data.0 == image_path.file_name().unwrap())
+                        {
+                            let new_face_data_vec = face_extractor.extract_faces(&image_path);
+                            if new_face_data_vec.is_empty() {
+                                face_data_vec
+                                    .push((image_path.file_name().unwrap().to_owned(), None));
+                            } else {
+                                new_face_data_vec.into_iter().for_each(|face_data| {
+                                    face_data_vec.push((
+                                        image_path.file_name().unwrap().to_owned(),
+                                        Some(face_data),
+                                    ))
+                                });
+                            }
+                            let serialised = serde_json::to_string(&face_data_vec).unwrap();
+                            if !face_data_file.exists() {
+                                let _ = fs::create_dir_all(face_data_file.parent().unwrap());
+                            }
+                            fs::write(face_data_file, serialised).unwrap();
+                        }
                         let parent_pathbuf = parent_path.to_path_buf();
-                        let new_face_data_vec = face_extractor.extract_faces(&image_path);
-                        if new_face_data_vec.is_empty() {
-                            face_data_vec.push((image_path.file_name().unwrap().to_owned(), None));
-                        } else {
-                            new_face_data_vec.into_iter().for_each(|face_data| {
-                                face_data_vec.push((
-                                    image_path.file_name().unwrap().to_owned(),
-                                    Some(face_data),
-                                ))
-                            });
-                        }
-                        let serialised = serde_json::to_string(&face_data_vec).unwrap();
-                        if !face_data_file.exists() {
-                            let _ = fs::create_dir_all(face_data_file.parent().unwrap());
-                        }
-                        fs::write(face_data_file, serialised).unwrap();
                         face_data_vecs_map.insert(parent_pathbuf, face_data_vec);
                     }
                 };
-                if image_index % 10 == 0 {
-                    tx.send(image_index as f32 / total_number_of_images as f32)
-                        .await
-                        .unwrap();
-                }
+                tx.send(image_index as f32 / total_number_of_images as f32)
+                    .await
+                    .unwrap();
             }
             tx.send(1.0).await.unwrap();
         });
