@@ -13,7 +13,7 @@ use crate::app::Message;
 
 use super::{
     gallery_utils::PhotoProcessingProgress,
-    page::{GalleryPage, GalleryPageMessage, IMAGE_HEIGHT, SCROLLABLE_ID},
+    page::{GalleryPage, GalleryPageMessage, FACE_DATA_FOLDER_NAME, IMAGE_HEIGHT, SCROLLABLE_ID},
 };
 
 pub fn main_view(state: &GalleryPage) -> Element<Message> {
@@ -68,7 +68,15 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
                                 .map(|face_data| {
                                     column![
                                         Image::new(image::Handle::from_path(
-                                            face_data.thumbnail_path.clone()
+                                            state
+                                                .selected_image
+                                                .as_ref()
+                                                .expect("Can't fail")
+                                                .0
+                                                .parent()
+                                                .unwrap()
+                                                .join(FACE_DATA_FOLDER_NAME)
+                                                .join(&face_data.thumbnail_filename)
                                         ))
                                         .content_fit(iced::ContentFit::ScaleDown)
                                         .filter_method(image::FilterMethod::Nearest),

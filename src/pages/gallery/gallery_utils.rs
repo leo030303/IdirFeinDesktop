@@ -43,10 +43,10 @@ pub struct FaceData {
 
     /// Path to thumbnail generated from face bounds.
     /// Normalized to be square and expanded to capture the whole head.
-    pub thumbnail_path: PathBuf,
+    pub thumbnail_filename: OsString,
 
     /// Image cropped from bounds returned by face detection algorithm
-    pub bounds_path: PathBuf,
+    pub bounds_filename: OsString,
 
     /// Bounds of detected face.
     pub bounds: Rect,
@@ -303,8 +303,18 @@ impl FaceExtractor {
                 let _ = bounds_img.save(&bounds_path);
 
                 FaceData {
-                    thumbnail_path,
-                    bounds_path,
+                    thumbnail_filename: format!(
+                        "{}_thumbnail_{}.png",
+                        picture_path.file_stem().unwrap().to_str().unwrap(),
+                        image_index
+                    )
+                    .into(),
+                    bounds_filename: format!(
+                        "{}_original_{}.png",
+                        picture_path.file_stem().unwrap().to_str().unwrap(),
+                        image_index
+                    )
+                    .into(),
                     bounds,
                     confidence: detected_face.confidence,
                     face_features: detected_face.landmarks,
