@@ -73,6 +73,7 @@ pub enum GalleryPageMessage {
     GenerateAllThumbnails,
     SetPhotoProcessProgress(PhotoProcessingProgress),
     AbortProcess,
+    CopySelectedImagePath,
 }
 
 impl GalleryPage {

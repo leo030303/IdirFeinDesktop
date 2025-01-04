@@ -295,12 +295,25 @@ fn no_gallery_folder_selected_view(_state: &GalleryPage) -> Element<Message> {
     .into()
 }
 
-pub fn tool_view(_state: &GalleryPage) -> Element<Message> {
-    row![
-        button("Extract faces").on_press(Message::Gallery(GalleryPageMessage::ExtractAllFaces)),
-        button("Generate thumbnails")
-            .on_press(Message::Gallery(GalleryPageMessage::GenerateAllThumbnails))
-    ]
-    .width(Length::FillPortion(1))
-    .into()
+pub fn tool_view(state: &GalleryPage) -> Element<Message> {
+    if state.selected_image.is_some() {
+        row![Tooltip::new(
+            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                "../../../icons/copy.svg"
+            ))))
+            .on_press(Message::Gallery(GalleryPageMessage::CopySelectedImagePath)),
+            "Copy image path",
+            iced::widget::tooltip::Position::Bottom
+        ),]
+        .width(Length::FillPortion(1))
+        .into()
+    } else {
+        row![
+            button("Extract faces").on_press(Message::Gallery(GalleryPageMessage::ExtractAllFaces)),
+            button("Generate thumbnails")
+                .on_press(Message::Gallery(GalleryPageMessage::GenerateAllThumbnails))
+        ]
+        .width(Length::FillPortion(1))
+        .into()
+    }
 }

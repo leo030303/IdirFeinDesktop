@@ -1,3 +1,4 @@
+use arboard::Clipboard;
 use std::{
     fs::{self},
     os::linux::fs::MetadataExt,
@@ -429,6 +430,14 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                     false,
                     String::from("No process handle found"),
                 ));
+            }
+        }
+        GalleryPageMessage::CopySelectedImagePath => {
+            if let Some((image_path, _)) = state.selected_image.as_ref() {
+                Clipboard::new()
+                    .unwrap()
+                    .set_text(image_path.as_path().to_str().unwrap_or_default())
+                    .unwrap();
             }
         }
     }
