@@ -3,7 +3,7 @@ use iced::{
     widget::{
         button, column, container,
         image::{self, Handle},
-        progress_bar, row, scrollable, stack, svg, text, Image, MouseArea, Space, Svg, Tooltip,
+        progress_bar, row, scrollable, svg, text, Image, MouseArea, Space, Svg, Tooltip,
     },
     Alignment::Center,
     Element, Length,
@@ -22,7 +22,7 @@ pub fn main_view(state: &GalleryPage) -> Element<Message> {
     } else {
         let gallery_grid = gallery_grid(state);
         if state.selected_image.is_some() {
-            stack([gallery_grid, big_image_viewer(state)]).into()
+            big_image_viewer(state)
         } else {
             gallery_grid
         }
