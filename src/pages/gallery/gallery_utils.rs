@@ -1,8 +1,17 @@
 use iced::{
-    advanced::graphics::image::image_rs,
+    advanced::graphics::image::image_rs::{self},
     futures::{SinkExt, Stream},
     stream::try_channel,
     Error,
+};
+use image::DynamicImage;
+use opencv::{
+    core::{Mat, MatTraitConstManual},
+    imgcodecs,
+    objdetect::{
+        FaceRecognizerSF, FaceRecognizerSFTrait, FaceRecognizerSFTraitConst,
+        FaceRecognizerSF_DisType,
+    },
 };
 use rust_faces::Nms;
 use serde::{Deserialize, Serialize};
@@ -12,6 +21,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
+use tempfile::TempDir;
 
 use rust_faces::{
     BlazeFaceParams, Face as DetectedFace, FaceDetection, FaceDetectorBuilder, InferParams,
@@ -20,7 +30,9 @@ use rust_faces::{
 
 use crate::pages::gallery::page::FACE_DATA_FOLDER_NAME;
 
-use super::page::{FACE_DATA_FILE_NAME, THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE};
+use super::page::{
+    FACE_DATA_FILE_NAME, PATH_TO_FACE_RECOGNITION_MODEL, THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Rect {
@@ -45,44 +57,69 @@ pub struct FaceData {
     /// Normalized to be square and expanded to capture the whole head.
     pub thumbnail_filename: OsString,
 
-    /// Image cropped from bounds returned by face detection algorithm
-    pub bounds_filename: OsString,
-
-    /// Bounds of detected face.
-    pub bounds: Rect,
-
-    /// Confidence (0.0 to 1.0) that the detected face is actually a face.
-    pub confidence: f32,
-
-    face_features: Option<Vec<(f32, f32)>>,
+    /// The data required to match this face to other faces
+    face_matrix_bytes: Vec<u8>,
 }
 
 impl FaceData {
-    fn get_face_feature(&self, index: usize) -> Option<(f32, f32)> {
-        self.face_features
-            .as_ref()
-            .filter(|x| x.len() == 5)
-            .map(|x| (x[index].0, x[index].1))
+    pub fn matrix(&self) -> Mat {
+        Mat::from_bytes::<f32>(&self.face_matrix_bytes)
+            .unwrap()
+            .clone_pointee()
     }
 
-    pub fn right_eye(&self) -> Option<(f32, f32)> {
-        self.get_face_feature(0)
-    }
+    pub fn get_matrix_bytes_from_features(
+        face_features: Vec<(f32, f32)>,
+        bounds: Rect,
+        confidence: f32,
+        original_image: &DynamicImage,
+    ) -> Vec<u8> {
+        let initial_face_matrix = Mat::from_exact_iter(
+            vec![
+                0.0,
+                0.0,
+                bounds.width,
+                bounds.height,
+                face_features[0].0, // Right Eye
+                face_features[0].1, // Right Eye
+                face_features[1].0, // Left Eye
+                face_features[1].1, // Left Eye
+                face_features[2].0, // Nose
+                face_features[2].1, // Nose
+                face_features[3].0, // Right Mouth Corner
+                face_features[3].1, // Right Mouth Corner
+                face_features[4].0, // Left Mouth Corner
+                face_features[4].1, // Left Mouth Corner
+                confidence,
+            ]
+            .into_iter(),
+        )
+        .unwrap();
+        let mut opencv_face_recognizer =
+            FaceRecognizerSF::create_def(PATH_TO_FACE_RECOGNITION_MODEL, "").unwrap();
+        let bounds_img = original_image.crop_imm(
+            bounds.x as u32,
+            bounds.y as u32,
+            bounds.width as u32,
+            bounds.height as u32,
+        );
 
-    pub fn left_eye(&self) -> Option<(f32, f32)> {
-        self.get_face_feature(1)
-    }
+        let bounds_tempfile_path = TempDir::new().unwrap().into_path().join("tempfile.png");
+        let _ = bounds_img.save(&bounds_tempfile_path);
 
-    pub fn nose(&self) -> Option<(f32, f32)> {
-        self.get_face_feature(2)
-    }
+        let face_img = imgcodecs::imread_def(&bounds_tempfile_path.to_string_lossy()).unwrap();
 
-    pub fn right_mouth_corner(&self) -> Option<(f32, f32)> {
-        self.get_face_feature(3)
-    }
+        let mut aligned_face = Mat::default();
+        opencv_face_recognizer
+            .align_crop(&face_img, &initial_face_matrix, &mut aligned_face)
+            .unwrap();
 
-    pub fn left_mouth_corner(&self) -> Option<(f32, f32)> {
-        self.get_face_feature(4)
+        let mut face_features = Mat::default();
+        opencv_face_recognizer
+            .feature(&aligned_face, &mut face_features)
+            .unwrap();
+
+        face_features.data_bytes().unwrap().to_owned()
     }
 }
 
@@ -225,6 +262,7 @@ impl FaceExtractor {
         faces
             .into_iter()
             .enumerate()
+            .filter(|(_image_index, detected_face)| detected_face.landmarks.is_some())
             .map(|(image_index, detected_face)| {
                 // Extract face and save to thumbnail.
                 // The bounding box is pretty tight, so make it a bit bigger.
@@ -288,20 +326,20 @@ impl FaceExtractor {
                     height: detected_face.rect.height,
                 };
 
-                let bounds_img = original_image.crop_imm(
-                    bounds.x as u32,
-                    bounds.y as u32,
-                    bounds.width as u32,
-                    bounds.height as u32,
+                // Make face landmarks relative to bounded image, not source image
+                let face_features = detected_face
+                    .landmarks
+                    .expect("Can't fail")
+                    .into_iter()
+                    .map(|landmark_item| (landmark_item.0 - bounds.x, landmark_item.1 - bounds.y))
+                    .collect();
+
+                let face_matrix_bytes = FaceData::get_matrix_bytes_from_features(
+                    face_features,
+                    bounds,
+                    detected_face.confidence,
+                    &original_image,
                 );
-
-                let bounds_path = face_data_folder.join(format!(
-                    "{}_original_{}.png",
-                    picture_path.file_stem().unwrap().to_str().unwrap(),
-                    image_index
-                ));
-                let _ = bounds_img.save(&bounds_path);
-
                 FaceData {
                     thumbnail_filename: format!(
                         "{}_thumbnail_{}.png",
@@ -309,15 +347,7 @@ impl FaceExtractor {
                         image_index
                     )
                     .into(),
-                    bounds_filename: format!(
-                        "{}_original_{}.png",
-                        picture_path.file_stem().unwrap().to_str().unwrap(),
-                        image_index
-                    )
-                    .into(),
-                    bounds,
-                    confidence: detected_face.confidence,
-                    face_features: detected_face.landmarks,
+                    face_matrix_bytes,
                     name_of_person: None,
                     is_ignored: false,
                     original_filename: picture_path.file_name().unwrap().to_owned(),
@@ -568,4 +598,195 @@ impl Default for PhotoProcessingProgress {
     fn default() -> Self {
         Self::None
     }
+}
+
+pub fn match_face_to_person(
+    unknown_face: &FaceData,
+    named_people_list: Vec<(String, Mat)>,
+) -> Option<String> {
+    const L2NORM_SIMILAR_THRESH: f64 = 1.128;
+
+    let best_person_and_score = named_people_list
+        .iter()
+        .map(|(person_name, named_person_face_features)| {
+            let unknown_face_features = unknown_face.matrix();
+            let opencv_face_recognizer =
+                FaceRecognizerSF::create_def(PATH_TO_FACE_RECOGNITION_MODEL, "").unwrap();
+            let l2_score = opencv_face_recognizer.match_(
+                &named_person_face_features,
+                &unknown_face_features,
+                FaceRecognizerSF_DisType::FR_NORM_L2.into(),
+            );
+            println!("{person_name} score is {l2_score:?}");
+            (
+                person_name,
+                l2_score.unwrap_or(L2NORM_SIMILAR_THRESH + 100.0),
+            )
+        })
+        .min_by_key(|x| (x.1 * 10000.0) as i32);
+
+    if let Some((person_name, l2_score)) = best_person_and_score {
+        if l2_score <= L2NORM_SIMILAR_THRESH {
+            return Some(person_name.clone());
+        }
+    }
+
+    None
+}
+
+/// Can update any field other than thumbnail
+pub fn update_face_data(image_path: PathBuf, new_face_data: FaceData) {
+    let face_data_file = image_path
+        .parent()
+        .unwrap()
+        .join(FACE_DATA_FOLDER_NAME)
+        .join(FACE_DATA_FILE_NAME);
+    if face_data_file.exists() {
+        if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
+            let mut face_data_vec: Vec<(OsString, Option<FaceData>)> =
+                serde_json::from_str(&face_data_json).unwrap_or_default();
+            let target_filename = image_path.file_name().unwrap_or_default().to_os_string();
+            let target_index_option =
+                face_data_vec
+                    .iter()
+                    .position(|(source_image_filename, face_data_option)| {
+                        *source_image_filename == target_filename
+                            && face_data_option.as_ref().is_some_and(|face_data| {
+                                face_data.thumbnail_filename == new_face_data.thumbnail_filename
+                            })
+                    });
+            if let Some(target_index) = target_index_option {
+                face_data_vec[target_index] =
+                    (face_data_vec[target_index].0.clone(), Some(new_face_data));
+                let serialised = serde_json::to_string(&face_data_vec).unwrap();
+                fs::write(face_data_file, serialised).unwrap();
+            }
+        }
+    }
+}
+
+pub fn get_parent_folders(image_paths_to_process: &[PathBuf]) -> Vec<PathBuf> {
+    let mut parent_paths: Vec<PathBuf> = image_paths_to_process
+        .iter()
+        .filter_map(|image_path| {
+            image_path
+                .parent()
+                .map(|path_reference| path_reference.to_path_buf())
+        })
+        .collect();
+    parent_paths.sort_unstable();
+    parent_paths.dedup();
+    parent_paths
+}
+
+pub fn get_all_named_people(image_paths_to_process: &[PathBuf]) -> Vec<(String, Mat)> {
+    let parent_folders = get_parent_folders(image_paths_to_process);
+    let mut all_named_people: Vec<(String, Mat)> = vec![];
+    parent_folders.into_iter().for_each(|parent_path| {
+        let face_data_file = parent_path
+            .join(FACE_DATA_FOLDER_NAME)
+            .join(FACE_DATA_FILE_NAME);
+        if face_data_file.exists() {
+            if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
+                let face_data_vec: Vec<(OsString, Option<FaceData>)> =
+                    serde_json::from_str(&face_data_json).unwrap_or_default();
+                face_data_vec
+                    .into_iter()
+                    .filter_map(|(_original_image_name, face_data_option)| face_data_option)
+                    .filter(|face_data| !face_data.is_ignored && face_data.name_of_person.is_some())
+                    .for_each(|face_data| {
+                        all_named_people.push((
+                            face_data.name_of_person.clone().expect("Can't fail"),
+                            face_data.matrix(),
+                        ))
+                    });
+            }
+        }
+    });
+    all_named_people.sort_unstable_by(|(name_1, _), (name_2, _)| name_1.cmp(name_2));
+    all_named_people.dedup_by(|(name_1, _), (name_2, _)| name_1 == name_2);
+    all_named_people
+}
+
+pub fn group_all_faces(
+    image_paths_to_process: Vec<PathBuf>,
+) -> impl Stream<Item = Result<PhotoProcessingProgress, Error>> {
+    try_channel(1, move |mut progress_percentage_output| async move {
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+
+        tokio::spawn(async move {
+            if tx.send(0.0).await.is_err() {
+                return;
+            }
+            let named_people = get_all_named_people(&image_paths_to_process);
+            let parent_folders = get_parent_folders(&image_paths_to_process);
+            let number_of_parent_folders = parent_folders.len();
+            for (parent_index, parent_path) in parent_folders.into_iter().enumerate() {
+                let face_data_file = parent_path
+                    .join(FACE_DATA_FOLDER_NAME)
+                    .join(FACE_DATA_FILE_NAME);
+                if face_data_file.exists() {
+                    if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
+                        let face_data_vec: Vec<(OsString, Option<FaceData>)> =
+                            serde_json::from_str(&face_data_json).unwrap_or_default();
+                        let modified_face_data_vec: Vec<(OsString, Option<FaceData>)> =
+                            face_data_vec
+                                .into_iter()
+                                .map(|(original_image_name, mut face_data_option)| {
+                                    if let Some(face_data) = face_data_option.as_mut() {
+                                        if !face_data.is_ignored
+                                            && face_data.name_of_person.is_none()
+                                        {
+                                            let matched_name_option = match_face_to_person(
+                                                face_data,
+                                                named_people.clone(),
+                                            );
+                                            if let Some(matched_name) = matched_name_option {
+                                                println!(
+                                                    "Recognised {:?} as {matched_name}",
+                                                    face_data.thumbnail_filename
+                                                );
+                                                face_data.name_of_person = Some(matched_name);
+                                                return (
+                                                    original_image_name,
+                                                    Some(face_data.clone()),
+                                                );
+                                            }
+                                        }
+                                    }
+                                    (original_image_name, face_data_option)
+                                })
+                                .collect();
+                        let serialised = serde_json::to_string(&modified_face_data_vec).unwrap();
+                        fs::write(face_data_file, serialised).unwrap();
+                    }
+                }
+                if tx
+                    .send(parent_index as f32 / number_of_parent_folders as f32)
+                    .await
+                    .is_err()
+                {
+                    return;
+                };
+            }
+            let _ = tx.send(1.0).await;
+        });
+
+        while let Some(received) = rx.recv().await {
+            let _ = progress_percentage_output
+                .send(PhotoProcessingProgress::FaceRecognition(received * 100.0))
+                .await;
+            if received >= 1.0 {
+                let _ = progress_percentage_output
+                    .send(PhotoProcessingProgress::None)
+                    .await;
+                break;
+            }
+        }
+        let _ = progress_percentage_output
+            .send(PhotoProcessingProgress::None)
+            .await;
+
+        Ok(())
+    })
 }

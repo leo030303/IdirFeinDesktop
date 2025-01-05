@@ -16,7 +16,9 @@ use rfd::FileDialog;
 
 use crate::{app::Message, pages::gallery::page::IMAGE_HEIGHT};
 
-use super::gallery_utils::{self, get_detected_faces_for_image, PhotoProcessingProgress};
+use super::gallery_utils::{
+    self, get_detected_faces_for_image, update_face_data, PhotoProcessingProgress,
+};
 use super::page::{
     GalleryPage, GalleryPageMessage, ImageRow, ARROW_KEY_SCROLL_AMOUNT, FACE_DATA_FOLDER_NAME,
     NUM_IMAGES_IN_ROW, PAGE_KEY_SCROLL_AMOUNT, ROW_BATCH_SIZE, SCROLLABLE_ID,
@@ -439,6 +441,93 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                     .set_text(image_path.as_path().to_str().unwrap_or_default())
                     .unwrap();
             }
+        }
+        GalleryPageMessage::RunFaceRecognition => {
+            if matches!(state.photo_process_progress, PhotoProcessingProgress::None) {
+                let image_paths = state.gallery_paths_list.clone();
+                let (new_task, abort_handle) =
+                    Task::run(gallery_utils::group_all_faces(image_paths), |progress| {
+                        Message::Gallery(GalleryPageMessage::SetPhotoProcessProgress(
+                            progress.unwrap_or_default(),
+                        ))
+                    })
+                    .abortable();
+                state.photo_process_abort_handle = Some(abort_handle);
+                return new_task;
+            } else {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Can't run multiple photo processes at once"),
+                ));
+            }
+        }
+        GalleryPageMessage::CloseManagePersonView => {
+            state.person_to_manage = None;
+            state.rename_person_editor_text = String::new();
+            state.show_ignore_person_confirmation = false;
+            state.show_rename_confirmation = false;
+        }
+        GalleryPageMessage::OpenManagePersonView(original_image_path, face_data) => {
+            state.person_to_manage = Some((original_image_path, face_data));
+        }
+        GalleryPageMessage::MaybeRenamePerson => {
+            if !state.rename_person_editor_text.is_empty() {
+                state.show_rename_confirmation = true;
+            }
+        }
+        GalleryPageMessage::ConfirmRenamePerson => {
+            if let Some((image_path, mut face_data)) = state.person_to_manage.take() {
+                face_data.name_of_person = Some(state.rename_person_editor_text.clone());
+                let finishing_message = Task::done(Message::Gallery(
+                    GalleryPageMessage::SelectImageForBigView(Some(image_path.clone())),
+                ));
+                let background_task = Task::perform(
+                    async move {
+                        update_face_data(image_path, face_data);
+                    },
+                    |_| Message::None,
+                )
+                .chain(finishing_message);
+                state.person_to_manage = None;
+                state.rename_person_editor_text = String::new();
+                state.show_ignore_person_confirmation = false;
+                state.show_rename_confirmation = false;
+                return background_task;
+            }
+        }
+        GalleryPageMessage::CancelRenamePerson => {
+            state.show_rename_confirmation = false;
+            state.rename_person_editor_text = String::new();
+        }
+        GalleryPageMessage::UpdateRenamePersonEditor(s) => {
+            state.rename_person_editor_text = s;
+        }
+        GalleryPageMessage::MaybeIgnorePerson => {
+            state.show_ignore_person_confirmation = true;
+            state.show_rename_confirmation = false;
+        }
+        GalleryPageMessage::ConfirmIgnorePerson => {
+            if let Some((image_path, mut face_data)) = state.person_to_manage.take() {
+                face_data.is_ignored = true;
+                let finishing_message = Task::done(Message::Gallery(
+                    GalleryPageMessage::SelectImageForBigView(Some(image_path.clone())),
+                ));
+                let background_task = Task::perform(
+                    async move {
+                        update_face_data(image_path, face_data.clone());
+                    },
+                    |_| Message::None,
+                )
+                .chain(finishing_message);
+                state.person_to_manage = None;
+                state.show_ignore_person_confirmation = false;
+                state.rename_person_editor_text = String::new();
+                state.show_rename_confirmation = false;
+                return background_task;
+            }
+        }
+        GalleryPageMessage::CancelIgnorePerson => {
+            state.show_ignore_person_confirmation = false;
         }
     }
     Task::none()

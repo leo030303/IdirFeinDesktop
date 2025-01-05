@@ -3,7 +3,8 @@ use iced::{
     widget::{
         button, column, container,
         image::{self, Handle},
-        progress_bar, row, scrollable, svg, text, Image, MouseArea, Space, Svg, Tooltip,
+        progress_bar, row, scrollable, svg, text, text_input, Image, MouseArea, Space, Svg,
+        Tooltip,
     },
     Alignment::Center,
     Element, Length,
@@ -46,60 +47,11 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
             ),
         ],
         row![
-            column![
-                text("People").size(18).width(Length::Fill).center(),
-                if state
-                    .selected_image
-                    .as_ref()
-                    .expect("Can't fail")
-                    .1
-                    .iter()
-                    .any(|face_data| !face_data.is_ignored)
-                {
-                    scrollable(
-                        column(
-                            state
-                                .selected_image
-                                .as_ref()
-                                .expect("Can't fail")
-                                .1
-                                .iter()
-                                .filter(|face_data| !face_data.is_ignored)
-                                .map(|face_data| {
-                                    column![
-                                        Image::new(image::Handle::from_path(
-                                            state
-                                                .selected_image
-                                                .as_ref()
-                                                .expect("Can't fail")
-                                                .0
-                                                .parent()
-                                                .unwrap()
-                                                .join(FACE_DATA_FOLDER_NAME)
-                                                .join(&face_data.thumbnail_filename)
-                                        ))
-                                        .content_fit(iced::ContentFit::ScaleDown)
-                                        .filter_method(image::FilterMethod::Nearest),
-                                        text(
-                                            face_data
-                                                .name_of_person
-                                                .as_ref()
-                                                .map_or("Unnamed", |v| v)
-                                        )
-                                        .width(Length::Fill)
-                                        .center()
-                                    ]
-                                    .into()
-                                }),
-                        )
-                        .padding(5)
-                        .spacing(10),
-                    )
-                } else {
-                    scrollable(column![text("None found").width(Length::Fill).center()])
-                },
-            ]
-            .width(Length::Fixed(100.0)),
+            if state.person_to_manage.is_some() {
+                person_management_view(state)
+            } else {
+                people_sidebar(state)
+            },
             column![
                 Space::with_height(Length::Fill),
                 Tooltip::new(
@@ -143,6 +95,63 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
     .width(Length::Fill)
     .height(Length::Fill)
     .style(container::dark)
+    .into()
+}
+
+fn people_sidebar(state: &GalleryPage) -> Element<Message> {
+    column![
+        text("People").size(18).width(Length::Fill).center(),
+        if state
+            .selected_image
+            .as_ref()
+            .expect("Can't fail")
+            .1
+            .iter()
+            .any(|face_data| !face_data.is_ignored)
+        {
+            scrollable(
+                column(
+                    state
+                        .selected_image
+                        .as_ref()
+                        .expect("Can't fail")
+                        .1
+                        .iter()
+                        .filter(|face_data| !face_data.is_ignored)
+                        .map(|face_data| {
+                            MouseArea::new(column![
+                                Image::new(image::Handle::from_path(
+                                    state
+                                        .selected_image
+                                        .as_ref()
+                                        .expect("Can't fail")
+                                        .0
+                                        .parent()
+                                        .unwrap()
+                                        .join(FACE_DATA_FOLDER_NAME)
+                                        .join(&face_data.thumbnail_filename)
+                                ))
+                                .content_fit(iced::ContentFit::ScaleDown)
+                                .filter_method(image::FilterMethod::Nearest),
+                                text(face_data.name_of_person.as_ref().map_or("Unnamed", |v| v))
+                                    .width(Length::Fill)
+                                    .center()
+                            ])
+                            .on_press(Message::Gallery(GalleryPageMessage::OpenManagePersonView(
+                                state.selected_image.as_ref().expect("Can't fail").0.clone(),
+                                face_data.clone(),
+                            )))
+                            .into()
+                        }),
+                )
+                .padding(5)
+                .spacing(10),
+            )
+        } else {
+            scrollable(column![text("None found").width(Length::Fill).center()])
+        },
+    ]
+    .width(Length::Fixed(100.0))
     .into()
 }
 
@@ -303,6 +312,142 @@ fn no_gallery_folder_selected_view(_state: &GalleryPage) -> Element<Message> {
     .into()
 }
 
+fn person_management_view(state: &GalleryPage) -> Element<Message> {
+    let (image_path, face_data) = state.person_to_manage.as_ref().expect("Can't fail");
+    if state.show_ignore_person_confirmation {
+        column![
+            row![
+                Space::with_width(Length::Fill),
+                Tooltip::new(
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/close.svg"
+                    ))))
+                    .on_press(Message::Gallery(GalleryPageMessage::CloseManagePersonView))
+                    .width(Length::Fixed(50.0)),
+                    "Close Person Manager",
+                    iced::widget::tooltip::Position::Bottom
+                ),
+            ],
+            Image::new(image::Handle::from_path(
+                image_path
+                    .parent()
+                    .unwrap()
+                    .join(FACE_DATA_FOLDER_NAME)
+                    .join(&face_data.thumbnail_filename)
+            ))
+            .content_fit(iced::ContentFit::ScaleDown)
+            .filter_method(image::FilterMethod::Nearest),
+            text(format!(
+                "Ignore {}?",
+                face_data
+                    .name_of_person
+                    .as_ref()
+                    .unwrap_or(&String::from("Unnamed")),
+            ))
+            .width(Length::Fill)
+            .center(),
+            button(text("Confirm").width(Length::Fill).center())
+                .on_press(Message::Gallery(GalleryPageMessage::ConfirmIgnorePerson))
+                .width(Length::Fill)
+                .style(button::danger),
+            button(text("Cancel").width(Length::Fill).center())
+                .on_press(Message::Gallery(GalleryPageMessage::CancelIgnorePerson))
+                .width(Length::Fill),
+        ]
+        .width(Length::Fixed(200.0))
+        .padding(10)
+        .spacing(10)
+        .into()
+    } else if state.show_rename_confirmation {
+        column![
+            row![
+                Space::with_width(Length::Fill),
+                Tooltip::new(
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/close.svg"
+                    ))))
+                    .on_press(Message::Gallery(GalleryPageMessage::CloseManagePersonView))
+                    .width(Length::Fixed(50.0)),
+                    "Close Person Manager",
+                    iced::widget::tooltip::Position::Bottom
+                ),
+            ],
+            Image::new(image::Handle::from_path(
+                image_path
+                    .parent()
+                    .unwrap()
+                    .join(FACE_DATA_FOLDER_NAME)
+                    .join(&face_data.thumbnail_filename)
+            ))
+            .content_fit(iced::ContentFit::ScaleDown)
+            .filter_method(image::FilterMethod::Nearest)
+            .width(Length::Fill),
+            text(format!(
+                "Rename {} to {}?",
+                face_data
+                    .name_of_person
+                    .as_ref()
+                    .unwrap_or(&String::from("Unnamed")),
+                state.rename_person_editor_text
+            ))
+            .width(Length::Fill)
+            .center(),
+            button(text("Confirm").width(Length::Fill).center())
+                .on_press(Message::Gallery(GalleryPageMessage::ConfirmRenamePerson))
+                .width(Length::Fill)
+                .style(button::danger),
+            button(text("Cancel").width(Length::Fill).center())
+                .on_press(Message::Gallery(GalleryPageMessage::CancelRenamePerson))
+                .width(Length::Fill),
+        ]
+        .width(Length::Fixed(200.0))
+        .padding(10)
+        .spacing(10)
+        .into()
+    } else {
+        column![
+            row![
+                Space::with_width(Length::Fill),
+                Tooltip::new(
+                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                        "../../../icons/close.svg"
+                    ))))
+                    .on_press(Message::Gallery(GalleryPageMessage::CloseManagePersonView))
+                    .width(Length::Fixed(50.0)),
+                    "Close Person Manager",
+                    iced::widget::tooltip::Position::Bottom
+                ),
+            ],
+            Image::new(image::Handle::from_path(
+                image_path
+                    .parent()
+                    .unwrap()
+                    .join(FACE_DATA_FOLDER_NAME)
+                    .join(&face_data.thumbnail_filename)
+            ))
+            .content_fit(iced::ContentFit::ScaleDown)
+            .filter_method(image::FilterMethod::Nearest),
+            text(face_data.name_of_person.as_deref().unwrap_or("Unnamed"),)
+                .width(Length::Fill)
+                .center(),
+            text_input("Rename person", &state.rename_person_editor_text)
+                .on_input(|s| Message::Gallery(GalleryPageMessage::UpdateRenamePersonEditor(s)))
+                .on_submit(Message::Gallery(GalleryPageMessage::MaybeRenamePerson))
+                .width(Length::Fill),
+            button(text("Rename").width(Length::Fill).center())
+                .on_press(Message::Gallery(GalleryPageMessage::MaybeRenamePerson))
+                .width(Length::Fill),
+            button(text("Ignore").width(Length::Fill).center())
+                .on_press(Message::Gallery(GalleryPageMessage::MaybeIgnorePerson))
+                .width(Length::Fill),
+        ]
+        .width(Length::Fixed(200.0))
+        .padding(10)
+        .spacing(10)
+        .into()
+    }
+}
+
 pub fn tool_view(state: &GalleryPage) -> Element<Message> {
     if state.selected_image.is_some() {
         row![Tooltip::new(
@@ -318,6 +463,8 @@ pub fn tool_view(state: &GalleryPage) -> Element<Message> {
     } else {
         row![
             button("Extract faces").on_press(Message::Gallery(GalleryPageMessage::ExtractAllFaces)),
+            button("Recognise faces")
+                .on_press(Message::Gallery(GalleryPageMessage::RunFaceRecognition)),
             button("Generate thumbnails")
                 .on_press(Message::Gallery(GalleryPageMessage::GenerateAllThumbnails))
         ]

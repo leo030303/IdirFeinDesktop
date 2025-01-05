@@ -25,6 +25,7 @@ pub(crate) const THUMBNAIL_SIZE: u32 = 200;
 pub(crate) const THUMBNAIL_FOLDER_NAME: &str = ".thumbnails";
 pub(crate) const FACE_DATA_FOLDER_NAME: &str = ".face_data";
 pub(crate) const FACE_DATA_FILE_NAME: &str = "extracted_faces.json";
+pub(crate) const PATH_TO_FACE_RECOGNITION_MODEL: &str = "/home/leoring/Documents/Personal_Coding_Projects/idirfein_desktop_iced/resources/models/face_recognition_sface_2021dec.onnx";
 
 pub(crate) static SCROLLABLE_ID: Lazy<scrollable::Id> = Lazy::new(scrollable::Id::unique);
 
@@ -42,6 +43,10 @@ pub struct GalleryPage {
     pub(crate) scrollable_viewport_option: Option<Viewport>,
     pub(crate) photo_process_progress: PhotoProcessingProgress,
     pub(crate) photo_process_abort_handle: Option<iced::task::Handle>,
+    pub(crate) person_to_manage: Option<(PathBuf, FaceData)>,
+    pub(crate) rename_person_editor_text: String,
+    pub(crate) show_ignore_person_confirmation: bool,
+    pub(crate) show_rename_confirmation: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -74,6 +79,16 @@ pub enum GalleryPageMessage {
     SetPhotoProcessProgress(PhotoProcessingProgress),
     AbortProcess,
     CopySelectedImagePath,
+    RunFaceRecognition,
+    OpenManagePersonView(PathBuf, FaceData),
+    CloseManagePersonView,
+    MaybeRenamePerson,
+    ConfirmRenamePerson,
+    CancelRenamePerson,
+    UpdateRenamePersonEditor(String),
+    MaybeIgnorePerson,
+    ConfirmIgnorePerson,
+    CancelIgnorePerson,
 }
 
 impl GalleryPage {
@@ -87,6 +102,10 @@ impl GalleryPage {
             gallery_paths_list: vec![],
             photo_process_progress: PhotoProcessingProgress::None,
             photo_process_abort_handle: None,
+            person_to_manage: None,
+            rename_person_editor_text: String::new(),
+            show_ignore_person_confirmation: false,
+            show_rename_confirmation: false,
         }
     }
 
