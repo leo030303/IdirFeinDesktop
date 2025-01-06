@@ -81,6 +81,9 @@ pub enum SettingsPageMessage {
     TasksSetShowTaskCompletionToolbar(bool),
     GalleryPickDefaultFolder,
     GallerySetDefaultFolder(Option<PathBuf>),
+    GallerySetRunThumbnailGenerationOnStart(bool),
+    GallerySetRunFaceExtractionOnStart(bool),
+    GallerySetRunFaceRecognitionOnStart(bool),
     SyncUpdateServerUrl(String),
     SyncSetServerUrl,
 }

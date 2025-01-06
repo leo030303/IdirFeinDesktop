@@ -226,6 +226,15 @@ pub fn update(
                 GalleryPageMessage::SetGalleryFolder(selected_folder),
             )));
         }
+        SettingsPageMessage::GallerySetRunThumbnailGenerationOnStart(b) => {
+            app_config.gallery_config.run_thumbnail_generation_on_start = b;
+        }
+        SettingsPageMessage::GallerySetRunFaceExtractionOnStart(b) => {
+            app_config.gallery_config.run_face_extraction_on_start = b;
+        }
+        SettingsPageMessage::GallerySetRunFaceRecognitionOnStart(b) => {
+            app_config.gallery_config.run_face_recognition_on_start = b;
+        }
         SettingsPageMessage::SyncUpdateServerUrl(s) => state.server_url_editor_text = s,
         SettingsPageMessage::SyncSetServerUrl => {
             app_config.sync_config.server_url = state.server_url_editor_text.clone();

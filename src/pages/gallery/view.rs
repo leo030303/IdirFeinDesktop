@@ -20,13 +20,12 @@ use super::{
 pub fn main_view(state: &GalleryPage) -> Element<Message> {
     if state.selected_folder.is_none() {
         no_gallery_folder_selected_view(state)
+    } else if state.selected_image.is_some() {
+        big_image_viewer(state)
+    } else if state.show_people_view {
+        list_people_view(state)
     } else {
-        let gallery_grid = gallery_grid(state);
-        if state.selected_image.is_some() {
-            big_image_viewer(state)
-        } else {
-            gallery_grid
-        }
+        gallery_grid(state)
     }
 }
 
@@ -156,9 +155,22 @@ fn people_sidebar(state: &GalleryPage) -> Element<Message> {
 }
 
 fn gallery_grid(state: &GalleryPage) -> Element<Message> {
+    let image_rows_to_display = if let Some(person_to_view) = state.person_to_view.as_ref() {
+        &person_to_view.list_of_rows
+    } else {
+        &state.gallery_row_list
+    };
     column![
         photo_processing_progress_bar(state),
-        scrollable(column(state.gallery_row_list.iter().map(|image_row| {
+        if let Some(person_to_view) = state.person_to_view.as_ref() {
+            column![text(format!("Photos of {}", &person_to_view.name))
+                .width(Length::Fill)
+                .center()
+                .size(24)]
+        } else {
+            column![]
+        },
+        scrollable(column(image_rows_to_display.iter().map(|image_row| {
             if image_row.loaded {
                 row(image_row
                     .images_data
@@ -314,7 +326,7 @@ fn no_gallery_folder_selected_view(_state: &GalleryPage) -> Element<Message> {
 
 fn person_management_view(state: &GalleryPage) -> Element<Message> {
     let (image_path, face_data) = state.person_to_manage.as_ref().expect("Can't fail");
-    if state.show_ignore_person_confirmation {
+    scrollable(if state.show_ignore_person_confirmation {
         column![
             row![
                 Space::with_width(Length::Fill),
@@ -357,7 +369,6 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
         .width(Length::Fixed(200.0))
         .padding(10)
         .spacing(10)
-        .into()
     } else if state.show_rename_confirmation {
         column![
             row![
@@ -403,7 +414,6 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
         .width(Length::Fixed(200.0))
         .padding(10)
         .spacing(10)
-        .into()
     } else {
         column![
             row![
@@ -430,22 +440,72 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
             text(face_data.name_of_person.as_deref().unwrap_or("Unnamed"),)
                 .width(Length::Fill)
                 .center(),
-            text_input("Rename person", &state.rename_person_editor_text)
-                .on_input(|s| Message::Gallery(GalleryPageMessage::UpdateRenamePersonEditor(s)))
-                .on_submit(Message::Gallery(GalleryPageMessage::MaybeRenamePerson))
-                .width(Length::Fill),
-            button(text("Rename").width(Length::Fill).center())
-                .on_press(Message::Gallery(GalleryPageMessage::MaybeRenamePerson))
-                .width(Length::Fill),
             button(text("Ignore").width(Length::Fill).center())
                 .on_press(Message::Gallery(GalleryPageMessage::MaybeIgnorePerson))
                 .width(Length::Fill),
+            text_input("Rename person", &state.rename_person_editor_text)
+                .on_input(|s| Message::Gallery(GalleryPageMessage::UpdateRenamePersonEditor(s)))
+                .on_submit(Message::Gallery(GalleryPageMessage::MaybeRenamePerson(
+                    None
+                )))
+                .width(Length::Fill),
+            button(text("Rename").width(Length::Fill).center())
+                .on_press(Message::Gallery(GalleryPageMessage::MaybeRenamePerson(
+                    None
+                )))
+                .width(Length::Fill),
+            Space::with_height(Length::Fixed(10.0)),
+            column(
+                state
+                    .people_list
+                    .iter()
+                    .map(|(name_of_person, _thumbnail_path)| {
+                        button(
+                            text(format!("Rename to {name_of_person}"))
+                                .width(Length::Fill)
+                                .center(),
+                        )
+                        .on_press(Message::Gallery(GalleryPageMessage::MaybeRenamePerson(
+                            Some(name_of_person.clone()),
+                        )))
+                        .width(Length::Fill)
+                        .into()
+                    })
+            )
+            .spacing(10)
         ]
         .width(Length::Fixed(200.0))
         .padding(10)
         .spacing(10)
-        .into()
-    }
+    })
+    .into()
+}
+
+fn list_people_view(state: &GalleryPage) -> Element<Message> {
+    scrollable(
+        row(state
+            .people_list
+            .iter()
+            .map(|(name_of_person, path_to_thumbnail)| {
+                MouseArea::new(
+                    column![
+                        Image::new(image::Handle::from_path(path_to_thumbnail))
+                            .content_fit(iced::ContentFit::ScaleDown)
+                            .filter_method(image::FilterMethod::Nearest),
+                        text(name_of_person).width(Length::Fill).center()
+                    ]
+                    .width(Length::Fixed(200.0))
+                    .spacing(10)
+                    .padding(10),
+                )
+                .on_press(Message::Gallery(GalleryPageMessage::SetPersonToViewName(
+                    Some(name_of_person.clone()),
+                )))
+                .into()
+            }))
+        .wrap(),
+    )
+    .into()
 }
 
 pub fn tool_view(state: &GalleryPage) -> Element<Message> {
@@ -461,13 +521,22 @@ pub fn tool_view(state: &GalleryPage) -> Element<Message> {
         .width(Length::FillPortion(1))
         .into()
     } else {
-        row![
-            button("Extract faces").on_press(Message::Gallery(GalleryPageMessage::ExtractAllFaces)),
-            button("Recognise faces")
-                .on_press(Message::Gallery(GalleryPageMessage::RunFaceRecognition)),
-            button("Generate thumbnails")
-                .on_press(Message::Gallery(GalleryPageMessage::GenerateAllThumbnails))
-        ]
+        row![Tooltip::new(
+            button(Svg::new(
+                if state.show_people_view || state.person_to_view.is_some() {
+                    svg::Handle::from_memory(include_bytes!("../../../icons/image-round.svg"))
+                } else {
+                    svg::Handle::from_memory(include_bytes!("../../../icons/people.svg"))
+                }
+            ))
+            .on_press(Message::Gallery(GalleryPageMessage::TogglePeopleView)),
+            if state.show_people_view || state.person_to_view.is_some() {
+                "Back to main gallery"
+            } else {
+                "View recognised people"
+            },
+            iced::widget::tooltip::Position::Bottom
+        )]
         .width(Length::FillPortion(1))
         .into()
     }

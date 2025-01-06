@@ -292,27 +292,44 @@ fn passwords_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Ele
 fn gallery_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
     scrollable(
         container(
-            column![row![
-                text(
-                    app_config
-                        .gallery_config
-                        .default_folder
-                        .as_ref()
-                        .map(|value| format!("Default Folder: {value:?}"))
-                        .unwrap_or(String::from("No Default Folder Selected"))
-                )
-                .align_x(Alignment::Center)
+            column![
+                row![
+                    text(
+                        app_config
+                            .gallery_config
+                            .default_folder
+                            .as_ref()
+                            .map(|value| format!("Default Folder: {value:?}"))
+                            .unwrap_or(String::from("No Default Folder Selected"))
+                    )
+                    .align_x(Alignment::Center)
+                    .width(Length::Fill),
+                    button(
+                        text("Select Default Folder")
+                            .width(Length::Fill)
+                            .align_x(Alignment::Center)
+                    )
+                    .on_press(Message::Settings(
+                        SettingsPageMessage::GalleryPickDefaultFolder
+                    ))
+                ]
                 .width(Length::Fill),
-                button(
-                    text("Select Default Folder")
-                        .width(Length::Fill)
-                        .align_x(Alignment::Center)
-                )
-                .on_press(Message::Settings(
-                    SettingsPageMessage::GalleryPickDefaultFolder
-                ))
+                toggler(app_config.gallery_config.run_thumbnail_generation_on_start)
+                    .label("Run thumbnail generation on start")
+                    .on_toggle(|b| Message::Settings(
+                        SettingsPageMessage::GallerySetRunThumbnailGenerationOnStart(b)
+                    )),
+                toggler(app_config.gallery_config.run_face_extraction_on_start)
+                    .label("Run face extraction on start")
+                    .on_toggle(|b| Message::Settings(
+                        SettingsPageMessage::GallerySetRunFaceExtractionOnStart(b)
+                    )),
+                toggler(app_config.gallery_config.run_face_recognition_on_start)
+                    .label("Run face recognition on start")
+                    .on_toggle(|b| Message::Settings(
+                        SettingsPageMessage::GallerySetRunFaceRecognitionOnStart(b)
+                    )),
             ]
-            .width(Length::Fill),]
             .padding(20)
             .spacing(30),
         )

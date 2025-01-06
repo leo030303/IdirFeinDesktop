@@ -16,13 +16,17 @@ use rfd::FileDialog;
 
 use crate::{app::Message, pages::gallery::page::IMAGE_HEIGHT};
 
-use super::gallery_utils::{
-    self, get_detected_faces_for_image, update_face_data, PhotoProcessingProgress,
-};
 use super::page::{
     GalleryPage, GalleryPageMessage, ImageRow, ARROW_KEY_SCROLL_AMOUNT, FACE_DATA_FOLDER_NAME,
     NUM_IMAGES_IN_ROW, PAGE_KEY_SCROLL_AMOUNT, ROW_BATCH_SIZE, SCROLLABLE_ID,
     THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE,
+};
+use super::{
+    gallery_utils::{
+        self, get_all_photos_by_name, get_detected_faces_for_image, get_named_people_for_display,
+        update_face_data, PhotoProcessingProgress,
+    },
+    page::PersonToView,
 };
 
 pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Message> {
@@ -46,7 +50,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::LoadGalleryFolder => {
             let selected_folder = state.selected_folder.clone();
-            return Task::perform(
+            let mut loading_task = Task::perform(
                 async {
                     let gallery_files_list: Vec<Vec<PathBuf>> =
                         if let Some(selected_folder) = selected_folder {
@@ -89,10 +93,21 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 |gallery_files_list| {
                     Message::Gallery(GalleryPageMessage::SetGalleryFilesList(gallery_files_list))
                 },
-            )
-            .chain(Task::done(Message::Gallery(
-                GalleryPageMessage::GenerateAllThumbnails,
-            )));
+            );
+            if state.run_thumbnail_generation_on_start {
+                loading_task = loading_task.chain(Task::done(Message::Gallery(
+                    GalleryPageMessage::GenerateAllThumbnails,
+                )));
+            } else if state.run_face_extraction_on_start {
+                loading_task = loading_task.chain(Task::done(Message::Gallery(
+                    GalleryPageMessage::ExtractAllFaces,
+                )));
+            } else if state.run_face_recognition_on_start {
+                loading_task = loading_task.chain(Task::done(Message::Gallery(
+                    GalleryPageMessage::RunFaceRecognition,
+                )));
+            }
+            return loading_task;
         }
         GalleryPageMessage::SetGalleryFilesList(gallery_files_list) => {
             state.gallery_paths_list = gallery_files_list.clone().into_iter().flatten().collect();
@@ -106,6 +121,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                     images_data: photo_vec.into_iter().map(|file| (file, None)).collect(),
                 })
                 .collect();
+            let image_paths_to_process = state.gallery_paths_list.clone();
             return Task::done(Message::Gallery(GalleryPageMessage::LoadImageRows(
                 state
                     .gallery_row_list
@@ -113,7 +129,13 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                     .take(ROW_BATCH_SIZE)
                     .cloned()
                     .collect(),
-            )));
+            )))
+            .chain(Task::perform(
+                async move { get_named_people_for_display(&image_paths_to_process) },
+                |list_of_people| {
+                    Message::Gallery(GalleryPageMessage::SetPeopleList(list_of_people))
+                },
+            ));
         }
         GalleryPageMessage::LoadImageRows(mut image_rows_to_load_list) => {
             return Task::perform(
@@ -211,13 +233,23 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             );
         }
         GalleryPageMessage::SetImageRows(loaded_images_list) => {
-            loaded_images_list.into_iter().for_each(|image_row| {
-                let image_row_index = image_row.index;
-                *state
-                    .gallery_row_list
-                    .get_mut(image_row_index)
-                    .expect("Shouldn't fail") = image_row;
-            });
+            if let Some(person_to_view) = state.person_to_view.as_mut() {
+                loaded_images_list.into_iter().for_each(|image_row| {
+                    let image_row_index = image_row.index;
+                    *person_to_view
+                        .list_of_rows
+                        .get_mut(image_row_index)
+                        .expect("Shouldn't fail") = image_row;
+                });
+            } else {
+                loaded_images_list.into_iter().for_each(|image_row| {
+                    let image_row_index = image_row.index;
+                    *state
+                        .gallery_row_list
+                        .get_mut(image_row_index)
+                        .expect("Shouldn't fail") = image_row;
+                });
+            }
         }
         GalleryPageMessage::GalleryScrolled(viewport) => {
             state.scrollable_viewport_option = Some(viewport);
@@ -227,21 +259,43 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 (viewport.absolute_offset().y / IMAGE_HEIGHT).floor() as usize;
 
             if state.first_loaded_row_index != images_scrolled_passed {
-                let mut images_to_unload_list: Vec<ImageRow> = state
-                    .gallery_row_list
-                    .iter()
-                    .skip(state.first_loaded_row_index)
-                    .take(displayed_images)
-                    .cloned()
-                    .collect();
+                let mut images_to_unload_list: Vec<ImageRow> =
+                    if let Some(person_to_view) = state.person_to_view.as_ref() {
+                        person_to_view
+                            .list_of_rows
+                            .iter()
+                            .skip(state.first_loaded_row_index)
+                            .take(displayed_images)
+                            .cloned()
+                            .collect()
+                    } else {
+                        state
+                            .gallery_row_list
+                            .iter()
+                            .skip(state.first_loaded_row_index)
+                            .take(displayed_images)
+                            .cloned()
+                            .collect()
+                    };
                 state.first_loaded_row_index = images_scrolled_passed;
-                let images_to_load_list: Vec<ImageRow> = state
-                    .gallery_row_list
-                    .iter()
-                    .skip(images_scrolled_passed)
-                    .take(displayed_images)
-                    .cloned()
-                    .collect();
+                let images_to_load_list: Vec<ImageRow> =
+                    if let Some(person_to_view) = state.person_to_view.as_ref() {
+                        person_to_view
+                            .list_of_rows
+                            .iter()
+                            .skip(images_scrolled_passed)
+                            .take(displayed_images)
+                            .cloned()
+                            .collect()
+                    } else {
+                        state
+                            .gallery_row_list
+                            .iter()
+                            .skip(images_scrolled_passed)
+                            .take(displayed_images)
+                            .cloned()
+                            .collect()
+                    };
                 images_to_unload_list.retain(|image_row| !images_to_load_list.contains(image_row));
 
                 return Task::done(Message::Gallery(GalleryPageMessage::LoadImageRows(
@@ -253,7 +307,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             }
         }
         GalleryPageMessage::ArrowDownKeyPressed => {
-            if state.selected_image.is_none() {
+            if state.selected_image.is_none() && !state.show_people_view {
                 if let Some(viewport) = state.scrollable_viewport_option {
                     let new_y = viewport.absolute_offset().y + ARROW_KEY_SCROLL_AMOUNT;
                     if new_y < viewport.content_bounds().height {
@@ -269,7 +323,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             }
         }
         GalleryPageMessage::ArrowUpKeyPressed => {
-            if state.selected_image.is_none() {
+            if state.selected_image.is_none() && !state.show_people_view {
                 if let Some(viewport) = state.scrollable_viewport_option {
                     let new_y = viewport.absolute_offset().y - ARROW_KEY_SCROLL_AMOUNT;
                     if new_y > 0.0 {
@@ -285,7 +339,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             }
         }
         GalleryPageMessage::PageDownKeyPressed => {
-            if state.selected_image.is_none() {
+            if state.selected_image.is_none() && !state.show_people_view {
                 if let Some(viewport) = state.scrollable_viewport_option {
                     let new_y = viewport.absolute_offset().y + PAGE_KEY_SCROLL_AMOUNT;
                     if new_y < viewport.content_bounds().height {
@@ -301,7 +355,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             }
         }
         GalleryPageMessage::PageUpKeyPressed => {
-            if state.selected_image.is_none() {
+            if state.selected_image.is_none() && !state.show_people_view {
                 if let Some(viewport) = state.scrollable_viewport_option {
                     let new_y = viewport.absolute_offset().y - PAGE_KEY_SCROLL_AMOUNT;
                     if new_y > 0.0 {
@@ -317,6 +371,10 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             }
         }
         GalleryPageMessage::SelectImageForBigView(image_path_option) => {
+            state.person_to_manage = None;
+            state.rename_person_editor_text = String::new();
+            state.show_ignore_person_confirmation = false;
+            state.show_rename_confirmation = false;
             if image_path_option.is_none() {
                 state.selected_image = None;
             } else {
@@ -343,7 +401,22 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::SelectPreviousImage => {
             if let Some(selected_image) = &state.selected_image {
-                if let Some(current_index) = state
+                if let Some(person_to_view) = state.person_to_view.as_ref() {
+                    if let Some(current_index) = person_to_view
+                        .list_of_image_paths
+                        .iter()
+                        .position(|current_path| *current_path == selected_image.0)
+                    {
+                        return Task::done(Message::Gallery(
+                            GalleryPageMessage::SelectImageForBigView(
+                                person_to_view
+                                    .list_of_image_paths
+                                    .get(current_index.saturating_sub(1))
+                                    .cloned(),
+                            ),
+                        ));
+                    }
+                } else if let Some(current_index) = state
                     .gallery_paths_list
                     .iter()
                     .position(|current_path| *current_path == selected_image.0)
@@ -361,7 +434,22 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::SelectNextImage => {
             if let Some(selected_image) = &state.selected_image {
-                if let Some(current_index) = state
+                if let Some(person_to_view) = state.person_to_view.as_ref() {
+                    if let Some(current_index) = person_to_view
+                        .list_of_image_paths
+                        .iter()
+                        .position(|current_path| *current_path == selected_image.0)
+                    {
+                        let new_index = current_index + 1;
+                        if new_index < person_to_view.list_of_image_paths.len() {
+                            return Task::done(Message::Gallery(
+                                GalleryPageMessage::SelectImageForBigView(
+                                    person_to_view.list_of_image_paths.get(new_index).cloned(),
+                                ),
+                            ));
+                        }
+                    }
+                } else if let Some(current_index) = state
                     .gallery_paths_list
                     .iter()
                     .position(|current_path| *current_path == selected_image.0)
@@ -380,7 +468,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         GalleryPageMessage::ExtractAllFaces => {
             if matches!(state.photo_process_progress, PhotoProcessingProgress::None) {
                 let image_paths = state.gallery_paths_list.clone();
-                let (new_task, abort_handle) =
+                let (mut new_task, abort_handle) =
                     Task::run(gallery_utils::extract_all_faces(image_paths), |progress| {
                         Message::Gallery(GalleryPageMessage::SetPhotoProcessProgress(
                             progress.unwrap_or_default(),
@@ -388,6 +476,11 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                     })
                     .abortable();
                 state.photo_process_abort_handle = Some(abort_handle);
+                if state.run_face_recognition_on_start {
+                    new_task = new_task.chain(Task::done(Message::Gallery(
+                        GalleryPageMessage::RunFaceRecognition,
+                    )));
+                }
                 return new_task;
             } else {
                 return Task::done(Message::ShowToast(
@@ -399,7 +492,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         GalleryPageMessage::GenerateAllThumbnails => {
             if matches!(state.photo_process_progress, PhotoProcessingProgress::None) {
                 let image_paths = state.gallery_paths_list.clone();
-                let (new_task, abort_handle) = Task::run(
+                let (mut new_task, abort_handle) = Task::run(
                     gallery_utils::generate_thumbnails(image_paths),
                     |progress| {
                         Message::Gallery(GalleryPageMessage::SetPhotoProcessProgress(
@@ -409,6 +502,16 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 )
                 .abortable();
                 state.photo_process_abort_handle = Some(abort_handle);
+                if state.run_face_extraction_on_start {
+                    new_task = new_task.chain(Task::done(Message::Gallery(
+                        GalleryPageMessage::ExtractAllFaces,
+                    )));
+                } else if state.run_face_recognition_on_start {
+                    new_task = new_task.chain(Task::done(Message::Gallery(
+                        GalleryPageMessage::RunFaceRecognition,
+                    )));
+                }
+
                 return new_task;
             } else {
                 return Task::done(Message::ShowToast(
@@ -470,8 +573,11 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         GalleryPageMessage::OpenManagePersonView(original_image_path, face_data) => {
             state.person_to_manage = Some((original_image_path, face_data));
         }
-        GalleryPageMessage::MaybeRenamePerson => {
-            if !state.rename_person_editor_text.is_empty() {
+        GalleryPageMessage::MaybeRenamePerson(name_option) => {
+            if let Some(name) = name_option {
+                state.rename_person_editor_text = name;
+                state.show_rename_confirmation = true;
+            } else if !state.rename_person_editor_text.is_empty() {
                 state.show_rename_confirmation = true;
             }
         }
@@ -481,13 +587,20 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 let finishing_message = Task::done(Message::Gallery(
                     GalleryPageMessage::SelectImageForBigView(Some(image_path.clone())),
                 ));
+                let image_paths_to_process = state.gallery_paths_list.clone();
                 let background_task = Task::perform(
                     async move {
                         update_face_data(image_path, face_data);
                     },
                     |_| Message::None,
                 )
-                .chain(finishing_message);
+                .chain(finishing_message)
+                .chain(Task::perform(
+                    async move { get_named_people_for_display(&image_paths_to_process) },
+                    |list_of_people| {
+                        Message::Gallery(GalleryPageMessage::SetPeopleList(list_of_people))
+                    },
+                ));
                 state.person_to_manage = None;
                 state.rename_person_editor_text = String::new();
                 state.show_ignore_person_confirmation = false;
@@ -528,6 +641,81 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::CancelIgnorePerson => {
             state.show_ignore_person_confirmation = false;
+        }
+        GalleryPageMessage::TogglePeopleView => {
+            if state.person_to_view.is_some() {
+                state.person_to_view = None;
+                state.show_people_view = false;
+                return scrollable::scroll_to(
+                    SCROLLABLE_ID.clone(),
+                    scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
+                );
+            } else {
+                state.show_people_view = !state.show_people_view;
+            }
+        }
+        GalleryPageMessage::SetPeopleList(people_list) => {
+            state.people_list = people_list;
+        }
+        GalleryPageMessage::SetPersonToViewName(person_to_view_name_option) => {
+            if let Some(person_to_view_name) = person_to_view_name_option {
+                state.person_to_view = Some(PersonToView {
+                    name: person_to_view_name.clone(),
+                    list_of_image_paths: vec![],
+                    list_of_rows: vec![],
+                });
+                let target_name = person_to_view_name;
+                let image_paths_to_process = state.gallery_paths_list.clone();
+
+                return Task::perform(
+                    async move { get_all_photos_by_name(target_name, &image_paths_to_process) },
+                    |list_of_paths| {
+                        Message::Gallery(GalleryPageMessage::SetPersonToViewPaths(list_of_paths))
+                    },
+                );
+            } else {
+                state.person_to_view = None;
+            }
+        }
+        GalleryPageMessage::SetPersonToViewPaths(mut list_of_paths) => {
+            if let Some(person_to_view) = state.person_to_view.as_mut() {
+                list_of_paths.sort_unstable_by(|file_path1, file_path2| {
+                    file_path1
+                        .metadata()
+                        .unwrap()
+                        .st_mtime()
+                        .cmp(&file_path2.metadata().unwrap().st_mtime())
+                        .reverse()
+                });
+                let grouped_list_of_paths: Vec<Vec<PathBuf>> = list_of_paths
+                    .chunks(NUM_IMAGES_IN_ROW)
+                    .map(|item| item.to_vec())
+                    .collect();
+                let list_of_rows = grouped_list_of_paths
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, photo_vec)| ImageRow {
+                        loaded: false,
+                        index,
+                        images_data: photo_vec.into_iter().map(|file| (file, None)).collect(),
+                    })
+                    .collect();
+                person_to_view.list_of_rows = list_of_rows;
+                person_to_view.list_of_image_paths = list_of_paths;
+                state.first_loaded_row_index = 0;
+                state.selected_image = None;
+                state.person_to_manage = None;
+                state.scrollable_viewport_option = None;
+                state.show_people_view = false;
+                return Task::done(Message::Gallery(GalleryPageMessage::LoadImageRows(
+                    person_to_view
+                        .list_of_rows
+                        .iter()
+                        .take(ROW_BATCH_SIZE)
+                        .cloned()
+                        .collect(),
+                )));
+            }
         }
     }
     Task::none()

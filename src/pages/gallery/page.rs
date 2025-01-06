@@ -32,6 +32,9 @@ pub(crate) static SCROLLABLE_ID: Lazy<scrollable::Id> = Lazy::new(scrollable::Id
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GalleryPageConfig {
     pub default_folder: Option<PathBuf>,
+    pub run_thumbnail_generation_on_start: bool,
+    pub run_face_extraction_on_start: bool,
+    pub run_face_recognition_on_start: bool,
 }
 
 pub struct GalleryPage {
@@ -47,6 +50,12 @@ pub struct GalleryPage {
     pub(crate) rename_person_editor_text: String,
     pub(crate) show_ignore_person_confirmation: bool,
     pub(crate) show_rename_confirmation: bool,
+    pub(crate) show_people_view: bool,
+    pub(crate) people_list: Vec<(String, PathBuf)>,
+    pub(crate) person_to_view: Option<PersonToView>,
+    pub(crate) run_thumbnail_generation_on_start: bool,
+    pub(crate) run_face_extraction_on_start: bool,
+    pub(crate) run_face_recognition_on_start: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -54,6 +63,13 @@ pub struct ImageRow {
     pub loaded: bool,
     pub index: usize,
     pub images_data: Vec<(PathBuf, Option<Handle>)>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PersonToView {
+    pub name: String,
+    pub list_of_image_paths: Vec<PathBuf>,
+    pub list_of_rows: Vec<ImageRow>,
 }
 
 #[derive(Debug, Clone)]
@@ -82,13 +98,17 @@ pub enum GalleryPageMessage {
     RunFaceRecognition,
     OpenManagePersonView(PathBuf, FaceData),
     CloseManagePersonView,
-    MaybeRenamePerson,
+    MaybeRenamePerson(Option<String>),
     ConfirmRenamePerson,
     CancelRenamePerson,
     UpdateRenamePersonEditor(String),
     MaybeIgnorePerson,
     ConfirmIgnorePerson,
     CancelIgnorePerson,
+    TogglePeopleView,
+    SetPeopleList(Vec<(String, PathBuf)>),
+    SetPersonToViewName(Option<String>),
+    SetPersonToViewPaths(Vec<PathBuf>),
 }
 
 impl GalleryPage {
@@ -106,6 +126,12 @@ impl GalleryPage {
             rename_person_editor_text: String::new(),
             show_ignore_person_confirmation: false,
             show_rename_confirmation: false,
+            show_people_view: false,
+            people_list: vec![],
+            person_to_view: None,
+            run_thumbnail_generation_on_start: config.run_thumbnail_generation_on_start,
+            run_face_extraction_on_start: config.run_face_extraction_on_start,
+            run_face_recognition_on_start: config.run_face_recognition_on_start,
         }
     }
 
