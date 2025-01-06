@@ -394,7 +394,7 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
             .filter_method(image::FilterMethod::Nearest)
             .width(Length::Fill),
             text(format!(
-                "Rename {} to {}?",
+                "Rename face from {} to {}?",
                 face_data
                     .name_of_person
                     .as_ref()
@@ -415,46 +415,50 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
         .padding(10)
         .spacing(10)
     } else {
-        column![
-            row![
-                Space::with_width(Length::Fill),
-                Tooltip::new(
-                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                        "../../../icons/close.svg"
-                    ))))
-                    .on_press(Message::Gallery(GalleryPageMessage::CloseManagePersonView))
-                    .width(Length::Fixed(50.0)),
-                    "Close Person Manager",
-                    iced::widget::tooltip::Position::Bottom
-                ),
-            ],
-            Image::new(image::Handle::from_path(
-                image_path
-                    .parent()
-                    .unwrap()
-                    .join(FACE_DATA_FOLDER_NAME)
-                    .join(&face_data.thumbnail_filename)
-            ))
-            .content_fit(iced::ContentFit::ScaleDown)
-            .filter_method(image::FilterMethod::Nearest),
-            text(face_data.name_of_person.as_deref().unwrap_or("Unnamed"),)
-                .width(Length::Fill)
-                .center(),
-            button(text("Ignore").width(Length::Fill).center())
-                .on_press(Message::Gallery(GalleryPageMessage::MaybeIgnorePerson))
-                .width(Length::Fill),
-            text_input("Rename person", &state.rename_person_editor_text)
-                .on_input(|s| Message::Gallery(GalleryPageMessage::UpdateRenamePersonEditor(s)))
-                .on_submit(Message::Gallery(GalleryPageMessage::MaybeRenamePerson(
-                    None
-                )))
-                .width(Length::Fill),
-            button(text("Rename").width(Length::Fill).center())
-                .on_press(Message::Gallery(GalleryPageMessage::MaybeRenamePerson(
-                    None
-                )))
-                .width(Length::Fill),
-            Space::with_height(Length::Fixed(10.0)),
+        column![row![
+            column![
+                row![
+                    Space::with_width(Length::Fill),
+                    Tooltip::new(
+                        button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                            "../../../icons/close.svg"
+                        ))))
+                        .on_press(Message::Gallery(GalleryPageMessage::CloseManagePersonView))
+                        .width(Length::Fixed(50.0)),
+                        "Close Person Manager",
+                        iced::widget::tooltip::Position::Bottom
+                    ),
+                ],
+                Image::new(image::Handle::from_path(
+                    image_path
+                        .parent()
+                        .unwrap()
+                        .join(FACE_DATA_FOLDER_NAME)
+                        .join(&face_data.thumbnail_filename)
+                ))
+                .content_fit(iced::ContentFit::ScaleDown)
+                .filter_method(image::FilterMethod::Nearest),
+                text(face_data.name_of_person.as_deref().unwrap_or("Unnamed"),)
+                    .width(Length::Fill)
+                    .center(),
+                button(text("Ignore").width(Length::Fill).center())
+                    .on_press(Message::Gallery(GalleryPageMessage::MaybeIgnorePerson))
+                    .width(Length::Fill),
+                text_input("Rename person", &state.rename_person_editor_text)
+                    .on_input(|s| Message::Gallery(GalleryPageMessage::UpdateRenamePersonEditor(s)))
+                    .on_submit(Message::Gallery(GalleryPageMessage::MaybeRenamePerson(
+                        None
+                    )))
+                    .width(Length::Fill),
+                button(text("Rename").width(Length::Fill).center())
+                    .on_press(Message::Gallery(GalleryPageMessage::MaybeRenamePerson(
+                        None
+                    )))
+                    .width(Length::Fill),
+            ]
+            .width(Length::Fixed(200.0))
+            .padding(10)
+            .spacing(10),
             column(
                 state
                     .people_list
@@ -473,10 +477,9 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
                     })
             )
             .spacing(10)
-        ]
-        .width(Length::Fixed(200.0))
-        .padding(10)
-        .spacing(10)
+            .padding(10)
+            .width(Length::Fixed(200.0))
+        ]]
     })
     .into()
 }
