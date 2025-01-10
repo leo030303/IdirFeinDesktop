@@ -18,8 +18,8 @@ use crate::app::Message;
 use super::{
     gallery_utils::PhotoProcessingProgress,
     page::{
-        GalleryPage, GalleryPageMessage, FACE_DATA_FOLDER_NAME, IMAGE_HEIGHT, SCROLLABLE_ID,
-        UNNAMED_STRING,
+        GalleryPage, GalleryPageMessage, FACE_DATA_FOLDER_NAME, GALLERY_SCROLLABLE_ID,
+        IMAGE_HEIGHT, LIST_PEOPLE_SCROLL_ID, UNNAMED_STRING,
     },
 };
 
@@ -216,7 +216,7 @@ fn gallery_grid(state: &GalleryPage) -> Element<Message> {
                     .into()
             }
         })))
-        .id(SCROLLABLE_ID.clone())
+        .id(GALLERY_SCROLLABLE_ID.clone())
         .on_scroll(|viewport| Message::Gallery(GalleryPageMessage::GalleryScrolled(viewport)))
     ]
     .padding(5)
@@ -531,6 +531,8 @@ fn list_people_view(state: &GalleryPage) -> Element<Message> {
             }))
         .wrap(),
     )
+    .id(LIST_PEOPLE_SCROLL_ID.clone())
+    .on_scroll(|viewport| Message::Gallery(GalleryPageMessage::PeopleListScrolled(viewport)))
     .width(Length::Fill)
     .into()
 }

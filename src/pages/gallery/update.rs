@@ -21,8 +21,8 @@ use super::{
     gallery_utils::get_parent_folders,
     page::{
         GalleryPage, GalleryPageMessage, ImageRow, ARROW_KEY_SCROLL_AMOUNT, FACE_DATA_FOLDER_NAME,
-        NUM_IMAGES_IN_ROW, PAGE_KEY_SCROLL_AMOUNT, RENAME_PERSON_INPUT_ID, ROW_BATCH_SIZE,
-        SCROLLABLE_ID, THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE,
+        GALLERY_SCROLLABLE_ID, LIST_PEOPLE_SCROLL_ID, NUM_IMAGES_IN_ROW, PAGE_KEY_SCROLL_AMOUNT,
+        RENAME_PERSON_INPUT_ID, ROW_BATCH_SIZE, THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE,
     },
 };
 use super::{
@@ -273,7 +273,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             }
         }
         GalleryPageMessage::GalleryScrolled(viewport) => {
-            state.scrollable_viewport_option = Some(viewport);
+            state.gallery_scrollable_viewport_option = Some(viewport);
             let view_height = viewport.bounds().height;
             let displayed_images = ((view_height / IMAGE_HEIGHT).ceil() + 1.0) as usize;
             let images_scrolled_passed =
@@ -329,14 +329,43 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::ArrowDownKeyPressed => {
             if state.selected_image.is_none() && !state.show_people_view {
-                if let Some(viewport) = state.scrollable_viewport_option {
+                if let Some(viewport) = state.gallery_scrollable_viewport_option {
                     let new_y = viewport.absolute_offset().y + ARROW_KEY_SCROLL_AMOUNT;
                     if new_y < viewport.content_bounds().height {
                         return scrollable::scroll_to(
-                            SCROLLABLE_ID.clone(),
+                            GALLERY_SCROLLABLE_ID.clone(),
                             scrollable::AbsoluteOffset {
                                 x: viewport.absolute_offset().x,
                                 y: new_y,
+                            },
+                        );
+                    } else {
+                        return scrollable::scroll_to(
+                            GALLERY_SCROLLABLE_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: viewport.content_bounds().height,
+                            },
+                        );
+                    }
+                }
+            } else if state.show_people_view && state.person_to_view.is_none() {
+                if let Some(viewport) = state.people_list_scrollable_viewport_option {
+                    let new_y = viewport.absolute_offset().y + ARROW_KEY_SCROLL_AMOUNT;
+                    if new_y < viewport.content_bounds().height {
+                        return scrollable::scroll_to(
+                            LIST_PEOPLE_SCROLL_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: new_y,
+                            },
+                        );
+                    } else {
+                        return scrollable::scroll_to(
+                            LIST_PEOPLE_SCROLL_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: viewport.content_bounds().height,
                             },
                         );
                     }
@@ -345,14 +374,43 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::ArrowUpKeyPressed => {
             if state.selected_image.is_none() && !state.show_people_view {
-                if let Some(viewport) = state.scrollable_viewport_option {
+                if let Some(viewport) = state.gallery_scrollable_viewport_option {
                     let new_y = viewport.absolute_offset().y - ARROW_KEY_SCROLL_AMOUNT;
                     if new_y > 0.0 {
                         return scrollable::scroll_to(
-                            SCROLLABLE_ID.clone(),
+                            GALLERY_SCROLLABLE_ID.clone(),
                             scrollable::AbsoluteOffset {
                                 x: viewport.absolute_offset().x,
                                 y: new_y,
+                            },
+                        );
+                    } else {
+                        return scrollable::scroll_to(
+                            GALLERY_SCROLLABLE_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: 0.0,
+                            },
+                        );
+                    }
+                }
+            } else if state.show_people_view && state.person_to_view.is_none() {
+                if let Some(viewport) = state.people_list_scrollable_viewport_option {
+                    let new_y = viewport.absolute_offset().y - ARROW_KEY_SCROLL_AMOUNT;
+                    if new_y > 0.0 {
+                        return scrollable::scroll_to(
+                            LIST_PEOPLE_SCROLL_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: new_y,
+                            },
+                        );
+                    } else {
+                        return scrollable::scroll_to(
+                            LIST_PEOPLE_SCROLL_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: 0.0,
                             },
                         );
                     }
@@ -361,14 +419,43 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::PageDownKeyPressed => {
             if state.selected_image.is_none() && !state.show_people_view {
-                if let Some(viewport) = state.scrollable_viewport_option {
+                if let Some(viewport) = state.gallery_scrollable_viewport_option {
                     let new_y = viewport.absolute_offset().y + PAGE_KEY_SCROLL_AMOUNT;
                     if new_y < viewport.content_bounds().height {
                         return scrollable::scroll_to(
-                            SCROLLABLE_ID.clone(),
+                            GALLERY_SCROLLABLE_ID.clone(),
                             scrollable::AbsoluteOffset {
                                 x: viewport.absolute_offset().x,
                                 y: new_y,
+                            },
+                        );
+                    } else {
+                        return scrollable::scroll_to(
+                            GALLERY_SCROLLABLE_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: viewport.content_bounds().height,
+                            },
+                        );
+                    }
+                }
+            } else if state.show_people_view && state.person_to_view.is_none() {
+                if let Some(viewport) = state.people_list_scrollable_viewport_option {
+                    let new_y = viewport.absolute_offset().y + PAGE_KEY_SCROLL_AMOUNT;
+                    if new_y < viewport.content_bounds().height {
+                        return scrollable::scroll_to(
+                            LIST_PEOPLE_SCROLL_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: new_y,
+                            },
+                        );
+                    } else {
+                        return scrollable::scroll_to(
+                            LIST_PEOPLE_SCROLL_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: viewport.content_bounds().height,
                             },
                         );
                     }
@@ -377,14 +464,43 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::PageUpKeyPressed => {
             if state.selected_image.is_none() && !state.show_people_view {
-                if let Some(viewport) = state.scrollable_viewport_option {
+                if let Some(viewport) = state.gallery_scrollable_viewport_option {
                     let new_y = viewport.absolute_offset().y - PAGE_KEY_SCROLL_AMOUNT;
                     if new_y > 0.0 {
                         return scrollable::scroll_to(
-                            SCROLLABLE_ID.clone(),
+                            GALLERY_SCROLLABLE_ID.clone(),
                             scrollable::AbsoluteOffset {
                                 x: viewport.absolute_offset().x,
                                 y: new_y,
+                            },
+                        );
+                    } else {
+                        return scrollable::scroll_to(
+                            GALLERY_SCROLLABLE_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: 0.0,
+                            },
+                        );
+                    }
+                }
+            } else if state.show_people_view && state.person_to_view.is_none() {
+                if let Some(viewport) = state.people_list_scrollable_viewport_option {
+                    let new_y = viewport.absolute_offset().y - PAGE_KEY_SCROLL_AMOUNT;
+                    if new_y > 0.0 {
+                        return scrollable::scroll_to(
+                            LIST_PEOPLE_SCROLL_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: new_y,
+                            },
+                        );
+                    } else {
+                        return scrollable::scroll_to(
+                            LIST_PEOPLE_SCROLL_ID.clone(),
+                            scrollable::AbsoluteOffset {
+                                x: viewport.absolute_offset().x,
+                                y: 0.0,
                             },
                         );
                     }
@@ -403,9 +519,9 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 let faces_vec = get_detected_faces_for_image(&image_path);
                 state.selected_image = Some((image_path, faces_vec));
             }
-            if let Some(viewport) = state.scrollable_viewport_option {
+            if let Some(viewport) = state.gallery_scrollable_viewport_option {
                 return scrollable::scroll_to(
-                    SCROLLABLE_ID.clone(),
+                    GALLERY_SCROLLABLE_ID.clone(),
                     scrollable::AbsoluteOffset {
                         x: viewport.absolute_offset().x,
                         y: viewport.absolute_offset().y,
@@ -422,7 +538,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 state.person_to_view = None;
                 state.show_people_view = true;
                 return scrollable::scroll_to(
-                    SCROLLABLE_ID.clone(),
+                    GALLERY_SCROLLABLE_ID.clone(),
                     scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
                 );
             } else if state.show_people_view {
@@ -696,7 +812,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 state.show_people_view = true;
                 state.person_to_view = None;
                 return scrollable::scroll_to(
-                    SCROLLABLE_ID.clone(),
+                    GALLERY_SCROLLABLE_ID.clone(),
                     scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
                 );
             } else {
@@ -759,7 +875,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 state.first_loaded_row_index = 0;
                 state.selected_image = None;
                 state.person_to_manage = None;
-                state.scrollable_viewport_option = None;
+                state.gallery_scrollable_viewport_option = None;
                 state.show_people_view = false;
                 return Task::done(Message::Gallery(GalleryPageMessage::LoadImageRows(
                     person_to_view
@@ -770,6 +886,9 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                         .collect(),
                 )));
             }
+        }
+        GalleryPageMessage::PeopleListScrolled(viewport) => {
+            state.people_list_scrollable_viewport_option = Some(viewport);
         }
     }
     Task::none()

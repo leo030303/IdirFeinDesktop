@@ -60,6 +60,9 @@ pub struct FaceData {
 
     /// The data required to match this face to other faces
     face_matrix_bytes: Vec<u8>,
+
+    /// The names that were already checked for recognition matches, to avoid repeated checking
+    pub checked_names: Vec<String>,
 }
 
 impl FaceData {
@@ -363,6 +366,7 @@ impl FaceExtractor {
                             name_of_person: None,
                             is_ignored: false,
                             original_filename: original_filename.to_owned(),
+                            checked_names: vec![],
                         })
                     } else {
                         None
@@ -630,13 +634,17 @@ impl Default for PhotoProcessingProgress {
 }
 
 pub fn match_face_to_person(
-    unknown_face: &FaceData,
+    unknown_face: &mut FaceData,
     named_people_list: Vec<(String, Mat)>,
 ) -> Option<String> {
     const L2NORM_SIMILAR_THRESH: f64 = 1.128;
 
+    let mut checked_names = vec![];
     let best_person_and_score = named_people_list
         .iter()
+        .filter(|(person_name, _named_person_face_features)| {
+            !unknown_face.checked_names.contains(person_name)
+        })
         .map(|(person_name, named_person_face_features)| {
             let unknown_face_features = unknown_face.matrix();
             let opencv_face_recognizer =
@@ -647,12 +655,14 @@ pub fn match_face_to_person(
                 FaceRecognizerSF_DisType::FR_NORM_L2.into(),
             );
             println!("{person_name} score is {l2_score:?}");
+            checked_names.push(person_name.clone());
             (
                 person_name,
                 l2_score.unwrap_or(L2NORM_SIMILAR_THRESH + 100.0),
             )
         })
         .min_by_key(|x| (x.1 * 10000.0) as i32);
+    unknown_face.checked_names.append(&mut checked_names);
 
     if let Some((person_name, l2_score)) = best_person_and_score {
         if l2_score <= L2NORM_SIMILAR_THRESH {

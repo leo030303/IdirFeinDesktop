@@ -29,7 +29,8 @@ pub(crate) const FACE_DATA_FOLDER_NAME: &str = ".face_data";
 pub(crate) const FACE_DATA_FILE_NAME: &str = "extracted_faces.json";
 pub(crate) const PATH_TO_FACE_RECOGNITION_MODEL: &str = "/home/leoring/Documents/Personal_Coding_Projects/idirfein_desktop_iced/resources/models/face_recognition_sface_2021dec.onnx";
 
-pub(crate) static SCROLLABLE_ID: Lazy<scrollable::Id> = Lazy::new(scrollable::Id::unique);
+pub(crate) static GALLERY_SCROLLABLE_ID: Lazy<scrollable::Id> = Lazy::new(scrollable::Id::unique);
+pub(crate) static LIST_PEOPLE_SCROLL_ID: Lazy<scrollable::Id> = Lazy::new(scrollable::Id::unique);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GalleryPageConfig {
@@ -46,7 +47,8 @@ pub struct GalleryPage {
     pub(crate) gallery_row_list: Vec<ImageRow>,
     pub(crate) gallery_paths_list: Vec<PathBuf>,
     pub(crate) gallery_parents_list: Vec<PathBuf>,
-    pub(crate) scrollable_viewport_option: Option<Viewport>,
+    pub(crate) gallery_scrollable_viewport_option: Option<Viewport>,
+    pub(crate) people_list_scrollable_viewport_option: Option<Viewport>,
     pub(crate) photo_process_progress: PhotoProcessingProgress,
     pub(crate) photo_process_abort_handle: Option<iced::task::Handle>,
     pub(crate) person_to_manage: Option<(PathBuf, FaceData)>,
@@ -112,6 +114,7 @@ pub enum GalleryPageMessage {
     SetPeopleList(Vec<(String, PathBuf)>),
     SetPersonToViewName(Option<String>),
     SetPersonToViewPaths(Vec<PathBuf>),
+    PeopleListScrolled(Viewport),
 }
 
 impl GalleryPage {
@@ -120,7 +123,8 @@ impl GalleryPage {
             selected_folder: config.default_folder.clone(),
             gallery_row_list: vec![],
             first_loaded_row_index: 0,
-            scrollable_viewport_option: None,
+            gallery_scrollable_viewport_option: None,
+            people_list_scrollable_viewport_option: None,
             selected_image: None,
             gallery_paths_list: vec![],
             gallery_parents_list: vec![],
