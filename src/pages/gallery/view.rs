@@ -1,3 +1,6 @@
+use crate::pages::gallery::page::RENAME_PERSON_INPUT_ID;
+use std::path::Path;
+
 use iced::{
     alignment::{Horizontal, Vertical},
     widget::{
@@ -14,7 +17,10 @@ use crate::app::Message;
 
 use super::{
     gallery_utils::PhotoProcessingProgress,
-    page::{GalleryPage, GalleryPageMessage, FACE_DATA_FOLDER_NAME, IMAGE_HEIGHT, SCROLLABLE_ID},
+    page::{
+        GalleryPage, GalleryPageMessage, FACE_DATA_FOLDER_NAME, IMAGE_HEIGHT, SCROLLABLE_ID,
+        UNNAMED_STRING,
+    },
 };
 
 pub fn main_view(state: &GalleryPage) -> Element<Message> {
@@ -126,15 +132,20 @@ fn people_sidebar(state: &GalleryPage) -> Element<Message> {
                                         .expect("Can't fail")
                                         .0
                                         .parent()
-                                        .unwrap()
+                                        .unwrap_or(Path::new("/"))
                                         .join(FACE_DATA_FOLDER_NAME)
                                         .join(&face_data.thumbnail_filename)
                                 ))
                                 .content_fit(iced::ContentFit::ScaleDown)
                                 .filter_method(image::FilterMethod::Nearest),
-                                text(face_data.name_of_person.as_ref().map_or("Unnamed", |v| v))
-                                    .width(Length::Fill)
-                                    .center()
+                                text(
+                                    face_data
+                                        .name_of_person
+                                        .as_ref()
+                                        .map_or(UNNAMED_STRING, |v| v)
+                                )
+                                .width(Length::Fill)
+                                .center()
                             ])
                             .on_press(Message::Gallery(GalleryPageMessage::OpenManagePersonView(
                                 state.selected_image.as_ref().expect("Can't fail").0.clone(),
@@ -171,7 +182,7 @@ fn gallery_grid(state: &GalleryPage) -> Element<Message> {
             column![]
         },
         scrollable(column(image_rows_to_display.iter().map(|image_row| {
-            if image_row.loaded {
+            if image_row.is_loaded {
                 row(image_row
                     .images_data
                     .iter()
@@ -228,7 +239,9 @@ fn photo_processing_progress_bar(state: &GalleryPage) -> Element<Message> {
                 .height(Length::Fixed(20.0))
                 .align_y(Center),
                 Space::with_width(Length::Fixed(10.0)),
-                text(format!("{:.2}%", progress)).height(Length::Fixed(20.0)),
+                text(format!("{:.2}%", progress))
+                    .height(Length::Fixed(20.0))
+                    .width(Length::Fixed(50.0)),
                 Space::with_width(Length::Fixed(10.0)),
                 Tooltip::new(
                     button(Svg::new(svg::Handle::from_memory(include_bytes!(
@@ -343,7 +356,7 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
             Image::new(image::Handle::from_path(
                 image_path
                     .parent()
-                    .unwrap()
+                    .unwrap_or(Path::new("/"))
                     .join(FACE_DATA_FOLDER_NAME)
                     .join(&face_data.thumbnail_filename)
             ))
@@ -354,7 +367,7 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
                 face_data
                     .name_of_person
                     .as_ref()
-                    .unwrap_or(&String::from("Unnamed")),
+                    .unwrap_or(&String::from(UNNAMED_STRING)),
             ))
             .width(Length::Fill)
             .center(),
@@ -386,7 +399,7 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
             Image::new(image::Handle::from_path(
                 image_path
                     .parent()
-                    .unwrap()
+                    .unwrap_or(Path::new("/"))
                     .join(FACE_DATA_FOLDER_NAME)
                     .join(&face_data.thumbnail_filename)
             ))
@@ -398,7 +411,7 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
                 face_data
                     .name_of_person
                     .as_ref()
-                    .unwrap_or(&String::from("Unnamed")),
+                    .unwrap_or(&String::from(UNNAMED_STRING)),
                 state.rename_person_editor_text
             ))
             .width(Length::Fill)
@@ -432,15 +445,20 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
                 Image::new(image::Handle::from_path(
                     image_path
                         .parent()
-                        .unwrap()
+                        .unwrap_or(Path::new("/"))
                         .join(FACE_DATA_FOLDER_NAME)
                         .join(&face_data.thumbnail_filename)
                 ))
                 .content_fit(iced::ContentFit::ScaleDown)
                 .filter_method(image::FilterMethod::Nearest),
-                text(face_data.name_of_person.as_deref().unwrap_or("Unnamed"),)
-                    .width(Length::Fill)
-                    .center(),
+                text(
+                    face_data
+                        .name_of_person
+                        .as_deref()
+                        .unwrap_or(UNNAMED_STRING),
+                )
+                .width(Length::Fill)
+                .center(),
                 button(text("Ignore").width(Length::Fill).center())
                     .on_press(Message::Gallery(GalleryPageMessage::MaybeIgnorePerson))
                     .width(Length::Fill),
@@ -449,6 +467,7 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
                     .on_submit(Message::Gallery(GalleryPageMessage::MaybeRenamePerson(
                         None
                     )))
+                    .id(RENAME_PERSON_INPUT_ID)
                     .width(Length::Fill),
                 button(text("Rename").width(Length::Fill).center())
                     .on_press(Message::Gallery(GalleryPageMessage::MaybeRenamePerson(
@@ -463,6 +482,10 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
                 state
                     .people_list
                     .iter()
+                    .filter(|(name_of_person, _thumbnail_path)| name_of_person
+                        .to_lowercase()
+                        .contains(&state.rename_person_editor_text.to_lowercase()))
+                    .filter(|(name_of_person, _thumbnail_path)| name_of_person != UNNAMED_STRING)
                     .map(|(name_of_person, _thumbnail_path)| {
                         button(
                             text(format!("Rename to {name_of_person}"))
@@ -508,6 +531,7 @@ fn list_people_view(state: &GalleryPage) -> Element<Message> {
             }))
         .wrap(),
     )
+    .width(Length::Fill)
     .into()
 }
 
@@ -525,21 +549,21 @@ pub fn tool_view(state: &GalleryPage) -> Element<Message> {
         .into()
     } else {
         row![Tooltip::new(
-            button(Svg::new(
-                if state.show_people_view || state.person_to_view.is_some() {
-                    svg::Handle::from_memory(include_bytes!("../../../icons/image-round.svg"))
-                } else {
-                    svg::Handle::from_memory(include_bytes!("../../../icons/people.svg"))
-                }
-            ))
+            button(Svg::new(if state.show_people_view {
+                svg::Handle::from_memory(include_bytes!("../../../icons/image-round.svg"))
+            } else {
+                svg::Handle::from_memory(include_bytes!("../../../icons/people.svg"))
+            }))
             .on_press(Message::Gallery(GalleryPageMessage::TogglePeopleView)),
-            if state.show_people_view || state.person_to_view.is_some() {
-                "Back to main gallery"
+            if state.show_people_view {
+                "Back to main gallery (Esc)"
+            } else if state.person_to_view.is_some() {
+                "Back to people view (Esc)"
             } else {
                 "View recognised people"
             },
             iced::widget::tooltip::Position::Bottom
-        )]
+        ),]
         .width(Length::FillPortion(1))
         .into()
     }

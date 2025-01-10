@@ -2,7 +2,6 @@ use iced::{
     advanced::graphics::image::image_rs::{self},
     futures::{SinkExt, Stream},
     stream::try_channel,
-    Error,
 };
 use image::DynamicImage;
 use opencv::{
@@ -17,6 +16,7 @@ use rust_faces::Nms;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
+    error::Error,
     ffi::OsString,
     fs,
     path::{Path, PathBuf},
@@ -32,6 +32,7 @@ use crate::pages::gallery::page::FACE_DATA_FOLDER_NAME;
 
 use super::page::{
     FACE_DATA_FILE_NAME, PATH_TO_FACE_RECOGNITION_MODEL, THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE,
+    UNNAMED_STRING,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,7 +65,7 @@ pub struct FaceData {
 impl FaceData {
     pub fn matrix(&self) -> Mat {
         Mat::from_bytes::<f32>(&self.face_matrix_bytes)
-            .unwrap()
+            .expect("Face data got corrupted")
             .clone_pointee()
     }
 
@@ -73,7 +74,7 @@ impl FaceData {
         bounds: Rect,
         confidence: f32,
         original_image: &DynamicImage,
-    ) -> Vec<u8> {
+    ) -> Result<Vec<u8>, Box<dyn Error>> {
         let initial_face_matrix = Mat::from_exact_iter(
             vec![
                 0.0,
@@ -93,10 +94,9 @@ impl FaceData {
                 confidence,
             ]
             .into_iter(),
-        )
-        .unwrap();
+        )?;
         let mut opencv_face_recognizer =
-            FaceRecognizerSF::create_def(PATH_TO_FACE_RECOGNITION_MODEL, "").unwrap();
+            FaceRecognizerSF::create_def(PATH_TO_FACE_RECOGNITION_MODEL, "")?;
         let bounds_img = original_image.crop_imm(
             bounds.x as u32,
             bounds.y as u32,
@@ -104,22 +104,18 @@ impl FaceData {
             bounds.height as u32,
         );
 
-        let bounds_tempfile_path = TempDir::new().unwrap().into_path().join("tempfile.png");
+        let bounds_tempfile_path = TempDir::new()?.into_path().join("tempfile.png");
         let _ = bounds_img.save(&bounds_tempfile_path);
 
-        let face_img = imgcodecs::imread_def(&bounds_tempfile_path.to_string_lossy()).unwrap();
+        let face_img = imgcodecs::imread_def(&bounds_tempfile_path.to_string_lossy())?;
 
         let mut aligned_face = Mat::default();
-        opencv_face_recognizer
-            .align_crop(&face_img, &initial_face_matrix, &mut aligned_face)
-            .unwrap();
+        opencv_face_recognizer.align_crop(&face_img, &initial_face_matrix, &mut aligned_face)?;
 
         let mut face_features = Mat::default();
-        opencv_face_recognizer
-            .feature(&aligned_face, &mut face_features)
-            .unwrap();
+        opencv_face_recognizer.feature(&aligned_face, &mut face_features)?;
 
-        face_features.data_bytes().unwrap().to_owned()
+        Ok(face_features.data_bytes()?.to_owned())
     }
 }
 
@@ -191,9 +187,9 @@ impl FaceExtractor {
             return None;
         }
         Some(FaceExtractor {
-            big_face_extractor: big_face_extractor.unwrap(),
-            medium_face_extractor: medium_face_extractor.unwrap(),
-            small_face_extractor: small_face_extractor.unwrap(),
+            big_face_extractor: big_face_extractor.expect("Prechecked this, can't fail"),
+            medium_face_extractor: medium_face_extractor.expect("Prechecked this, can't fail"),
+            small_face_extractor: small_face_extractor.expect("Prechecked this, can't fail"),
         })
     }
     /// Identify faces in a photo and return a vector of paths of extracted face images.
@@ -253,9 +249,17 @@ impl FaceExtractor {
 
         faces.sort_unstable_by(|face1, face2| {
             if face1.rect.x == face2.rect.x {
-                face1.rect.y.partial_cmp(&face2.rect.y).unwrap()
+                face1
+                    .rect
+                    .y
+                    .partial_cmp(&face2.rect.y)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             } else {
-                face1.rect.x.partial_cmp(&face2.rect.x).unwrap()
+                face1
+                    .rect
+                    .x
+                    .partial_cmp(&face2.rect.x)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             }
         });
 
@@ -263,7 +267,7 @@ impl FaceExtractor {
             .into_iter()
             .enumerate()
             .filter(|(_image_index, detected_face)| detected_face.landmarks.is_some())
-            .map(|(image_index, detected_face)| {
+            .filter_map(|(image_index, detected_face)| {
                 // Extract face and save to thumbnail.
                 // The bounding box is pretty tight, so make it a bit bigger.
                 // Also, make the box a square.
@@ -314,7 +318,10 @@ impl FaceExtractor {
                 let thumbnail = thumbnail.thumbnail(200, 200);
                 let thumbnail_path = face_data_folder.join(format!(
                     "{}_thumbnail_{}.png",
-                    picture_path.file_stem().unwrap().to_str().unwrap(),
+                    picture_path
+                        .file_stem()
+                        .and_then(|item| item.to_str())
+                        .unwrap_or("error_reading_filename"),
                     image_index
                 ));
                 let _ = thumbnail.save(&thumbnail_path);
@@ -334,23 +341,34 @@ impl FaceExtractor {
                     .map(|landmark_item| (landmark_item.0 - bounds.x, landmark_item.1 - bounds.y))
                     .collect();
 
-                let face_matrix_bytes = FaceData::get_matrix_bytes_from_features(
+                let face_matrix_bytes_option = FaceData::get_matrix_bytes_from_features(
                     face_features,
                     bounds,
                     detected_face.confidence,
                     &original_image,
                 );
-                FaceData {
-                    thumbnail_filename: format!(
-                        "{}_thumbnail_{}.png",
-                        picture_path.file_stem().unwrap().to_str().unwrap(),
-                        image_index
-                    )
-                    .into(),
-                    face_matrix_bytes,
-                    name_of_person: None,
-                    is_ignored: false,
-                    original_filename: picture_path.file_name().unwrap().to_owned(),
+                if let Some(original_filename) = picture_path.file_name() {
+                    if let Ok(face_matrix_bytes) = face_matrix_bytes_option {
+                        Some(FaceData {
+                            thumbnail_filename: format!(
+                                "{}_thumbnail_{}.png",
+                                picture_path
+                                    .file_stem()
+                                    .and_then(|item| item.to_str())
+                                    .unwrap_or("error_reading_filename"),
+                                image_index
+                            )
+                            .into(),
+                            face_matrix_bytes,
+                            name_of_person: None,
+                            is_ignored: false,
+                            original_filename: original_filename.to_owned(),
+                        })
+                    } else {
+                        None
+                    }
+                } else {
+                    None
                 }
             })
             .collect()
@@ -373,7 +391,7 @@ impl FaceExtractor {
 
 pub fn extract_all_faces(
     image_paths_to_extract: Vec<PathBuf>,
-) -> impl Stream<Item = Result<PhotoProcessingProgress, Error>> {
+) -> impl Stream<Item = Result<PhotoProcessingProgress, iced::Error>> {
     try_channel(1, move |mut progress_percentage_output| async move {
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
 
@@ -387,19 +405,20 @@ pub fn extract_all_faces(
 
             let total_number_of_images = image_paths_to_extract.len();
             for (image_index, image_path) in image_paths_to_extract.into_iter().enumerate() {
-                let parent_path = image_path.parent().unwrap();
+                let parent_path = image_path.parent().unwrap_or(Path::new("/"));
                 let face_data_vec_option = face_data_vecs_map.get_mut(parent_path);
                 let face_data_file = image_path
                     .parent()
-                    .unwrap()
+                    .unwrap_or(Path::new("/"))
                     .join(FACE_DATA_FOLDER_NAME)
                     .join(FACE_DATA_FILE_NAME);
                 match face_data_vec_option {
                     Some(face_data_vec) => {
-                        if !face_data_vec
-                            .iter()
-                            .any(|face_data| face_data.0 == image_path.file_name().unwrap())
-                        {
+                        if !face_data_vec.iter().any(|face_data| {
+                            image_path
+                                .file_name()
+                                .is_some_and(|file_name| face_data.0 == file_name)
+                        }) {
                             let new_face_data_vec = face_extractor.extract_faces(&image_path);
                             if new_face_data_vec.is_empty() {
                                 face_data_vec
@@ -413,24 +432,25 @@ pub fn extract_all_faces(
                                 });
                             }
                             let serialised = serde_json::to_string(&face_data_vec).unwrap();
-                            fs::write(face_data_file, serialised).unwrap();
+                            let _ = fs::write(face_data_file, serialised);
                         }
                     }
                     None => {
                         let mut face_data_vec: Vec<(OsString, Option<FaceData>)> =
                             if face_data_file.exists() {
                                 if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
-                                    serde_json::from_str(&face_data_json).unwrap_or_default()
+                                    serde_json::from_str(&face_data_json).unwrap()
                                 } else {
                                     vec![]
                                 }
                             } else {
                                 vec![]
                             };
-                        if !face_data_vec
-                            .iter()
-                            .any(|face_data| face_data.0 == image_path.file_name().unwrap())
-                        {
+                        if !face_data_vec.iter().any(|face_data| {
+                            image_path
+                                .file_name()
+                                .is_some_and(|file_name| face_data.0 == file_name)
+                        }) {
                             let new_face_data_vec = face_extractor.extract_faces(&image_path);
                             if new_face_data_vec.is_empty() {
                                 face_data_vec
@@ -445,18 +465,21 @@ pub fn extract_all_faces(
                             }
                             let serialised = serde_json::to_string(&face_data_vec).unwrap();
                             if !face_data_file.exists() {
-                                let _ = fs::create_dir_all(face_data_file.parent().unwrap());
+                                let _ = fs::create_dir_all(
+                                    face_data_file.parent().unwrap_or(Path::new("/")),
+                                );
                             }
-                            fs::write(face_data_file, serialised).unwrap();
+                            let _ = fs::write(face_data_file, serialised);
                         }
                         let parent_pathbuf = parent_path.to_path_buf();
                         face_data_vecs_map.insert(parent_pathbuf, face_data_vec);
                     }
                 };
-                if tx
-                    .send(image_index as f32 / total_number_of_images as f32)
-                    .await
-                    .is_err()
+                if image_index % 5 == 0
+                    && tx
+                        .send(image_index as f32 / total_number_of_images as f32)
+                        .await
+                        .is_err()
                 {
                     return;
                 }
@@ -486,16 +509,20 @@ pub fn extract_all_faces(
 pub fn get_detected_faces_for_image(image_path: &Path) -> Vec<FaceData> {
     let face_data_file = image_path
         .parent()
-        .unwrap()
+        .unwrap_or(Path::new("/"))
         .join(FACE_DATA_FOLDER_NAME)
         .join(FACE_DATA_FILE_NAME);
     if face_data_file.exists() {
         if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
             let face_data_vec: Vec<(OsString, Option<FaceData>)> =
-                serde_json::from_str(&face_data_json).unwrap_or_default();
+                serde_json::from_str(&face_data_json).unwrap();
             face_data_vec
                 .into_iter()
-                .filter(|face_data| face_data.0 == image_path.file_name().unwrap())
+                .filter(|face_data| {
+                    image_path
+                        .file_name()
+                        .is_some_and(|file_name| face_data.0 == file_name)
+                })
                 .filter_map(|(_file_name, face_data_option)| face_data_option)
                 .collect()
         } else {
@@ -508,7 +535,7 @@ pub fn get_detected_faces_for_image(image_path: &Path) -> Vec<FaceData> {
 
 pub fn generate_thumbnails(
     image_paths_to_process: Vec<PathBuf>,
-) -> impl Stream<Item = Result<PhotoProcessingProgress, Error>> {
+) -> impl Stream<Item = Result<PhotoProcessingProgress, iced::Error>> {
     try_channel(1, move |mut progress_percentage_output| async move {
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
 
@@ -519,10 +546,11 @@ pub fn generate_thumbnails(
             let total_number_of_images = image_paths_to_process.len();
             for (image_index, image_path) in image_paths_to_process.into_iter().enumerate() {
                 let file_name = image_path.file_name().unwrap();
-                let mut thumbnail_path = image_path.parent().unwrap().to_path_buf();
+                let mut thumbnail_path =
+                    image_path.parent().unwrap_or(Path::new("/")).to_path_buf();
                 thumbnail_path.push(THUMBNAIL_FOLDER_NAME);
                 if !thumbnail_path.exists() {
-                    fs::create_dir_all(&thumbnail_path).unwrap();
+                    let _ = fs::create_dir_all(&thumbnail_path);
                 }
                 thumbnail_path.push(file_name);
                 if !thumbnail_path.exists() {
@@ -551,16 +579,17 @@ pub fn generate_thumbnails(
                             THUMBNAIL_SIZE,
                             image_rs::imageops::FilterType::Nearest,
                         );
-                        resized.save(&thumbnail_path).unwrap();
+                        let _ = resized.save(&thumbnail_path);
                     };
                 }
-                if tx
-                    .send(image_index as f32 / total_number_of_images as f32)
-                    .await
-                    .is_err()
+                if image_index % 10 == 0
+                    && tx
+                        .send(image_index as f32 / total_number_of_images as f32)
+                        .await
+                        .is_err()
                 {
                     return;
-                };
+                }
             }
             let _ = tx.send(1.0).await;
         });
@@ -638,13 +667,13 @@ pub fn match_face_to_person(
 pub fn update_face_data(image_path: PathBuf, new_face_data: FaceData) {
     let face_data_file = image_path
         .parent()
-        .unwrap()
+        .unwrap_or(Path::new("/"))
         .join(FACE_DATA_FOLDER_NAME)
         .join(FACE_DATA_FILE_NAME);
     if face_data_file.exists() {
         if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
             let mut face_data_vec: Vec<(OsString, Option<FaceData>)> =
-                serde_json::from_str(&face_data_json).unwrap_or_default();
+                serde_json::from_str(&face_data_json).unwrap();
             let target_filename = image_path.file_name().unwrap_or_default().to_os_string();
             let target_index_option =
                 face_data_vec
@@ -659,7 +688,7 @@ pub fn update_face_data(image_path: PathBuf, new_face_data: FaceData) {
                 face_data_vec[target_index] =
                     (face_data_vec[target_index].0.clone(), Some(new_face_data));
                 let serialised = serde_json::to_string(&face_data_vec).unwrap();
-                fs::write(face_data_file, serialised).unwrap();
+                let _ = fs::write(face_data_file, serialised);
             }
         }
     }
@@ -679,17 +708,16 @@ pub fn get_parent_folders(image_paths_to_process: &[PathBuf]) -> Vec<PathBuf> {
     parent_paths
 }
 
-pub fn get_all_named_people(image_paths_to_process: &[PathBuf]) -> Vec<(String, Mat)> {
-    let parent_folders = get_parent_folders(image_paths_to_process);
+pub fn get_all_named_people(parent_folders: &[PathBuf]) -> Vec<(String, Mat)> {
     let mut all_named_people: Vec<(String, Mat)> = vec![];
-    parent_folders.into_iter().for_each(|parent_path| {
+    parent_folders.iter().for_each(|parent_path| {
         let face_data_file = parent_path
             .join(FACE_DATA_FOLDER_NAME)
             .join(FACE_DATA_FILE_NAME);
         if face_data_file.exists() {
             if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
                 let face_data_vec: Vec<(OsString, Option<FaceData>)> =
-                    serde_json::from_str(&face_data_json).unwrap_or_default();
+                    serde_json::from_str(&face_data_json).unwrap();
                 face_data_vec
                     .into_iter()
                     .filter_map(|(_original_image_name, face_data_option)| face_data_option)
@@ -708,9 +736,10 @@ pub fn get_all_named_people(image_paths_to_process: &[PathBuf]) -> Vec<(String, 
     all_named_people
 }
 
+// TODO this is breaking and deleting faces somehow, make a backup of all faces and then triage this
 pub fn group_all_faces(
-    image_paths_to_process: Vec<PathBuf>,
-) -> impl Stream<Item = Result<PhotoProcessingProgress, Error>> {
+    parent_folders: Vec<PathBuf>,
+) -> impl Stream<Item = Result<PhotoProcessingProgress, iced::Error>> {
     try_channel(1, move |mut progress_percentage_output| async move {
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
 
@@ -718,8 +747,7 @@ pub fn group_all_faces(
             if tx.send(0.0).await.is_err() {
                 return;
             }
-            let named_people = get_all_named_people(&image_paths_to_process);
-            let parent_folders = get_parent_folders(&image_paths_to_process);
+            let named_people = get_all_named_people(&parent_folders);
 
             let mut number_of_faces_processed_so_far = 0;
             let mut total_number_of_faces = 0;
@@ -731,23 +759,21 @@ pub fn group_all_faces(
                 if face_data_file.exists() {
                     if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
                         let face_data_vec: Vec<(OsString, Option<FaceData>)> =
-                            serde_json::from_str(&face_data_json).unwrap_or_default();
+                            serde_json::from_str(&face_data_json).unwrap();
                         total_number_of_faces += face_data_vec.len();
                     }
                 }
             }
 
-            for parent_path in parent_folders.into_iter() {
+            for parent_path in parent_folders.iter() {
                 let face_data_file = parent_path
                     .join(FACE_DATA_FOLDER_NAME)
                     .join(FACE_DATA_FILE_NAME);
                 if face_data_file.exists() {
                     if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
-                        let face_data_vec: Vec<(OsString, Option<FaceData>)> =
-                            serde_json::from_str(&face_data_json).unwrap_or_default();
-                        let mut modified_face_data_vec: Vec<(OsString, Option<FaceData>)> = vec![];
-                        for (original_image_name, mut face_data_option) in face_data_vec.into_iter()
-                        {
+                        let mut face_data_vec: Vec<(OsString, Option<FaceData>)> =
+                            serde_json::from_str(&face_data_json).unwrap();
+                        for (_original_image_name, face_data_option) in face_data_vec.iter_mut() {
                             if let Some(face_data) = face_data_option.as_mut() {
                                 if !face_data.is_ignored && face_data.name_of_person.is_none() {
                                     let matched_name_option =
@@ -758,28 +784,24 @@ pub fn group_all_faces(
                                             face_data.thumbnail_filename
                                         );
                                         face_data.name_of_person = Some(matched_name);
-                                        modified_face_data_vec
-                                            .push((original_image_name, Some(face_data.clone())));
-                                        break;
                                     }
                                 }
                             }
                             number_of_faces_processed_so_far += 1;
-                            if tx
-                                .send(
-                                    number_of_faces_processed_so_far as f32
-                                        / total_number_of_faces as f32,
-                                )
-                                .await
-                                .is_err()
+                            if number_of_faces_processed_so_far % 5 == 0
+                                && tx
+                                    .send(
+                                        number_of_faces_processed_so_far as f32
+                                            / total_number_of_faces as f32,
+                                    )
+                                    .await
+                                    .is_err()
                             {
                                 return;
                             };
-
-                            modified_face_data_vec.push((original_image_name, face_data_option));
                         }
-                        let serialised = serde_json::to_string(&modified_face_data_vec).unwrap();
-                        fs::write(face_data_file, serialised).unwrap();
+                        let serialised = serde_json::to_string(&face_data_vec).unwrap();
+                        let _ = fs::write(face_data_file, serialised);
                     }
                 }
             }
@@ -805,24 +827,26 @@ pub fn group_all_faces(
     })
 }
 
-pub fn get_named_people_for_display(image_paths_to_process: &[PathBuf]) -> Vec<(String, PathBuf)> {
-    let parent_folders = get_parent_folders(image_paths_to_process);
+pub fn get_named_people_for_display(parent_folders: &[PathBuf]) -> Vec<(String, PathBuf)> {
     let mut all_named_people: Vec<(String, PathBuf)> = vec![];
-    parent_folders.into_iter().for_each(|parent_path| {
+    parent_folders.iter().for_each(|parent_path| {
         let face_data_file = parent_path
             .join(FACE_DATA_FOLDER_NAME)
             .join(FACE_DATA_FILE_NAME);
         if face_data_file.exists() {
             if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
                 let face_data_vec: Vec<(OsString, Option<FaceData>)> =
-                    serde_json::from_str(&face_data_json).unwrap_or_default();
+                    serde_json::from_str(&face_data_json).unwrap();
                 face_data_vec
                     .into_iter()
                     .filter_map(|(_original_image_name, face_data_option)| face_data_option)
-                    .filter(|face_data| !face_data.is_ignored && face_data.name_of_person.is_some())
+                    .filter(|face_data| !face_data.is_ignored)
                     .for_each(|face_data| {
                         all_named_people.push((
-                            face_data.name_of_person.clone().expect("Can't fail"),
+                            face_data
+                                .name_of_person
+                                .clone()
+                                .unwrap_or(String::from(UNNAMED_STRING)),
                             parent_path
                                 .join(FACE_DATA_FOLDER_NAME)
                                 .join(face_data.thumbnail_filename)
@@ -837,29 +861,27 @@ pub fn get_named_people_for_display(image_paths_to_process: &[PathBuf]) -> Vec<(
     all_named_people
 }
 
-pub fn get_all_photos_by_name(
-    target_name: String,
-    image_paths_to_process: &[PathBuf],
-) -> Vec<PathBuf> {
-    let parent_folders = get_parent_folders(image_paths_to_process);
+pub fn get_all_photos_by_name(target_name: String, parent_folders: &[PathBuf]) -> Vec<PathBuf> {
     let mut all_pictures_of_target_person: Vec<PathBuf> = vec![];
-    parent_folders.into_iter().for_each(|parent_path| {
+    parent_folders.iter().for_each(|parent_path| {
         let face_data_file = parent_path
             .join(FACE_DATA_FOLDER_NAME)
             .join(FACE_DATA_FILE_NAME);
         if face_data_file.exists() {
             if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
                 let face_data_vec: Vec<(OsString, Option<FaceData>)> =
-                    serde_json::from_str(&face_data_json).unwrap_or_default();
+                    serde_json::from_str(&face_data_json).unwrap();
                 face_data_vec
                     .into_iter()
                     .filter_map(|(_original_image_name, face_data_option)| face_data_option)
                     .filter(|face_data| {
                         !face_data.is_ignored
-                            && face_data
+                            && (face_data
                                 .name_of_person
                                 .as_ref()
                                 .is_some_and(|current_name| *current_name == target_name)
+                                || (face_data.name_of_person.is_none()
+                                    && target_name == UNNAMED_STRING))
                     })
                     .for_each(|face_data| {
                         all_pictures_of_target_person

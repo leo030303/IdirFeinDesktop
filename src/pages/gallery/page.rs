@@ -22,6 +22,8 @@ pub(crate) const ROW_BATCH_SIZE: usize = 10;
 pub(crate) const ARROW_KEY_SCROLL_AMOUNT: f32 = 50.0;
 pub(crate) const PAGE_KEY_SCROLL_AMOUNT: f32 = 500.0;
 pub(crate) const THUMBNAIL_SIZE: u32 = 200;
+pub(crate) const RENAME_PERSON_INPUT_ID: &str = "RENAME_PERSON_INPUT_ID";
+pub(crate) const UNNAMED_STRING: &str = "Unnamed";
 pub(crate) const THUMBNAIL_FOLDER_NAME: &str = ".thumbnails";
 pub(crate) const FACE_DATA_FOLDER_NAME: &str = ".face_data";
 pub(crate) const FACE_DATA_FILE_NAME: &str = "extracted_faces.json";
@@ -43,6 +45,7 @@ pub struct GalleryPage {
     pub(crate) first_loaded_row_index: usize,
     pub(crate) gallery_row_list: Vec<ImageRow>,
     pub(crate) gallery_paths_list: Vec<PathBuf>,
+    pub(crate) gallery_parents_list: Vec<PathBuf>,
     pub(crate) scrollable_viewport_option: Option<Viewport>,
     pub(crate) photo_process_progress: PhotoProcessingProgress,
     pub(crate) photo_process_abort_handle: Option<iced::task::Handle>,
@@ -60,7 +63,7 @@ pub struct GalleryPage {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImageRow {
-    pub loaded: bool,
+    pub is_loaded: bool,
     pub index: usize,
     pub images_data: Vec<(PathBuf, Option<Handle>)>,
 }
@@ -78,7 +81,7 @@ pub enum GalleryPageMessage {
     SetGalleryFolder(Option<PathBuf>),
     LoadGalleryFolder,
     SelectImageForBigView(Option<PathBuf>),
-    SetGalleryFilesList(Vec<Vec<PathBuf>>),
+    SetGalleryFilesList(Vec<Vec<PathBuf>>, Vec<PathBuf>),
     LoadImageRows(Vec<ImageRow>),
     UnloadImageRows(Vec<ImageRow>),
     SetImageRows(Vec<ImageRow>),
@@ -90,12 +93,12 @@ pub enum GalleryPageMessage {
     EscapeKeyPressed,
     SelectPreviousImage,
     SelectNextImage,
+    CopySelectedImagePath,
     ExtractAllFaces,
     GenerateAllThumbnails,
+    RunFaceRecognition,
     SetPhotoProcessProgress(PhotoProcessingProgress),
     AbortProcess,
-    CopySelectedImagePath,
-    RunFaceRecognition,
     OpenManagePersonView(PathBuf, FaceData),
     CloseManagePersonView,
     MaybeRenamePerson(Option<String>),
@@ -120,6 +123,7 @@ impl GalleryPage {
             scrollable_viewport_option: None,
             selected_image: None,
             gallery_paths_list: vec![],
+            gallery_parents_list: vec![],
             photo_process_progress: PhotoProcessingProgress::None,
             photo_process_abort_handle: None,
             person_to_manage: None,

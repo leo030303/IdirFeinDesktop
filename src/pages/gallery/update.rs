@@ -1,25 +1,29 @@
 use arboard::Clipboard;
 use std::{
+    ffi::OsStr,
     fs::{self},
     os::linux::fs::MetadataExt,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 use walkdir::WalkDir;
 
 use iced::{
     advanced::graphics::image::image_rs,
     futures::future,
-    widget::{image::Handle, scrollable},
+    widget::{image::Handle, scrollable, text_input},
     Task,
 };
 use rfd::FileDialog;
 
 use crate::{app::Message, pages::gallery::page::IMAGE_HEIGHT};
 
-use super::page::{
-    GalleryPage, GalleryPageMessage, ImageRow, ARROW_KEY_SCROLL_AMOUNT, FACE_DATA_FOLDER_NAME,
-    NUM_IMAGES_IN_ROW, PAGE_KEY_SCROLL_AMOUNT, ROW_BATCH_SIZE, SCROLLABLE_ID,
-    THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE,
+use super::{
+    gallery_utils::get_parent_folders,
+    page::{
+        GalleryPage, GalleryPageMessage, ImageRow, ARROW_KEY_SCROLL_AMOUNT, FACE_DATA_FOLDER_NAME,
+        NUM_IMAGES_IN_ROW, PAGE_KEY_SCROLL_AMOUNT, RENAME_PERSON_INPUT_ID, ROW_BATCH_SIZE,
+        SCROLLABLE_ID, THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE,
+    },
 };
 use super::{
     gallery_utils::{
@@ -52,13 +56,15 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             let selected_folder = state.selected_folder.clone();
             let mut loading_task = Task::perform(
                 async {
-                    let gallery_files_list: Vec<Vec<PathBuf>> =
+                    let gallery_files_list: Vec<PathBuf> =
                         if let Some(selected_folder) = selected_folder {
                             let directory_iterator = WalkDir::new(selected_folder)
                                 .into_iter()
                                 .filter_entry(|entry| {
                                     !entry.path().ends_with(THUMBNAIL_FOLDER_NAME)
                                         && !entry.path().ends_with(FACE_DATA_FOLDER_NAME)
+                                        && !entry.path().ends_with(".backup_face_data")
+                                    // TODO remove this
                                 });
                             let mut all_image_files = directory_iterator
                                 .filter_map(|read_dir_object| read_dir_object.ok())
@@ -76,22 +82,32 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                             all_image_files.sort_unstable_by(|file_path1, file_path2| {
                                 file_path1
                                     .metadata()
-                                    .unwrap()
-                                    .st_mtime()
-                                    .cmp(&file_path2.metadata().unwrap().st_mtime())
+                                    .map(|metadata| metadata.st_mtime())
+                                    .unwrap_or_default()
+                                    .cmp(
+                                        &file_path2
+                                            .metadata()
+                                            .map(|metadata| metadata.st_mtime())
+                                            .unwrap_or_default(),
+                                    )
                                     .reverse()
                             });
                             all_image_files
-                                .chunks(NUM_IMAGES_IN_ROW)
-                                .map(|item| item.to_vec())
-                                .collect()
                         } else {
                             vec![]
                         };
-                    gallery_files_list
+                    let parent_paths = get_parent_folders(&gallery_files_list);
+                    let chunked_gallery_files_list = gallery_files_list
+                        .chunks(NUM_IMAGES_IN_ROW)
+                        .map(|item| item.to_vec())
+                        .collect();
+                    (chunked_gallery_files_list, parent_paths)
                 },
-                |gallery_files_list| {
-                    Message::Gallery(GalleryPageMessage::SetGalleryFilesList(gallery_files_list))
+                |(chunked_gallery_files_list, parent_paths)| {
+                    Message::Gallery(GalleryPageMessage::SetGalleryFilesList(
+                        chunked_gallery_files_list,
+                        parent_paths,
+                    ))
                 },
             );
             if state.run_thumbnail_generation_on_start {
@@ -109,19 +125,20 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             }
             return loading_task;
         }
-        GalleryPageMessage::SetGalleryFilesList(gallery_files_list) => {
+        GalleryPageMessage::SetGalleryFilesList(gallery_files_list, parent_paths) => {
             state.gallery_paths_list = gallery_files_list.clone().into_iter().flatten().collect();
+            state.gallery_parents_list = parent_paths;
             state.gallery_row_list = gallery_files_list
                 .clone()
                 .into_iter()
                 .enumerate()
                 .map(|(index, photo_vec)| ImageRow {
-                    loaded: false,
+                    is_loaded: false,
                     index,
                     images_data: photo_vec.into_iter().map(|file| (file, None)).collect(),
                 })
                 .collect();
-            let image_paths_to_process = state.gallery_paths_list.clone();
+            let parent_folders = state.gallery_parents_list.clone();
             return Task::done(Message::Gallery(GalleryPageMessage::LoadImageRows(
                 state
                     .gallery_row_list
@@ -131,7 +148,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                     .collect(),
             )))
             .chain(Task::perform(
-                async move { get_named_people_for_display(&image_paths_to_process) },
+                async move { get_named_people_for_display(&parent_folders) },
                 |list_of_people| {
                     Message::Gallery(GalleryPageMessage::SetPeopleList(list_of_people))
                 },
@@ -145,12 +162,16 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                             |image_row| {
                                 future::join_all(image_row.images_data.into_iter().map(
                                     |(image_path, _)| async move {
-                                        let file_name = image_path.file_name().unwrap();
-                                        let mut thumbnail_path =
-                                            image_path.parent().unwrap().to_path_buf();
+                                        let file_name = image_path
+                                            .file_name()
+                                            .unwrap_or(OsStr::new("cant_read_filename"));
+                                        let mut thumbnail_path = image_path
+                                            .parent()
+                                            .unwrap_or(Path::new("/"))
+                                            .to_path_buf();
                                         thumbnail_path.push(THUMBNAIL_FOLDER_NAME);
                                         if !thumbnail_path.exists() {
-                                            fs::create_dir_all(&thumbnail_path).unwrap();
+                                            let _ = fs::create_dir_all(&thumbnail_path);
                                         }
                                         thumbnail_path.push(file_name);
                                         if !thumbnail_path.exists() {
@@ -182,7 +203,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                                                     THUMBNAIL_SIZE,
                                                     image_rs::imageops::FilterType::Nearest,
                                                 );
-                                                resized.save(&thumbnail_path).unwrap();
+                                                let _ = resized.save(&thumbnail_path);
                                             };
                                         }
                                         let handle = Handle::from_path(thumbnail_path);
@@ -194,7 +215,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                         .await
                         .concat();
                     image_rows_to_load_list.iter_mut().for_each(|image_row| {
-                        image_row.loaded = true;
+                        image_row.is_loaded = true;
                         image_row.images_data.iter_mut().for_each(
                             |(unloaded_path, unloaded_image_data)| {
                                 *unloaded_image_data = loaded_image_data_list
@@ -217,7 +238,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             return Task::perform(
                 async move {
                     image_rows_to_unload_list.iter_mut().for_each(|image_row| {
-                        image_row.loaded = false;
+                        image_row.is_loaded = false;
                         image_row
                             .images_data
                             .iter_mut()
@@ -397,6 +418,15 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 return Task::done(Message::Gallery(GalleryPageMessage::SelectImageForBigView(
                     None,
                 )));
+            } else if state.person_to_view.is_some() {
+                state.person_to_view = None;
+                state.show_people_view = true;
+                return scrollable::scroll_to(
+                    SCROLLABLE_ID.clone(),
+                    scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
+                );
+            } else if state.show_people_view {
+                state.show_people_view = false;
             }
         }
         GalleryPageMessage::SelectPreviousImage => {
@@ -539,17 +569,21 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::CopySelectedImagePath => {
             if let Some((image_path, _)) = state.selected_image.as_ref() {
-                Clipboard::new()
-                    .unwrap()
-                    .set_text(image_path.as_path().to_str().unwrap_or_default())
-                    .unwrap();
+                if let Ok(mut clipboard) = Clipboard::new() {
+                    let _ = clipboard.set_text(image_path.as_path().to_str().unwrap_or_default());
+                } else {
+                    return Task::done(Message::ShowToast(
+                        false,
+                        String::from("Couldn't access clipboard"),
+                    ));
+                }
             }
         }
         GalleryPageMessage::RunFaceRecognition => {
             if matches!(state.photo_process_progress, PhotoProcessingProgress::None) {
-                let image_paths = state.gallery_paths_list.clone();
+                let parent_folders = state.gallery_parents_list.clone();
                 let (new_task, abort_handle) =
-                    Task::run(gallery_utils::group_all_faces(image_paths), |progress| {
+                    Task::run(gallery_utils::group_all_faces(parent_folders), |progress| {
                         Message::Gallery(GalleryPageMessage::SetPhotoProcessProgress(
                             progress.unwrap_or_default(),
                         ))
@@ -572,6 +606,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::OpenManagePersonView(original_image_path, face_data) => {
             state.person_to_manage = Some((original_image_path, face_data));
+            return text_input::focus(text_input::Id::new(RENAME_PERSON_INPUT_ID));
         }
         GalleryPageMessage::MaybeRenamePerson(name_option) => {
             if let Some(name) = name_option {
@@ -582,30 +617,37 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             }
         }
         GalleryPageMessage::ConfirmRenamePerson => {
-            if let Some((image_path, mut face_data)) = state.person_to_manage.take() {
-                face_data.name_of_person = Some(state.rename_person_editor_text.clone());
-                let finishing_message = Task::done(Message::Gallery(
-                    GalleryPageMessage::SelectImageForBigView(Some(image_path.clone())),
+            if matches!(state.photo_process_progress, PhotoProcessingProgress::None) {
+                if let Some((image_path, mut face_data)) = state.person_to_manage.take() {
+                    face_data.name_of_person = Some(state.rename_person_editor_text.clone());
+                    let finishing_message = Task::done(Message::Gallery(
+                        GalleryPageMessage::SelectImageForBigView(Some(image_path.clone())),
+                    ));
+                    let parent_folders = state.gallery_parents_list.clone();
+                    let background_task = Task::perform(
+                        async move {
+                            update_face_data(image_path, face_data);
+                        },
+                        |_| Message::None,
+                    )
+                    .chain(finishing_message)
+                    .chain(Task::perform(
+                        async move { get_named_people_for_display(&parent_folders) },
+                        |list_of_people| {
+                            Message::Gallery(GalleryPageMessage::SetPeopleList(list_of_people))
+                        },
+                    ));
+                    state.person_to_manage = None;
+                    state.rename_person_editor_text = String::new();
+                    state.show_ignore_person_confirmation = false;
+                    state.show_rename_confirmation = false;
+                    return background_task;
+                }
+            } else {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Can't manage people while background photo process is running"),
                 ));
-                let image_paths_to_process = state.gallery_paths_list.clone();
-                let background_task = Task::perform(
-                    async move {
-                        update_face_data(image_path, face_data);
-                    },
-                    |_| Message::None,
-                )
-                .chain(finishing_message)
-                .chain(Task::perform(
-                    async move { get_named_people_for_display(&image_paths_to_process) },
-                    |list_of_people| {
-                        Message::Gallery(GalleryPageMessage::SetPeopleList(list_of_people))
-                    },
-                ));
-                state.person_to_manage = None;
-                state.rename_person_editor_text = String::new();
-                state.show_ignore_person_confirmation = false;
-                state.show_rename_confirmation = false;
-                return background_task;
             }
         }
         GalleryPageMessage::CancelRenamePerson => {
@@ -620,23 +662,30 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             state.show_rename_confirmation = false;
         }
         GalleryPageMessage::ConfirmIgnorePerson => {
-            if let Some((image_path, mut face_data)) = state.person_to_manage.take() {
-                face_data.is_ignored = true;
-                let finishing_message = Task::done(Message::Gallery(
-                    GalleryPageMessage::SelectImageForBigView(Some(image_path.clone())),
+            if matches!(state.photo_process_progress, PhotoProcessingProgress::None) {
+                if let Some((image_path, mut face_data)) = state.person_to_manage.take() {
+                    face_data.is_ignored = true;
+                    let finishing_message = Task::done(Message::Gallery(
+                        GalleryPageMessage::SelectImageForBigView(Some(image_path.clone())),
+                    ));
+                    let background_task = Task::perform(
+                        async move {
+                            update_face_data(image_path, face_data.clone());
+                        },
+                        |_| Message::None,
+                    )
+                    .chain(finishing_message);
+                    state.person_to_manage = None;
+                    state.show_ignore_person_confirmation = false;
+                    state.rename_person_editor_text = String::new();
+                    state.show_rename_confirmation = false;
+                    return background_task;
+                }
+            } else {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Can't manage people while background photo process is running"),
                 ));
-                let background_task = Task::perform(
-                    async move {
-                        update_face_data(image_path, face_data.clone());
-                    },
-                    |_| Message::None,
-                )
-                .chain(finishing_message);
-                state.person_to_manage = None;
-                state.show_ignore_person_confirmation = false;
-                state.rename_person_editor_text = String::new();
-                state.show_rename_confirmation = false;
-                return background_task;
             }
         }
         GalleryPageMessage::CancelIgnorePerson => {
@@ -644,8 +693,8 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::TogglePeopleView => {
             if state.person_to_view.is_some() {
+                state.show_people_view = true;
                 state.person_to_view = None;
-                state.show_people_view = false;
                 return scrollable::scroll_to(
                     SCROLLABLE_ID.clone(),
                     scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
@@ -665,10 +714,10 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                     list_of_rows: vec![],
                 });
                 let target_name = person_to_view_name;
-                let image_paths_to_process = state.gallery_paths_list.clone();
+                let parent_folders = state.gallery_parents_list.clone();
 
                 return Task::perform(
-                    async move { get_all_photos_by_name(target_name, &image_paths_to_process) },
+                    async move { get_all_photos_by_name(target_name, &parent_folders) },
                     |list_of_paths| {
                         Message::Gallery(GalleryPageMessage::SetPersonToViewPaths(list_of_paths))
                     },
@@ -682,9 +731,14 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 list_of_paths.sort_unstable_by(|file_path1, file_path2| {
                     file_path1
                         .metadata()
-                        .unwrap()
-                        .st_mtime()
-                        .cmp(&file_path2.metadata().unwrap().st_mtime())
+                        .map(|metadata| metadata.st_mtime())
+                        .unwrap_or_default()
+                        .cmp(
+                            &file_path2
+                                .metadata()
+                                .map(|metadata| metadata.st_mtime())
+                                .unwrap_or_default(),
+                        )
                         .reverse()
                 });
                 let grouped_list_of_paths: Vec<Vec<PathBuf>> = list_of_paths
@@ -695,7 +749,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                     .into_iter()
                     .enumerate()
                     .map(|(index, photo_vec)| ImageRow {
-                        loaded: false,
+                        is_loaded: false,
                         index,
                         images_data: photo_vec.into_iter().map(|file| (file, None)).collect(),
                     })
