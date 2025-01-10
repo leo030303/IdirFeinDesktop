@@ -393,6 +393,12 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
         TasksPageMessage::SetRightClickToEditTask(b) => {
             state.right_click_to_edit_task = b;
         }
+        TasksPageMessage::UpdateTasksFilter(s) => {
+            state.filter_tasks_text = s;
+        }
+        TasksPageMessage::UpdateProjectsFilter(s) => {
+            state.filter_projects_text = s;
+        }
     }
     Task::none()
 }

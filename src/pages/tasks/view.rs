@@ -29,20 +29,25 @@ pub fn main_view(state: &TasksPage) -> Element<Message> {
             },
             if state.current_project_file.is_some() {
                 column![
-                    text(
-                        state
-                            .current_project_file
-                            .clone()
-                            .expect("Can't fail")
-                            .file_stem()
-                            .unwrap_or_default()
-                            .to_str()
-                            .unwrap_or("Couldn't read filename")
-                            .to_string(),
-                    )
-                    .size(28)
-                    .width(Length::Fill)
-                    .align_x(Center),
+                    row![
+                        text(
+                            state
+                                .current_project_file
+                                .clone()
+                                .expect("Can't fail")
+                                .file_stem()
+                                .unwrap_or_default()
+                                .to_str()
+                                .unwrap_or("Couldn't read filename")
+                                .to_string(),
+                        )
+                        .size(28)
+                        .width(Length::FillPortion(1))
+                        .align_x(Center),
+                        text_input("Filter", &state.filter_tasks_text)
+                            .on_input(|s| Message::Tasks(TasksPageMessage::UpdateTasksFilter(s)))
+                            .width(Length::FillPortion(1))
+                    ],
                     if state.show_confirm_before_delete_dialog {
                         confirm_delete_view(state)
                     } else {
@@ -278,6 +283,15 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                             task.completion_state,
                             TaskCompletionState::Backlog
                         ))
+                        .filter(|task| {
+                            task.title
+                                .to_lowercase()
+                                .contains(&state.filter_tasks_text.to_lowercase())
+                                || task
+                                    .description
+                                    .to_lowercase()
+                                    .contains(&state.filter_tasks_text.to_lowercase())
+                        })
                         .map(|task| kanban_view_item(state, task))
                 )
                 .padding(5)
@@ -323,6 +337,15 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                         .tasks_list
                         .iter()
                         .filter(|task| matches!(task.completion_state, TaskCompletionState::ToDo))
+                        .filter(|task| {
+                            task.title
+                                .to_lowercase()
+                                .contains(&state.filter_tasks_text.to_lowercase())
+                                || task
+                                    .description
+                                    .to_lowercase()
+                                    .contains(&state.filter_tasks_text.to_lowercase())
+                        })
                         .map(|task| kanban_view_item(state, task))
                 )
                 .padding(5)
@@ -368,6 +391,15 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                         .tasks_list
                         .iter()
                         .filter(|task| matches!(task.completion_state, TaskCompletionState::Doing))
+                        .filter(|task| {
+                            task.title
+                                .to_lowercase()
+                                .contains(&state.filter_tasks_text.to_lowercase())
+                                || task
+                                    .description
+                                    .to_lowercase()
+                                    .contains(&state.filter_tasks_text.to_lowercase())
+                        })
                         .map(|task| kanban_view_item(state, task))
                 )
                 .padding(5)
@@ -413,6 +445,15 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                         .tasks_list
                         .iter()
                         .filter(|task| matches!(task.completion_state, TaskCompletionState::Done))
+                        .filter(|task| {
+                            task.title
+                                .to_lowercase()
+                                .contains(&state.filter_tasks_text.to_lowercase())
+                                || task
+                                    .description
+                                    .to_lowercase()
+                                    .contains(&state.filter_tasks_text.to_lowercase())
+                        })
                         .map(|task| kanban_view_item(state, task))
                 )
                 .padding(5)
@@ -441,6 +482,15 @@ fn list_view(state: &TasksPage) -> Element<Message> {
                             task.completion_state,
                             TaskCompletionState::Backlog
                         ))
+                        .filter(|task| {
+                            task.title
+                                .to_lowercase()
+                                .contains(&state.filter_tasks_text.to_lowercase())
+                                || task
+                                    .description
+                                    .to_lowercase()
+                                    .contains(&state.filter_tasks_text.to_lowercase())
+                        })
                         .map(|task| list_view_item(task))
                 )
                 .spacing(10)
@@ -454,6 +504,15 @@ fn list_view(state: &TasksPage) -> Element<Message> {
                         .tasks_list
                         .iter()
                         .filter(|task| matches!(task.completion_state, TaskCompletionState::ToDo))
+                        .filter(|task| {
+                            task.title
+                                .to_lowercase()
+                                .contains(&state.filter_tasks_text.to_lowercase())
+                                || task
+                                    .description
+                                    .to_lowercase()
+                                    .contains(&state.filter_tasks_text.to_lowercase())
+                        })
                         .map(|task| list_view_item(task))
                 )
                 .spacing(10)
@@ -467,6 +526,15 @@ fn list_view(state: &TasksPage) -> Element<Message> {
                         .tasks_list
                         .iter()
                         .filter(|task| matches!(task.completion_state, TaskCompletionState::Doing))
+                        .filter(|task| {
+                            task.title
+                                .to_lowercase()
+                                .contains(&state.filter_tasks_text.to_lowercase())
+                                || task
+                                    .description
+                                    .to_lowercase()
+                                    .contains(&state.filter_tasks_text.to_lowercase())
+                        })
                         .map(|task| list_view_item(task))
                 )
                 .spacing(10)
@@ -480,6 +548,15 @@ fn list_view(state: &TasksPage) -> Element<Message> {
                         .tasks_list
                         .iter()
                         .filter(|task| matches!(task.completion_state, TaskCompletionState::Done))
+                        .filter(|task| {
+                            task.title
+                                .to_lowercase()
+                                .contains(&state.filter_tasks_text.to_lowercase())
+                                || task
+                                    .description
+                                    .to_lowercase()
+                                    .contains(&state.filter_tasks_text.to_lowercase())
+                        })
                         .map(|task| list_view_item(task))
                 )
                 .spacing(10)
@@ -576,137 +653,153 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
             ]
         },
         Space::with_height(20),
+        text_input("Filter", &state.filter_projects_text)
+            .on_input(|s| { Message::Tasks(TasksPageMessage::UpdateProjectsFilter(s)) }),
         scrollable(
-            column(state.projects_list.iter().map(|project| {
-                if state
-                    .current_project_being_managed
-                    .clone()
-                    .is_some_and(|selected_project| selected_project == *project)
-                {
-                    if state.display_rename_view {
-                        row![
-                            text_input("Rename Project", &state.rename_project_entry_text)
-                                .width(Length::Fill)
-                                .on_input(|s| Message::Tasks(
-                                    TasksPageMessage::SetRenameProjectEntryText(s)
-                                ))
-                                .on_submit(Message::Tasks(TasksPageMessage::RenameProject))
-                                .id(text_input::Id::new(RENAME_PROJECT_TEXT_INPUT_ID)),
-                            Tooltip::new(
-                                button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                                    "../../../icons/ok.svg"
-                                ))))
-                                .on_press(Message::Tasks(TasksPageMessage::RenameProject))
-                                .style(button::success)
-                                .width(Length::Fixed(50.0))
-                                .height(Length::Fixed(30.0)),
-                                "Rename",
-                                iced::widget::tooltip::Position::Bottom
-                            ),
-                            Tooltip::new(
-                                button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                                    "../../../icons/close.svg"
-                                ))))
-                                .on_press(Message::Tasks(TasksPageMessage::ToggleRenameProjectView))
-                                .style(button::danger)
-                                .width(Length::Fixed(50.0))
-                                .height(Length::Fixed(30.0)),
-                                "Cancel",
-                                iced::widget::tooltip::Position::Bottom
-                            ),
-                        ]
-                        .into()
-                    } else if state.display_delete_view {
-                        row![
-                            button(text("Delete").width(Length::Fill).align_x(Center))
-                                .style(button::danger)
-                                .width(Length::Fill)
-                                .on_press(Message::Tasks(TasksPageMessage::DeleteProject)),
-                            button(text("Cancel").width(Length::Fill).align_x(Center))
-                                .width(Length::Fill)
-                                .on_press(Message::Tasks(
-                                    TasksPageMessage::ToggleDeleteProjectView
-                                )),
-                        ]
-                        .into()
-                    } else {
-                        row![
-                            button(text("Rename").width(Length::Fill).align_x(Center))
-                                .width(Length::Fill)
-                                .on_press(Message::Tasks(
-                                    TasksPageMessage::ToggleRenameProjectView
-                                )),
-                            button(text("Delete").width(Length::Fill).align_x(Center))
-                                .style(button::danger)
-                                .width(Length::Fill)
-                                .on_press(Message::Tasks(
-                                    TasksPageMessage::ToggleDeleteProjectView
-                                )),
-                            Tooltip::new(
-                                button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                                    "../../../icons/close.svg"
-                                ))))
-                                .on_press(Message::Tasks(TasksPageMessage::ShowMenuForProject(
-                                    None
-                                )))
-                                .width(Length::Fixed(50.0))
-                                .height(Length::Fixed(30.0)),
-                                "Close",
-                                iced::widget::tooltip::Position::Right,
-                            )
-                        ]
-                        .spacing(5)
-                        .into()
-                    }
-                } else {
-                    row![
-                        button(
-                            text(
-                                project
-                                    .file_stem()
-                                    .unwrap_or_default()
-                                    .to_str()
-                                    .unwrap_or("Couldn't read filename"),
-                            )
-                            .font(Font {
-                                weight: iced::font::Weight::Semibold,
-                                ..Default::default()
-                            })
-                            .width(Length::Fill)
-                            .align_x(Center),
-                        )
-                        .style(
-                            if state
-                                .current_project_file
-                                .clone()
-                                .is_some_and(|value| value == *project)
-                            {
-                                button::secondary
+            column(
+                state
+                    .projects_list
+                    .iter()
+                    .filter(|project| project
+                        .file_stem()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or("Couldn't read filename")
+                        .to_lowercase()
+                        .contains(&state.filter_projects_text.to_lowercase()))
+                    .map(|project| {
+                        if state
+                            .current_project_being_managed
+                            .clone()
+                            .is_some_and(|selected_project| selected_project == *project)
+                        {
+                            if state.display_rename_view {
+                                row![
+                                    text_input("Rename Project", &state.rename_project_entry_text)
+                                        .width(Length::Fill)
+                                        .on_input(|s| Message::Tasks(
+                                            TasksPageMessage::SetRenameProjectEntryText(s)
+                                        ))
+                                        .on_submit(Message::Tasks(TasksPageMessage::RenameProject))
+                                        .id(text_input::Id::new(RENAME_PROJECT_TEXT_INPUT_ID)),
+                                    Tooltip::new(
+                                        button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                            "../../../icons/ok.svg"
+                                        ))))
+                                        .on_press(Message::Tasks(TasksPageMessage::RenameProject))
+                                        .style(button::success)
+                                        .width(Length::Fixed(50.0))
+                                        .height(Length::Fixed(30.0)),
+                                        "Rename",
+                                        iced::widget::tooltip::Position::Bottom
+                                    ),
+                                    Tooltip::new(
+                                        button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                            "../../../icons/close.svg"
+                                        ))))
+                                        .on_press(Message::Tasks(
+                                            TasksPageMessage::ToggleRenameProjectView
+                                        ))
+                                        .style(button::danger)
+                                        .width(Length::Fixed(50.0))
+                                        .height(Length::Fixed(30.0)),
+                                        "Cancel",
+                                        iced::widget::tooltip::Position::Bottom
+                                    ),
+                                ]
+                                .into()
+                            } else if state.display_delete_view {
+                                row![
+                                    button(text("Delete").width(Length::Fill).align_x(Center))
+                                        .style(button::danger)
+                                        .width(Length::Fill)
+                                        .on_press(Message::Tasks(TasksPageMessage::DeleteProject)),
+                                    button(text("Cancel").width(Length::Fill).align_x(Center))
+                                        .width(Length::Fill)
+                                        .on_press(Message::Tasks(
+                                            TasksPageMessage::ToggleDeleteProjectView
+                                        )),
+                                ]
+                                .into()
                             } else {
-                                button::primary
-                            },
-                        )
-                        .width(Length::Fill)
-                        .on_press(Message::Tasks(
-                            TasksPageMessage::PickProjectFile(Some(project.to_path_buf()),)
-                        )),
-                        Tooltip::new(
-                            button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                                "../../../icons/view-more.svg"
-                            ))))
-                            .on_press(Message::Tasks(TasksPageMessage::ShowMenuForProject(Some(
-                                project.to_path_buf()
-                            ))))
-                            .height(Length::Fixed(30.0))
-                            .width(Length::Fixed(50.0)),
-                            "Manage Details",
-                            iced::widget::tooltip::Position::Right,
-                        )
-                    ]
-                    .spacing(5)
-                    .into()
-                }
-            }))
+                                row![
+                                    button(text("Rename").width(Length::Fill).align_x(Center))
+                                        .width(Length::Fill)
+                                        .on_press(Message::Tasks(
+                                            TasksPageMessage::ToggleRenameProjectView
+                                        )),
+                                    button(text("Delete").width(Length::Fill).align_x(Center))
+                                        .style(button::danger)
+                                        .width(Length::Fill)
+                                        .on_press(Message::Tasks(
+                                            TasksPageMessage::ToggleDeleteProjectView
+                                        )),
+                                    Tooltip::new(
+                                        button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                            "../../../icons/close.svg"
+                                        ))))
+                                        .on_press(Message::Tasks(
+                                            TasksPageMessage::ShowMenuForProject(None)
+                                        ))
+                                        .width(Length::Fixed(50.0))
+                                        .height(Length::Fixed(30.0)),
+                                        "Close",
+                                        iced::widget::tooltip::Position::Right,
+                                    )
+                                ]
+                                .spacing(5)
+                                .into()
+                            }
+                        } else {
+                            row![
+                                button(
+                                    text(
+                                        project
+                                            .file_stem()
+                                            .unwrap_or_default()
+                                            .to_str()
+                                            .unwrap_or("Couldn't read filename"),
+                                    )
+                                    .font(Font {
+                                        weight: iced::font::Weight::Semibold,
+                                        ..Default::default()
+                                    })
+                                    .width(Length::Fill)
+                                    .align_x(Center),
+                                )
+                                .style(
+                                    if state
+                                        .current_project_file
+                                        .clone()
+                                        .is_some_and(|value| value == *project)
+                                    {
+                                        button::secondary
+                                    } else {
+                                        button::primary
+                                    },
+                                )
+                                .width(Length::Fill)
+                                .on_press(Message::Tasks(
+                                    TasksPageMessage::PickProjectFile(Some(project.to_path_buf()),)
+                                )),
+                                Tooltip::new(
+                                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                        "../../../icons/view-more.svg"
+                                    ))))
+                                    .on_press(Message::Tasks(TasksPageMessage::ShowMenuForProject(
+                                        Some(project.to_path_buf())
+                                    )))
+                                    .height(Length::Fixed(30.0))
+                                    .width(Length::Fixed(50.0)),
+                                    "Manage Details",
+                                    iced::widget::tooltip::Position::Right,
+                                )
+                            ]
+                            .spacing(5)
+                            .into()
+                        }
+                    })
+            )
             .spacing(5)
         )
         .spacing(5)

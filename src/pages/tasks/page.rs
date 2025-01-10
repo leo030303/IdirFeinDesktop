@@ -102,6 +102,8 @@ pub struct TasksPage {
     pub(crate) display_delete_view: bool,
     pub(crate) rename_project_entry_text: String,
     pub(crate) right_click_to_edit_task: bool,
+    pub(crate) filter_tasks_text: String,
+    pub(crate) filter_projects_text: String,
 }
 
 #[derive(Debug, Clone)]
@@ -144,6 +146,8 @@ pub enum TasksPageMessage {
     SetShowTaskCompletionToolbar(bool),
     SetConfirmBeforeDelete(bool),
     SetRightClickToEditTask(bool),
+    UpdateTasksFilter(String),
+    UpdateProjectsFilter(String),
 }
 
 impl TasksPage {
@@ -175,6 +179,8 @@ impl TasksPage {
             display_delete_view: false,
             rename_project_entry_text: String::new(),
             right_click_to_edit_task: config.right_click_to_edit_task,
+            filter_tasks_text: String::new(),
+            filter_projects_text: String::new(),
         }
     }
 
