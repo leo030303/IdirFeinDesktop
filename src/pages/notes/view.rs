@@ -171,6 +171,7 @@ fn rename_note_view(state: &NotesPage) -> Element<Message> {
             iced::widget::tooltip::Position::Bottom
         ),
     ]
+    .spacing(5)
     .into()
 }
 
@@ -184,6 +185,7 @@ fn confirm_delete_note_view(_state: &NotesPage) -> Element<Message> {
             .width(Length::Fill)
             .on_press(Message::Notes(NotesPageMessage::ToggleDeleteNoteView)),
     ]
+    .spacing(5)
     .into()
 }
 

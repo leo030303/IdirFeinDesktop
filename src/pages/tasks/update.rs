@@ -14,8 +14,9 @@ use rfd::FileDialog;
 use crate::app::Message;
 
 use super::page::{
-    TaskCompletionState, TaskData, TasksPage, TasksPageMessage, BACKLOG_ID, DOING_ID, DONE_ID,
-    NEW_PROJECT_TEXT_INPUT_ID, RENAME_PROJECT_TEXT_INPUT_ID, TASK_TITLE_TEXT_INPUT_ID, TODO_ID,
+    TaskCompletionState, TaskData, TasksPage, TasksPageMessage, ARCHIVED_FILE_NAME, BACKLOG_ID,
+    DOING_ID, DONE_ID, NEW_PROJECT_TEXT_INPUT_ID, RENAME_PROJECT_TEXT_INPUT_ID,
+    TASK_TITLE_TEXT_INPUT_ID, TODO_ID,
 };
 
 pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message> {
@@ -39,31 +40,48 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
             let selected_folder = state.selected_folder.clone();
             return Task::perform(
                 async {
-                    let projects_list: Vec<PathBuf> = if let Some(selected_folder) = selected_folder
-                    {
-                        match fs::read_dir(selected_folder) {
-                            Ok(directory_iterator) => directory_iterator
-                                .filter_map(|read_dir_object| read_dir_object.ok())
-                                .map(|read_dir_object| read_dir_object.path())
-                                .filter(|path| {
-                                    path.extension().is_some_and(|extension_os_str| {
-                                        extension_os_str
-                                            .to_str()
-                                            .is_some_and(|extension| extension == "json")
+                    let projects_list: Vec<PathBuf> =
+                        if let Some(selected_folder) = selected_folder.as_ref() {
+                            match fs::read_dir(selected_folder) {
+                                Ok(directory_iterator) => directory_iterator
+                                    .filter_map(|read_dir_object| read_dir_object.ok())
+                                    .map(|read_dir_object| read_dir_object.path())
+                                    .filter(|path| {
+                                        path.extension().is_some_and(|extension_os_str| {
+                                            extension_os_str
+                                                .to_str()
+                                                .is_some_and(|extension| extension == "json")
+                                        })
                                     })
-                                })
-                                .collect(),
-                            Err(err) => {
-                                println!("Error reading directory: {err:?}");
-                                vec![]
+                                    .collect(),
+                                Err(err) => {
+                                    println!("Error reading directory: {err:?}");
+                                    vec![]
+                                }
                             }
+                        } else {
+                            vec![]
+                        };
+                    let archived_list: Vec<String> = if let Some(selected_folder) = selected_folder
+                    {
+                        if let Ok(archived_projects_json) =
+                            fs::read_to_string(selected_folder.join(ARCHIVED_FILE_NAME))
+                        {
+                            serde_json::from_str(&archived_projects_json).unwrap()
+                        } else {
+                            vec![]
                         }
                     } else {
                         vec![]
                     };
-                    projects_list
+                    (projects_list, archived_list)
                 },
-                |projects_list| Message::Tasks(TasksPageMessage::SetProjectsList(projects_list)),
+                |(projects_list, archived_list)| {
+                    Message::Tasks(TasksPageMessage::SetProjectsList(
+                        projects_list,
+                        archived_list,
+                    ))
+                },
             );
         }
         TasksPageMessage::PickProjectsFolder => {
@@ -125,8 +143,9 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
                 }
             }
         }
-        TasksPageMessage::SetProjectsList(projects_list) => {
+        TasksPageMessage::SetProjectsList(projects_list, archived_list) => {
             state.projects_list = projects_list;
+            state.archived_list = archived_list;
             return Task::done(Message::Tasks(TasksPageMessage::PickProjectFile(
                 state.current_project_file.clone(),
             )));
@@ -336,7 +355,8 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
         TasksPageMessage::DeleteProject => {
             if let Some(current_project_file) = state.current_project_being_managed.as_ref() {
                 fs::remove_file(current_project_file).unwrap();
-                state.current_project_file = None;
+                state.current_project_being_managed = None;
+                state.display_delete_view = false;
                 return Task::done(Message::Tasks(TasksPageMessage::LoadProjectsList)).chain(
                     Task::done(Message::ShowToast(true, String::from("Project deleted"))),
                 );
@@ -398,6 +418,56 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
         }
         TasksPageMessage::UpdateProjectsFilter(s) => {
             state.filter_projects_text = s;
+        }
+        TasksPageMessage::ArchiveProject => {
+            if let Some(selected_folder) = state.selected_folder.as_ref() {
+                if let Some(current_project_being_managed) =
+                    state.current_project_being_managed.as_ref()
+                {
+                    let project_to_archive = current_project_being_managed
+                        .file_stem()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or("Couldn't read filename")
+                        .to_lowercase();
+                    state.archived_list.push(project_to_archive);
+                    let serialised = serde_json::to_string(&state.archived_list).unwrap();
+                    let _ = fs::write(selected_folder.join(ARCHIVED_FILE_NAME), serialised);
+                }
+            }
+            state.current_project_being_managed = None;
+            state.display_archive_view = false;
+        }
+        TasksPageMessage::UnarchiveProject => {
+            if let Some(selected_folder) = state.selected_folder.as_ref() {
+                if let Some(current_project_being_managed) =
+                    state.current_project_being_managed.as_ref()
+                {
+                    let project_to_unarchive = current_project_being_managed
+                        .file_stem()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or("Couldn't read filename")
+                        .to_lowercase();
+                    state.archived_list.remove(
+                        state
+                            .archived_list
+                            .iter()
+                            .position(|item| *item == project_to_unarchive)
+                            .unwrap(),
+                    );
+                    let serialised = serde_json::to_string(&state.archived_list).unwrap();
+                    let _ = fs::write(selected_folder.join(ARCHIVED_FILE_NAME), serialised);
+                }
+            }
+            state.current_project_being_managed = None;
+            state.display_archive_view = false;
+        }
+        TasksPageMessage::ToggleArchiveProjectView => {
+            state.display_archive_view = !state.display_archive_view;
+        }
+        TasksPageMessage::ToggleShowArchivedProjects => {
+            state.show_archived_projects = !state.show_archived_projects;
         }
     }
     Task::none()

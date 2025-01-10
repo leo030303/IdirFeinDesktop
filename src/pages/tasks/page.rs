@@ -13,6 +13,7 @@ use crate::app::Message;
 use super::update::update;
 use super::view::{main_view, tool_view};
 
+pub const ARCHIVED_FILE_NAME: &str = ".archived";
 pub const TASK_TITLE_TEXT_INPUT_ID: &str = "TASK_TITLE_TEXT_INPUT_ID";
 pub const NEW_PROJECT_TEXT_INPUT_ID: &str = "NEW_PROJECT_TEXT_INPUT_ID";
 pub const RENAME_PROJECT_TEXT_INPUT_ID: &str = "RENAME_PROJECT_TEXT_INPUT_ID";
@@ -100,10 +101,13 @@ pub struct TasksPage {
     pub(crate) current_project_being_managed: Option<PathBuf>,
     pub(crate) display_rename_view: bool,
     pub(crate) display_delete_view: bool,
+    pub(crate) display_archive_view: bool,
     pub(crate) rename_project_entry_text: String,
     pub(crate) right_click_to_edit_task: bool,
     pub(crate) filter_tasks_text: String,
     pub(crate) filter_projects_text: String,
+    pub(crate) archived_list: Vec<String>,
+    pub(crate) show_archived_projects: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -116,7 +120,7 @@ pub enum TasksPageMessage {
     SetProjectsFolder(Option<PathBuf>),
     LoadProjectsList,
     PickProjectFile(Option<PathBuf>),
-    SetProjectsList(Vec<PathBuf>),
+    SetProjectsList(Vec<PathBuf>, Vec<String>),
     SetTasksList(Vec<TaskData>, PathBuf),
     SelectTaskToEdit(Option<Uuid>),
     DeleteTask(Uuid),
@@ -140,14 +144,18 @@ pub enum TasksPageMessage {
     ShowMenuForProject(Option<PathBuf>),
     SetRenameProjectEntryText(String),
     RenameProject,
+    ArchiveProject,
+    UnarchiveProject,
     DeleteProject,
     ToggleRenameProjectView,
     ToggleDeleteProjectView,
+    ToggleArchiveProjectView,
     SetShowTaskCompletionToolbar(bool),
     SetConfirmBeforeDelete(bool),
     SetRightClickToEditTask(bool),
     UpdateTasksFilter(String),
     UpdateProjectsFilter(String),
+    ToggleShowArchivedProjects,
 }
 
 impl TasksPage {
@@ -176,11 +184,14 @@ impl TasksPage {
             show_extra_tools_menu: false,
             current_project_being_managed: None,
             display_rename_view: false,
+            display_archive_view: false,
             display_delete_view: false,
             rename_project_entry_text: String::new(),
             right_click_to_edit_task: config.right_click_to_edit_task,
             filter_tasks_text: String::new(),
             filter_projects_text: String::new(),
+            archived_list: vec![],
+            show_archived_projects: false,
         }
     }
 

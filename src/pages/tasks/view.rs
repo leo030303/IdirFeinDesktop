@@ -646,11 +646,23 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
             ]
         } else {
             row![
+                button(
+                    text(if state.show_archived_projects {
+                        "Hide Archived"
+                    } else {
+                        "Show Archived"
+                    })
+                    .width(Length::Fill)
+                    .align_x(Center)
+                )
+                .width(Length::Fill)
+                .on_press(Message::Tasks(TasksPageMessage::ToggleShowArchivedProjects)),
                 button(text("New Project").width(Length::Fill).align_x(Center))
                     .width(Length::Fill)
                     .style(button::success)
                     .on_press(Message::Tasks(TasksPageMessage::StartCreatingNewProject))
             ]
+            .spacing(5)
         },
         Space::with_height(20),
         text_input("Filter", &state.filter_projects_text)
@@ -660,6 +672,14 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                 state
                     .projects_list
                     .iter()
+                    .filter(|project| !state.archived_list.contains(
+                        &project
+                            .file_stem()
+                            .unwrap_or_default()
+                            .to_str()
+                            .unwrap_or("Couldn't read filename")
+                            .to_lowercase()
+                    ) ^ state.show_archived_projects)
                     .filter(|project| project
                         .file_stem()
                         .unwrap_or_default()
@@ -673,7 +693,29 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                             .clone()
                             .is_some_and(|selected_project| selected_project == *project)
                         {
-                            if state.display_rename_view {
+                            if state.show_archived_projects {
+                                row![
+                                    button(text("Unarchive").width(Length::Fill).align_x(Center))
+                                        .width(Length::Fill)
+                                        .on_press(Message::Tasks(
+                                            TasksPageMessage::UnarchiveProject
+                                        )),
+                                    Tooltip::new(
+                                        button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                            "../../../icons/close.svg"
+                                        ))))
+                                        .on_press(Message::Tasks(
+                                            TasksPageMessage::ShowMenuForProject(None)
+                                        ))
+                                        .width(Length::Fixed(50.0))
+                                        .height(Length::Fixed(30.0)),
+                                        "Close",
+                                        iced::widget::tooltip::Position::Right,
+                                    )
+                                ]
+                                .spacing(5)
+                                .into()
+                            } else if state.display_rename_view {
                                 row![
                                     text_input("Rename Project", &state.rename_project_entry_text)
                                         .width(Length::Fill)
@@ -707,6 +749,7 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                                         iced::widget::tooltip::Position::Bottom
                                     ),
                                 ]
+                                .spacing(5)
                                 .into()
                             } else if state.display_delete_view {
                                 row![
@@ -720,6 +763,21 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                                             TasksPageMessage::ToggleDeleteProjectView
                                         )),
                                 ]
+                                .spacing(5)
+                                .into()
+                            } else if state.display_archive_view {
+                                row![
+                                    button(text("Archive").width(Length::Fill).align_x(Center))
+                                        .style(button::danger)
+                                        .width(Length::Fill)
+                                        .on_press(Message::Tasks(TasksPageMessage::ArchiveProject)),
+                                    button(text("Cancel").width(Length::Fill).align_x(Center))
+                                        .width(Length::Fill)
+                                        .on_press(Message::Tasks(
+                                            TasksPageMessage::ToggleArchiveProjectView
+                                        )),
+                                ]
+                                .spacing(5)
                                 .into()
                             } else {
                                 row![
@@ -727,6 +785,11 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                                         .width(Length::Fill)
                                         .on_press(Message::Tasks(
                                             TasksPageMessage::ToggleRenameProjectView
+                                        )),
+                                    button(text("Archive").width(Length::Fill).align_x(Center))
+                                        .width(Length::Fill)
+                                        .on_press(Message::Tasks(
+                                            TasksPageMessage::ToggleArchiveProjectView
                                         )),
                                     button(text("Delete").width(Length::Fill).align_x(Center))
                                         .style(button::danger)
