@@ -28,11 +28,15 @@ use rust_faces::{
     Provider, ToArray3,
 };
 
+use ocrs::{ImageSource, OcrEngine, OcrEngineParams};
+#[allow(unused)]
+use rten_tensor::prelude::*;
+
 use crate::pages::gallery::page::FACE_DATA_FOLDER_NAME;
 
 use super::page::{
-    FACE_DATA_FILE_NAME, PATH_TO_FACE_RECOGNITION_MODEL, THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE,
-    UNNAMED_STRING,
+    FACE_DATA_FILE_NAME, PATH_TO_FACE_RECOGNITION_MODEL, PATH_TO_TEXT_DETECTION_MODEL,
+    PATH_TO_TEXT_RECOGNITION_MODEL, THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE, UNNAMED_STRING,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -746,7 +750,6 @@ pub fn get_all_named_people(parent_folders: &[PathBuf]) -> Vec<(String, Mat)> {
     all_named_people
 }
 
-// TODO this is breaking and deleting faces somehow, make a backup of all faces and then triage this
 pub fn group_all_faces(
     parent_folders: Vec<PathBuf>,
 ) -> impl Stream<Item = Result<PhotoProcessingProgress, iced::Error>> {
@@ -903,4 +906,46 @@ pub fn get_all_photos_by_name(target_name: String, parent_folders: &[PathBuf]) -
     all_pictures_of_target_person.sort_unstable();
     all_pictures_of_target_person.dedup();
     all_pictures_of_target_person
+}
+
+pub fn run_ocr(image_path: PathBuf) -> Result<String, Box<dyn std::error::Error>> {
+    let detection_model = rten::Model::load_file(PATH_TO_TEXT_DETECTION_MODEL)?;
+    let recognition_model = rten::Model::load_file(PATH_TO_TEXT_RECOGNITION_MODEL)?;
+
+    let engine = OcrEngine::new(OcrEngineParams {
+        detection_model: Some(detection_model),
+        recognition_model: Some(recognition_model),
+        ..Default::default()
+    })?;
+
+    // Read image using image-rs library, and convert to RGB if not already
+    // in that format.
+    let img = image::open(image_path).map(|image| image.into_rgb8())?;
+
+    // Apply standard image pre-processing expected by this library (convert
+    // to greyscale, map range to [-0.5, 0.5]).
+    let img_source = ImageSource::from_bytes(img.as_raw(), img.dimensions())?;
+    let ocr_input = engine.prepare_input(img_source)?;
+
+    // Detect and recognize text. If you only need the text and don't need any
+    // layout information, you can also use `engine.get_text(&ocr_input)`,
+    // which returns all the text in an image as a single string.
+
+    // Get oriented bounding boxes of text words in input image.
+    let word_rects = engine.detect_words(&ocr_input)?;
+
+    // Group words into lines. Each line is represented by a list of word
+    // bounding boxes.
+    let line_rects = engine.find_text_lines(&ocr_input, &word_rects);
+
+    // Recognize the characters in each line.
+    let line_texts = engine.recognize_text(&ocr_input, &line_rects)?;
+
+    Ok(line_texts
+        .iter()
+        .flatten()
+        // Filter likely spurious detections. With future model improvements
+        // this should become unnecessary.
+        .filter(|l| l.to_string().len() > 1)
+        .fold(String::new(), |acc, item| acc + " " + &item.to_string()))
 }

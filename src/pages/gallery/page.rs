@@ -28,6 +28,8 @@ pub(crate) const THUMBNAIL_FOLDER_NAME: &str = ".thumbnails";
 pub(crate) const FACE_DATA_FOLDER_NAME: &str = ".face_data";
 pub(crate) const FACE_DATA_FILE_NAME: &str = "extracted_faces.json";
 pub(crate) const PATH_TO_FACE_RECOGNITION_MODEL: &str = "/home/leoring/Documents/Personal_Coding_Projects/idirfein_desktop_iced/resources/models/face_recognition_sface_2021dec.onnx";
+pub(crate) const PATH_TO_TEXT_RECOGNITION_MODEL: &str = "/home/leoring/Documents/Personal_Coding_Projects/idirfein_desktop_iced/resources/models/text-recognition.rten";
+pub(crate) const PATH_TO_TEXT_DETECTION_MODEL: &str = "/home/leoring/Documents/Personal_Coding_Projects/idirfein_desktop_iced/resources/models/text-detection.rten";
 
 pub(crate) static GALLERY_SCROLLABLE_ID: Lazy<scrollable::Id> = Lazy::new(scrollable::Id::unique);
 pub(crate) static LIST_PEOPLE_SCROLL_ID: Lazy<scrollable::Id> = Lazy::new(scrollable::Id::unique);
@@ -61,6 +63,7 @@ pub struct GalleryPage {
     pub(crate) run_thumbnail_generation_on_start: bool,
     pub(crate) run_face_extraction_on_start: bool,
     pub(crate) run_face_recognition_on_start: bool,
+    pub(crate) current_image_ocr_text: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -115,6 +118,9 @@ pub enum GalleryPageMessage {
     SetPersonToViewName(Option<String>),
     SetPersonToViewPaths(Vec<PathBuf>),
     PeopleListScrolled(Viewport),
+    RunOcrOnSelectedImage,
+    SetCurrentImageOcrText(Option<String>),
+    CopyOcrText,
 }
 
 impl GalleryPage {
@@ -140,6 +146,7 @@ impl GalleryPage {
             run_thumbnail_generation_on_start: config.run_thumbnail_generation_on_start,
             run_face_extraction_on_start: config.run_face_extraction_on_start,
             run_face_recognition_on_start: config.run_face_recognition_on_start,
+            current_image_ocr_text: None,
         }
     }
 

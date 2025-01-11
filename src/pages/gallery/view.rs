@@ -95,6 +95,24 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
                 ),
                 Space::with_height(Length::Fill),
             ],
+            if let Some(ocr_text) = state.current_image_ocr_text.as_ref() {
+                scrollable(
+                    column![
+                        text(ocr_text),
+                        Tooltip::new(
+                            button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                "../../../icons/copy.svg"
+                            ))))
+                            .on_press(Message::Gallery(GalleryPageMessage::CopyOcrText)),
+                            "Copy detected text",
+                            iced::widget::tooltip::Position::Bottom
+                        ),
+                    ]
+                    .width(200),
+                )
+            } else {
+                scrollable(column![])
+            }
         ],
     ])
     .width(Length::Fill)
@@ -539,14 +557,24 @@ fn list_people_view(state: &GalleryPage) -> Element<Message> {
 
 pub fn tool_view(state: &GalleryPage) -> Element<Message> {
     if state.selected_image.is_some() {
-        row![Tooltip::new(
-            button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                "../../../icons/copy.svg"
-            ))))
-            .on_press(Message::Gallery(GalleryPageMessage::CopySelectedImagePath)),
-            "Copy image path",
-            iced::widget::tooltip::Position::Bottom
-        ),]
+        row![
+            Tooltip::new(
+                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/copy.svg"
+                ))))
+                .on_press(Message::Gallery(GalleryPageMessage::CopySelectedImagePath)),
+                "Copy image path",
+                iced::widget::tooltip::Position::Bottom
+            ),
+            Tooltip::new(
+                button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../../../icons/scanner.svg"
+                ))))
+                .on_press(Message::Gallery(GalleryPageMessage::RunOcrOnSelectedImage)),
+                "Detect text in image",
+                iced::widget::tooltip::Position::Bottom
+            ),
+        ]
         .width(Length::FillPortion(1))
         .into()
     } else {

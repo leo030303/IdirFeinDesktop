@@ -18,19 +18,19 @@ use rfd::FileDialog;
 use crate::{app::Message, pages::gallery::page::IMAGE_HEIGHT};
 
 use super::{
-    gallery_utils::get_parent_folders,
-    page::{
-        GalleryPage, GalleryPageMessage, ImageRow, ARROW_KEY_SCROLL_AMOUNT, FACE_DATA_FOLDER_NAME,
-        GALLERY_SCROLLABLE_ID, LIST_PEOPLE_SCROLL_ID, NUM_IMAGES_IN_ROW, PAGE_KEY_SCROLL_AMOUNT,
-        RENAME_PERSON_INPUT_ID, ROW_BATCH_SIZE, THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE,
-    },
-};
-use super::{
     gallery_utils::{
         self, get_all_photos_by_name, get_detected_faces_for_image, get_named_people_for_display,
         update_face_data, PhotoProcessingProgress,
     },
     page::PersonToView,
+};
+use super::{
+    gallery_utils::{get_parent_folders, run_ocr},
+    page::{
+        GalleryPage, GalleryPageMessage, ImageRow, ARROW_KEY_SCROLL_AMOUNT, FACE_DATA_FOLDER_NAME,
+        GALLERY_SCROLLABLE_ID, LIST_PEOPLE_SCROLL_ID, NUM_IMAGES_IN_ROW, PAGE_KEY_SCROLL_AMOUNT,
+        RENAME_PERSON_INPUT_ID, ROW_BATCH_SIZE, THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE,
+    },
 };
 
 pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Message> {
@@ -509,6 +509,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::SelectImageForBigView(image_path_option) => {
             state.person_to_manage = None;
+            state.current_image_ocr_text = None;
             state.rename_person_editor_text = String::new();
             state.show_ignore_person_confirmation = false;
             state.show_rename_confirmation = false;
@@ -889,6 +890,46 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::PeopleListScrolled(viewport) => {
             state.people_list_scrollable_viewport_option = Some(viewport);
+        }
+        GalleryPageMessage::RunOcrOnSelectedImage => {
+            if let Some((selected_image_path, _)) = state.selected_image.as_ref() {
+                let ocr_image_path = selected_image_path.clone();
+                return Task::perform(
+                    async {
+                        match run_ocr(ocr_image_path) {
+                            Ok(ocr_text) => Some(ocr_text),
+                            Err(err) => {
+                                println!("Error with ocr: {err:?}");
+                                None
+                            }
+                        }
+                    },
+                    |ocr_option| match ocr_option {
+                        Some(ocr_text) => Message::Gallery(
+                            GalleryPageMessage::SetCurrentImageOcrText(Some(ocr_text)),
+                        ),
+                        None => Message::ShowToast(
+                            false,
+                            String::from("Error running detecting text in image"),
+                        ),
+                    },
+                );
+            }
+        }
+        GalleryPageMessage::SetCurrentImageOcrText(ocr_text_option) => {
+            state.current_image_ocr_text = ocr_text_option;
+        }
+        GalleryPageMessage::CopyOcrText => {
+            if let Some(ocr_text) = state.current_image_ocr_text.as_ref() {
+                if let Ok(mut clipboard) = Clipboard::new() {
+                    let _ = clipboard.set_text(ocr_text);
+                } else {
+                    return Task::done(Message::ShowToast(
+                        false,
+                        String::from("Couldn't access clipboard"),
+                    ));
+                }
+            }
         }
     }
     Task::none()
