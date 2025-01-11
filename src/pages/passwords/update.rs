@@ -60,8 +60,10 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
                 } else {
                     Some(state.master_password_field_text.clone())
                 };
+                state.master_password_field_text = String::new();
+                let selected_key_file = state.selected_key_file.take();
                 return Task::perform(
-                    get_passwords(keepass_file_path, password, state.selected_key_file.clone()),
+                    get_passwords(keepass_file_path, password, selected_key_file),
                     |passwords_list_option| {
                         Message::Passwords(PasswordsPageMessage::RetrievedPasswordsList(
                             passwords_list_option,
