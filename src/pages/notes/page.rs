@@ -16,6 +16,7 @@ use super::notes_utils::NoteStatistics;
 use super::update::update;
 use super::view::{main_view, tool_view};
 
+pub const ARCHIVED_FILE_NAME: &str = ".archived";
 pub const TEXT_EDITOR_ID: &str = "TEXT_EDITOR_ID";
 pub const NEW_NOTE_TEXT_INPUT_ID: &str = "NEW_NOTE_TEXT_INPUT_ID";
 pub const RENAME_NOTE_TEXT_INPUT_ID: &str = "RENAME_NOTE_TEXT_INPUT_ID";
@@ -114,7 +115,6 @@ pub struct NotesPage {
     pub(crate) display_rename_view: bool,
     pub(crate) rename_note_entry_text: String,
     pub(crate) display_delete_view: bool,
-    pub(crate) archived_notes_list: Vec<PathBuf>,
     pub(crate) categories_list: Vec<NoteCategory>,
     pub(crate) new_category_entry_text: String,
     pub(crate) current_color_picker_colour: iced::Color,
@@ -124,6 +124,9 @@ pub struct NotesPage {
     pub(crate) spelling_corrections_list: Vec<(usize, String)>,
     pub(crate) show_spell_check_view: bool,
     pub(crate) spell_check_dictionary: Dictionary,
+    pub(crate) display_archive_view: bool,
+    pub(crate) archived_notes_list: Vec<String>,
+    pub(crate) show_archived_notes: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -165,9 +168,6 @@ pub enum NotesPageMessage {
     SaveCategoriesList,
     AddCategory,
     DeleteCategory,
-    LoadArchivedNotesList,
-    SetArchivedNotesList(Vec<PathBuf>),
-    SaveArchivedNotesList,
     SetNewCategoryText(String),
     SetColourPickerColour(iced::Color),
     ToggleColourPicker,
@@ -179,6 +179,11 @@ pub enum NotesPageMessage {
     ToggleSpellCheckView,
     SetSpellingCorrectionsList(Vec<(usize, String)>),
     GoToSpellingMistake(usize, String),
+    ArchiveNote,
+    UnarchiveNote,
+    ToggleArchiveNoteView,
+    ToggleShowArchivedNotes,
+    LoadArchivedList,
 }
 
 impl NotesPage {
@@ -231,7 +236,6 @@ impl NotesPage {
             display_rename_view: false,
             rename_note_entry_text: String::new(),
             display_delete_view: false,
-            archived_notes_list: vec![],
             categories_list: vec![],
             new_category_entry_text: String::new(),
             current_color_picker_colour: iced::Color::default(),
@@ -241,15 +245,15 @@ impl NotesPage {
             spelling_corrections_list: vec![],
             show_spell_check_view: false,
             spell_check_dictionary,
+            display_archive_view: false,
+            archived_notes_list: vec![],
+            show_archived_notes: false,
         }
     }
 
     pub fn opening_task() -> Task<Message> {
         Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList))
             .chain(Task::done(Message::Notes(NotesPageMessage::LoadCategories)))
-            .chain(Task::done(Message::Notes(
-                NotesPageMessage::LoadArchivedNotesList,
-            )))
     }
 
     pub fn closing_task(&mut self) -> Task<Message> {

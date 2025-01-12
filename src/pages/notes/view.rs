@@ -129,14 +129,28 @@ fn new_note_button(state: &NotesPage) -> Element<Message> {
             ),
         ]
     } else {
-        row![button(
-            text("New Note (Ctrl+N)")
+        row![
+            button(
+                text(if state.show_archived_notes {
+                    "Hide Archived"
+                } else {
+                    "Show Archived"
+                })
                 .width(Length::Fill)
                 .align_x(Center)
-        )
-        .width(Length::Fill)
-        .style(button::success)
-        .on_press(Message::Notes(NotesPageMessage::StartCreatingNewNote))]
+            )
+            .width(Length::Fill)
+            .on_press(Message::Notes(NotesPageMessage::ToggleShowArchivedNotes)),
+            button(
+                text("New Note (Ctrl+N)")
+                    .width(Length::Fill)
+                    .align_x(Center)
+            )
+            .width(Length::Fill)
+            .style(button::success)
+            .on_press(Message::Notes(NotesPageMessage::StartCreatingNewNote))
+        ]
+        .spacing(5)
     }
     .into()
 }
@@ -220,6 +234,9 @@ fn manage_note_options_view(state: &NotesPage) -> Element<Message> {
         button(text("Rename").width(Length::Fill).align_x(Center))
             .width(Length::Fill)
             .on_press(Message::Notes(NotesPageMessage::ToggleRenameNoteView)),
+        button(text("Archive").width(Length::Fill).align_x(Center))
+            .width(Length::Fill)
+            .on_press(Message::Notes(NotesPageMessage::ToggleArchiveNoteView)),
         button(text("Delete").width(Length::Fill).align_x(Center))
             .style(button::danger)
             .width(Length::Fill)
@@ -312,6 +329,15 @@ fn sidebar_with_selected_folder(state: &NotesPage) -> Element<Message> {
                 state
                     .notes_list
                     .iter()
+                    .filter(|note| !state.archived_notes_list.contains(
+                        &note
+                            .file_path
+                            .file_stem()
+                            .unwrap_or_default()
+                            .to_str()
+                            .unwrap_or("Couldn't read filename")
+                            .to_lowercase()
+                    ) ^ state.show_archived_notes)
                     .filter(|note| {
                         note.button_title
                             .to_lowercase()
@@ -324,7 +350,45 @@ fn sidebar_with_selected_folder(state: &NotesPage) -> Element<Message> {
                                 .clone()
                                 .is_some_and(|selected_note| selected_note == note.file_path)
                             {
-                                if state.display_rename_view {
+                                if state.show_archived_notes {
+                                    row![
+                                        button(
+                                            text("Unarchive").width(Length::Fill).align_x(Center)
+                                        )
+                                        .width(Length::Fill)
+                                        .on_press(Message::Notes(NotesPageMessage::UnarchiveNote)),
+                                        Tooltip::new(
+                                            button(Svg::new(svg::Handle::from_memory(
+                                                include_bytes!("../../../icons/close.svg")
+                                            )))
+                                            .on_press(Message::Notes(
+                                                NotesPageMessage::ShowMenuForNote(None)
+                                            ))
+                                            .width(Length::Fixed(50.0))
+                                            .height(Length::Fixed(30.0)),
+                                            "Close",
+                                            iced::widget::tooltip::Position::Right,
+                                        )
+                                    ]
+                                    .spacing(5)
+                                    .into()
+                                } else if state.display_archive_view {
+                                    row![
+                                        button(text("Archive").width(Length::Fill).align_x(Center))
+                                            .style(button::danger)
+                                            .width(Length::Fill)
+                                            .on_press(Message::Notes(
+                                                NotesPageMessage::ArchiveNote
+                                            )),
+                                        button(text("Cancel").width(Length::Fill).align_x(Center))
+                                            .width(Length::Fill)
+                                            .on_press(Message::Notes(
+                                                NotesPageMessage::ToggleArchiveNoteView
+                                            )),
+                                    ]
+                                    .spacing(5)
+                                    .into()
+                                } else if state.display_rename_view {
                                     rename_note_view(state)
                                 } else if state.display_delete_view {
                                     confirm_delete_note_view(state)

@@ -17,8 +17,9 @@ use super::{
         read_notes_from_folder, select_specific_string_in_editor, NoteStatistics,
     },
     page::{
-        NoteCategory, NotesPage, NotesPageMessage, SerializableColour, INITIAL_ORIGIN_STR,
-        LORO_NOTE_ID, MAX_UNDO_STEPS, NEW_NOTE_TEXT_INPUT_ID, RENAME_NOTE_TEXT_INPUT_ID,
+        NoteCategory, NotesPage, NotesPageMessage, SerializableColour, ARCHIVED_FILE_NAME,
+        INITIAL_ORIGIN_STR, LORO_NOTE_ID, MAX_UNDO_STEPS, NEW_NOTE_TEXT_INPUT_ID,
+        RENAME_NOTE_TEXT_INPUT_ID,
     },
 };
 
@@ -169,16 +170,16 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         NotesPageMessage::SetNotesFolder(selected_folder) => {
             state.selected_folder = selected_folder;
             return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList))
-                .chain(Task::done(Message::Notes(NotesPageMessage::LoadCategories)))
-                .chain(Task::done(Message::Notes(
-                    NotesPageMessage::LoadArchivedNotesList,
-                )));
+                .chain(Task::done(Message::Notes(NotesPageMessage::LoadCategories)));
         }
         NotesPageMessage::LoadFolderAsNotesList => {
             if let Some(selected_folder) = state.selected_folder.clone() {
                 return Task::perform(read_notes_from_folder(selected_folder), |notes_list| {
                     Message::Notes(NotesPageMessage::SetNotesList(notes_list))
-                });
+                })
+                .chain(Task::done(Message::Notes(
+                    NotesPageMessage::LoadArchivedList,
+                )));
             }
         }
         NotesPageMessage::OpenFile(new_filepath) => {
@@ -436,59 +437,6 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                 );
             }
         }
-        NotesPageMessage::LoadArchivedNotesList => {
-            if let Some(mut selected_folder) = state.selected_folder.clone() {
-                return Task::perform(
-                    async move {
-                        selected_folder.push(".archived.json");
-                        let archive_file = selected_folder;
-                        if let Ok(archived_json) = fs::read_to_string(archive_file) {
-                            let archived_notes_list: Vec<PathBuf> =
-                                serde_json::from_str(&archived_json).unwrap_or_default();
-                            archived_notes_list
-                        } else {
-                            vec![]
-                        }
-                    },
-                    |archived_notes_list| {
-                        Message::Notes(NotesPageMessage::SetArchivedNotesList(archived_notes_list))
-                    },
-                );
-            }
-        }
-        NotesPageMessage::SetArchivedNotesList(archived_notes_list) => {
-            state.archived_notes_list = archived_notes_list
-        }
-        NotesPageMessage::SaveArchivedNotesList => {
-            let archived_notes_list = state.archived_notes_list.clone();
-            if let Some(mut selected_folder) = state.selected_folder.clone() {
-                return Task::perform(
-                    async move {
-                        selected_folder.push(".archived.json");
-                        let archived_notes_file = selected_folder;
-                        match serde_json::to_string(&archived_notes_list) {
-                            Ok(serialised_archived_notes_list) => {
-                                match fs::write(archived_notes_file, serialised_archived_notes_list)
-                                {
-                                    Ok(_) => (true, String::new()),
-                                    Err(err) => {
-                                        (false, format!("Failed to save archived list: {err:?}"))
-                                    }
-                                }
-                            }
-                            Err(err) => (false, format!("Failed to save archived list: {err:?}")),
-                        }
-                    },
-                    |(success, toast_message)| {
-                        if success {
-                            Message::None
-                        } else {
-                            Message::ShowToast(success, toast_message)
-                        }
-                    },
-                );
-            }
-        }
         NotesPageMessage::AddCategory => {
             let serializable_colour =
                 SerializableColour::from_iced_color(state.current_color_picker_colour);
@@ -588,6 +536,71 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         }
         NotesPageMessage::GoToSpellingMistake(index, _spelling_mistake_string) => {
             select_specific_string_in_editor(&mut state.editor_content, index);
+        }
+        NotesPageMessage::ArchiveNote => {
+            if let Some(selected_folder) = state.selected_folder.as_ref() {
+                if let Some(current_note_being_managed) =
+                    state.current_note_being_managed_path.as_ref()
+                {
+                    let note_to_archive = current_note_being_managed
+                        .file_stem()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or("Couldn't read filename")
+                        .to_lowercase();
+                    state.archived_notes_list.push(note_to_archive);
+                    let serialised = serde_json::to_string(&state.archived_notes_list).unwrap();
+                    let _ = fs::write(selected_folder.join(ARCHIVED_FILE_NAME), serialised);
+                }
+            }
+            state.current_note_being_managed_path = None;
+            state.display_archive_view = false;
+        }
+        NotesPageMessage::UnarchiveNote => {
+            if let Some(selected_folder) = state.selected_folder.as_ref() {
+                if let Some(current_note_being_managed) =
+                    state.current_note_being_managed_path.as_ref()
+                {
+                    let note_to_unarchive = current_note_being_managed
+                        .file_stem()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or("Couldn't read filename")
+                        .to_lowercase();
+                    state.archived_notes_list.remove(
+                        state
+                            .archived_notes_list
+                            .iter()
+                            .position(|item| *item == note_to_unarchive)
+                            .unwrap(),
+                    );
+                    let serialised = serde_json::to_string(&state.archived_notes_list).unwrap();
+                    let _ = fs::write(selected_folder.join(ARCHIVED_FILE_NAME), serialised);
+                }
+            }
+            state.current_note_being_managed_path = None;
+            state.display_archive_view = false;
+        }
+        NotesPageMessage::ToggleArchiveNoteView => {
+            state.display_archive_view = !state.display_archive_view;
+        }
+        NotesPageMessage::ToggleShowArchivedNotes => {
+            state.show_archived_notes = !state.show_archived_notes;
+        }
+        NotesPageMessage::LoadArchivedList => {
+            let archived_notes_list: Vec<String> =
+                if let Some(selected_folder) = state.selected_folder.as_ref() {
+                    if let Ok(archived_notes_json) =
+                        fs::read_to_string(selected_folder.join(ARCHIVED_FILE_NAME))
+                    {
+                        serde_json::from_str(&archived_notes_json).unwrap()
+                    } else {
+                        vec![]
+                    }
+                } else {
+                    vec![]
+                };
+            state.archived_notes_list = archived_notes_list;
         }
     }
     Task::none()
