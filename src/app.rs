@@ -5,7 +5,7 @@ use iced::{
     event,
     keyboard::{self, Key, Modifiers},
     widget::{self, button, column, container, row, svg, text, tooltip::Position, Svg, Tooltip},
-    window, Alignment, ContentFit, Event, Length, Subscription, Task, Theme,
+    window, Alignment, ContentFit, Element, Event, Length, Subscription, Task, Theme,
 };
 
 use crate::{
@@ -18,6 +18,7 @@ use crate::{
             page::{SettingsPage, SettingsPageMessage},
             settings_utils::{load_settings_from_file, save_settings_to_file},
         },
+        setup_wizard::page::{SetupWizard, SetupWizardMessage},
         sync::page::{SyncPage, SyncPageMessage},
         tasks::page::{TasksPage, TasksPageMessage},
     },
@@ -32,6 +33,7 @@ pub enum Message {
     ChangePage(Page),
     CloseWindowRequest,
     None,
+    SetupWizard(SetupWizardMessage),
     Passwords(PasswordsPageMessage),
     Notes(NotesPageMessage),
     Tasks(TasksPageMessage),
@@ -47,8 +49,10 @@ pub enum Message {
 
 pub struct AppState {
     config: AppConfig,
+    is_setting_up_server: bool,
     is_closing: bool,
     current_page: Page,
+    setup_wizard: SetupWizard,
     notes_page: NotesPage,
     passwords_page: PasswordsPage,
     tasks_page: TasksPage,
@@ -63,7 +67,9 @@ pub struct AppState {
 
 impl AppState {
     pub fn new() -> (Self, Task<Message>) {
-        let config = load_settings_from_file();
+        let config_option = load_settings_from_file();
+        let is_setting_up_server = config_option.is_none();
+        let config = config_option.unwrap_or_default();
         (
             Self {
                 config: config.clone(),
@@ -79,6 +85,8 @@ impl AppState {
                 is_good_toast: true,
                 toast_text: String::new(),
                 server_connection_state: ServerConnectionState::Disconnected,
+                is_setting_up_server,
+                setup_wizard: SetupWizard::new(),
             },
             Task::batch([
                 widget::focus_next(),
@@ -95,6 +103,7 @@ impl AppState {
     pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ChangePage(new_page) => self.current_page = new_page,
+            Message::SetupWizard(m) => return self.setup_wizard.update(m),
             Message::Passwords(m) => return self.passwords_page.update(m),
             Message::Notes(m) => return self.notes_page.update(m),
             Message::Tasks(m) => return self.tasks_page.update(m),
@@ -160,79 +169,87 @@ impl AppState {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        let mut subscriptions_vec = vec![event::listen_with(|event, status, _id| {
-            match (event, status) {
-                (Event::Window(window::Event::CloseRequested), _) => {
-                    Some(Message::CloseWindowRequest)
-                }
-                (
-                    Event::Keyboard(keyboard::Event::KeyPressed {
-                        key: Key::Character(pressed_char),
-                        modifiers: Modifiers::ALT,
-                        ..
-                    }),
-                    _,
-                ) => {
-                    if pressed_char.as_ref() == "1" {
-                        Some(Message::ChangePage(Page::Notes))
-                    } else if pressed_char.as_ref() == "2" {
-                        Some(Message::ChangePage(Page::Tasks))
-                    } else if pressed_char.as_ref() == "3" {
-                        Some(Message::ChangePage(Page::Passwords))
-                    } else if pressed_char.as_ref() == "4" {
-                        Some(Message::ChangePage(Page::Sync))
-                    } else if pressed_char.as_ref() == "5" {
-                        Some(Message::ChangePage(Page::Gallery))
-                    } else if pressed_char.as_ref() == "6" {
-                        Some(Message::ChangePage(Page::Settings))
-                    } else {
-                        None
+        let mut subscriptions_vec = vec![];
+        if !self.is_setting_up_server {
+            subscriptions_vec.push(event::listen_with(|event, status, _id| {
+                match (event, status) {
+                    (Event::Window(window::Event::CloseRequested), _) => {
+                        Some(Message::CloseWindowRequest)
                     }
+                    (
+                        Event::Keyboard(keyboard::Event::KeyPressed {
+                            key: Key::Character(pressed_char),
+                            modifiers: Modifiers::ALT,
+                            ..
+                        }),
+                        _,
+                    ) => {
+                        if pressed_char.as_ref() == "1" {
+                            Some(Message::ChangePage(Page::Notes))
+                        } else if pressed_char.as_ref() == "2" {
+                            Some(Message::ChangePage(Page::Tasks))
+                        } else if pressed_char.as_ref() == "3" {
+                            Some(Message::ChangePage(Page::Passwords))
+                        } else if pressed_char.as_ref() == "4" {
+                            Some(Message::ChangePage(Page::Sync))
+                        } else if pressed_char.as_ref() == "5" {
+                            Some(Message::ChangePage(Page::Gallery))
+                        } else if pressed_char.as_ref() == "6" {
+                            Some(Message::ChangePage(Page::Settings))
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
                 }
-                _ => None,
+            }));
+            match self.current_page {
+                Page::Settings => (),
+                Page::Passwords => {
+                    subscriptions_vec.push(PasswordsPage::subscription());
+                }
+                Page::Sync => (),
+                Page::Gallery => {
+                    subscriptions_vec.push(GalleryPage::subscription());
+                }
+                Page::Notes => {
+                    subscriptions_vec.push(NotesPage::subscription());
+                }
+                Page::Tasks => {
+                    subscriptions_vec.push(TasksPage::subscription());
+                }
             }
-        })];
-        match self.current_page {
-            Page::Settings => (),
-            Page::Passwords => {
-                subscriptions_vec.push(PasswordsPage::subscription());
+            if self.config.sync_config.should_sync {
+                subscriptions_vec.push(
+                    Subscription::run_with_id(
+                        "server_connection_subscription",
+                        socket_utils::connect(
+                            self.config.sync_config.server_url.clone(),
+                            self.sync_page.folders_to_sync.clone(),
+                            self.sync_page.ignore_string_list.clone(),
+                            self.config.sync_config.default_data_storage_folder.clone(),
+                        ),
+                    )
+                    .map(Message::ServerMessageEvent),
+                );
             }
-            Page::Sync => (),
-            Page::Gallery => {
-                subscriptions_vec.push(GalleryPage::subscription());
-            }
-            Page::Notes => {
-                subscriptions_vec.push(NotesPage::subscription());
-            }
-            Page::Tasks => {
-                subscriptions_vec.push(TasksPage::subscription());
-            }
-        }
-        if self.config.sync_config.should_sync {
-            subscriptions_vec.push(
-                Subscription::run_with_id(
-                    "server_connection_subscription",
-                    socket_utils::connect(
-                        self.config.sync_config.server_url.clone(),
-                        self.sync_page.folders_to_sync.clone(),
-                        self.sync_page.ignore_string_list.clone(),
-                        self.config.sync_config.default_data_storage_folder.clone(),
-                    ),
-                )
-                .map(Message::ServerMessageEvent),
-            );
         }
         Subscription::batch(subscriptions_vec)
     }
 
-    pub fn view(&self) -> iced::Element<Message> {
+    pub fn view(&self) -> Element<Message> {
         let nav_bar = row![
-            navbar_button(Page::Notes, self.current_page == Page::Notes, 1),
-            navbar_button(Page::Tasks, self.current_page == Page::Tasks, 2),
-            navbar_button(Page::Passwords, self.current_page == Page::Passwords, 3),
-            navbar_button(Page::Sync, self.current_page == Page::Sync, 4),
-            navbar_button(Page::Gallery, self.current_page == Page::Gallery, 5),
-            navbar_button(Page::Settings, self.current_page == Page::Settings, 6),
+            navbar_button(self, Page::Notes, self.current_page == Page::Notes, 1),
+            navbar_button(self, Page::Tasks, self.current_page == Page::Tasks, 2),
+            navbar_button(
+                self,
+                Page::Passwords,
+                self.current_page == Page::Passwords,
+                3
+            ),
+            navbar_button(self, Page::Sync, self.current_page == Page::Sync, 4),
+            navbar_button(self, Page::Gallery, self.current_page == Page::Gallery, 5),
+            navbar_button(self, Page::Settings, self.current_page == Page::Settings, 6),
         ]
         .width(Length::FillPortion(1));
 
@@ -254,64 +271,29 @@ impl AppState {
             Page::Tasks => self.tasks_page.view(),
         };
         if !self.is_closing {
-            column![
-                row![
-                    tool_view,
-                    text(self.current_page.name())
-                        .size(24)
-                        .width(Length::FillPortion(1))
-                        .align_x(Horizontal::Center),
-                    nav_bar,
-                ],
-                if self.show_toast {
-                    container(
-                        row![
-                            text(&self.toast_text)
-                                .width(Length::Fill)
-                                .align_x(Alignment::Center)
-                                .size(18),
-                            button(
-                                Svg::new(svg::Handle::from_memory(include_bytes!(
-                                    "../icons/close.svg"
-                                )))
-                                .content_fit(ContentFit::Contain)
-                            )
-                            .width(Length::Fixed(50.0))
-                            .height(Length::Fill)
-                            .style(if self.is_good_toast {
-                                button::success
-                            } else {
-                                button::danger
-                            })
-                            .on_press(Message::ToastExpired)
-                        ]
-                        .padding(10),
-                    )
-                    .height(50)
-                    .style(container::bordered_box)
-                    .style(|theme| {
-                        if self.is_good_toast {
-                            container::Style::default()
-                                .background(theme.extended_palette().success.base.color)
-                                .color(theme.extended_palette().success.base.text)
-                        } else {
-                            container::Style::default()
-                                .background(theme.extended_palette().danger.base.color)
-                                .color(theme.extended_palette().danger.base.text)
-                        }
-                    })
-                } else {
-                    container(row![]).height(10)
-                },
-                main_view
-            ]
-            .into()
-        } else {
-            text("Finishing up, please wait")
-                .size(24)
-                .width(Length::Fill)
-                .align_x(Horizontal::Center)
+            if self.is_setting_up_server {
+                self.setup_wizard.view()
+            } else {
+                column![
+                    row![
+                        tool_view,
+                        text(self.current_page.name())
+                            .size(24)
+                            .width(Length::FillPortion(1))
+                            .align_x(Horizontal::Center),
+                        nav_bar,
+                    ],
+                    if self.show_toast {
+                        toast_widget(self)
+                    } else {
+                        container(row![]).height(10).into()
+                    },
+                    main_view
+                ]
                 .into()
+            }
+        } else {
+            app_is_closing_view(self)
         }
     }
     pub fn theme(&self) -> Theme {
@@ -319,7 +301,59 @@ impl AppState {
     }
 }
 
-fn navbar_button(page: Page, selected: bool, index: u8) -> iced::Element<'static, Message> {
+fn toast_widget(state: &AppState) -> Element<Message> {
+    container(
+        row![
+            text(&state.toast_text)
+                .width(Length::Fill)
+                .align_x(Alignment::Center)
+                .size(18),
+            button(
+                Svg::new(svg::Handle::from_memory(include_bytes!(
+                    "../icons/close.svg"
+                )))
+                .content_fit(ContentFit::Contain)
+            )
+            .width(Length::Fixed(50.0))
+            .height(Length::Fill)
+            .style(if state.is_good_toast {
+                button::success
+            } else {
+                button::danger
+            })
+            .on_press(Message::ToastExpired)
+        ]
+        .padding(10),
+    )
+    .height(50)
+    .style(container::bordered_box)
+    .style(|theme| {
+        if state.is_good_toast {
+            container::Style::default()
+                .background(theme.extended_palette().success.base.color)
+                .color(theme.extended_palette().success.base.text)
+        } else {
+            container::Style::default()
+                .background(theme.extended_palette().danger.base.color)
+                .color(theme.extended_palette().danger.base.text)
+        }
+    })
+    .into()
+}
+
+fn app_is_closing_view(_state: &AppState) -> Element<Message> {
+    text("Finishing up, please wait")
+        .size(24)
+        .width(Length::Fill)
+        .align_x(Horizontal::Center)
+        .into()
+}
+fn navbar_button(
+    _state: &AppState,
+    page: Page,
+    selected: bool,
+    index: u8,
+) -> iced::Element<Message> {
     Tooltip::new(
         button(Svg::new(page.icon_handle()).content_fit(ContentFit::ScaleDown))
             .style(if selected {

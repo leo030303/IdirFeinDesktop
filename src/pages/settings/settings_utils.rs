@@ -22,14 +22,14 @@ pub async fn save_settings_to_file(config: AppConfig) -> (bool, String) {
         ),
     }
 }
-pub fn load_settings_from_file() -> AppConfig {
+pub fn load_settings_from_file() -> Option<AppConfig> {
     let mut config_file_path = dirs::config_dir().expect("No config directory, big problem");
     config_file_path.push(APP_ID);
     config_file_path.push("config.json");
     if let Ok(config_json) = fs::read_to_string(config_file_path) {
         let app_config: AppConfig = serde_json::from_str(&config_json).unwrap_or_default();
-        app_config
+        Some(app_config)
     } else {
-        AppConfig::default()
+        None
     }
 }
