@@ -32,6 +32,9 @@ tempfile = "3.15.0"
 ocrs = "0.9.0"
 rten = "0.13.1"
 rten-tensor = "0.15.1"
+fast_rsync = "0.2.0"
+url = "2.5.4"
+reqwest = "0.12.12"
 
 [profile.release]
 lto = true

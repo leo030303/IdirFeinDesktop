@@ -59,20 +59,44 @@ fn general_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Elemen
     .into()
 }
 
-fn sync_tab<'a>(state: &'a SettingsPage, _app_config: &'a AppConfig) -> Element<'a, Message> {
+fn sync_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
     scrollable(
         container(
-            column![row![
-                text("Server Url:"),
-                Space::with_width(Length::Fixed(20.0)),
-                text_input("Server Url", &state.server_url_editor_text)
-                    .width(Length::Fixed(200.0))
-                    .on_input(|s| Message::Settings(SettingsPageMessage::SyncUpdateServerUrl(s)))
-                    .on_submit(Message::Settings(SettingsPageMessage::SyncSetServerUrl)),
-                button("Set Url")
-                    .on_press(Message::Settings(SettingsPageMessage::SyncSetServerUrl))
+            column![
+                row![
+                    text("Server Url:"),
+                    Space::with_width(Length::Fixed(20.0)),
+                    text_input("Server Url", &state.server_url_editor_text)
+                        .width(Length::Fixed(200.0))
+                        .on_input(
+                            |s| Message::Settings(SettingsPageMessage::SyncUpdateServerUrl(s))
+                        )
+                        .on_submit(Message::Settings(SettingsPageMessage::SyncSetServerUrl)),
+                    button("Set Url")
+                        .on_press(Message::Settings(SettingsPageMessage::SyncSetServerUrl))
+                ]
+                .width(Length::Fill),
+                row![
+                    text(format!(
+                        "Default Data Folder: {:?}",
+                        app_config.sync_config.default_data_storage_folder
+                    ))
+                    .align_x(Alignment::Center)
+                    .width(Length::Fill),
+                    button(
+                        text("Select Default Data Folder")
+                            .width(Length::Fill)
+                            .align_x(Alignment::Center)
+                    )
+                    .on_press(Message::Settings(
+                        SettingsPageMessage::SyncPickDefaultFolder
+                    ))
+                ]
+                .width(Length::Fill),
+                toggler(app_config.sync_config.should_sync)
+                    .label("Whether syncing should run")
+                    .on_toggle(|b| Message::Settings(SettingsPageMessage::SyncSetShouldSync(b))),
             ]
-            .width(Length::Fill),]
             .padding(20)
             .spacing(30),
         )

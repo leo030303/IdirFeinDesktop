@@ -208,13 +208,20 @@ impl AppState {
                 subscriptions_vec.push(TasksPage::subscription());
             }
         }
-        subscriptions_vec.push(
-            Subscription::run_with_id(
-                "server_connection_subscription",
-                socket_utils::connect(self.config.sync_config.server_url.clone()),
-            )
-            .map(Message::ServerMessageEvent),
-        );
+        if self.config.sync_config.should_sync {
+            subscriptions_vec.push(
+                Subscription::run_with_id(
+                    "server_connection_subscription",
+                    socket_utils::connect(
+                        self.config.sync_config.server_url.clone(),
+                        self.sync_page.folders_to_sync.clone(),
+                        self.sync_page.ignore_string_list.clone(),
+                        self.config.sync_config.default_data_storage_folder.clone(),
+                    ),
+                )
+                .map(Message::ServerMessageEvent),
+            );
+        }
         Subscription::batch(subscriptions_vec)
     }
 

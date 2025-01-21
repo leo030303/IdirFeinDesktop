@@ -86,6 +86,9 @@ pub enum SettingsPageMessage {
     GallerySetRunFaceRecognitionOnStart(bool),
     SyncUpdateServerUrl(String),
     SyncSetServerUrl,
+    SyncPickDefaultFolder,
+    SyncSetDefaultFolder(Option<PathBuf>),
+    SyncSetShouldSync(bool),
 }
 
 impl SettingsPage {

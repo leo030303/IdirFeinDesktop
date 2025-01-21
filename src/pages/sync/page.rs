@@ -1,26 +1,40 @@
 use iced::{Element, Task};
 use serde::{Deserialize, Serialize};
 
-use crate::app::Message;
+use crate::app::{Message, APP_ID};
 
 use super::update::update;
 use super::view::{main_view, tool_view};
 
+use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 
-use uuid::Uuid;
+pub const IGNORE_LIST_FILE_NAME: &str = "sync_ignore_list.json";
+pub const SYNC_LIST_FILE_NAME: &str = "sync_folder_list.json";
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyncPageConfig {
     pub server_url: String,
+    pub default_data_storage_folder: PathBuf,
+    pub should_sync: bool,
+}
+
+impl Default for SyncPageConfig {
+    fn default() -> Self {
+        Self {
+            server_url: String::new(),
+            default_data_storage_folder: dirs::home_dir().unwrap().join("idirfein"),
+            should_sync: false,
+        }
+    }
 }
 
 pub struct SyncPage {
     pub ignore_list_editor_text: String,
     pub is_connected_to_server: bool,
     pub ignore_string_list: Vec<String>,
-    pub ignore_folder_id_list: Vec<Uuid>,
-    pub folders_to_sync: Vec<(Uuid, PathBuf)>,
+    pub folders_to_sync: HashMap<String, PathBuf>,
 }
 
 #[derive(Debug, Clone)]
@@ -30,18 +44,36 @@ pub enum SyncPageMessage {
     DeleteFromIgnoreList(usize),
     PickNewSyncListFolder,
     SetNewSyncListFolder(Option<PathBuf>),
-    DeleteFromFolderList(usize),
+    DeleteFromFolderList(String),
 }
 
 impl SyncPage {
     pub fn new(_config: &SyncPageConfig) -> Self {
-        // TODO Read from disk
+        let ignore_string_list: Vec<String> = serde_json::from_str(
+            &fs::read_to_string(
+                dirs::config_dir()
+                    .unwrap()
+                    .join(APP_ID)
+                    .join(IGNORE_LIST_FILE_NAME),
+            )
+            .unwrap_or_default(),
+        )
+        .unwrap_or_default();
+        let folders_to_sync: HashMap<String, PathBuf> = serde_json::from_str(
+            &fs::read_to_string(
+                dirs::config_dir()
+                    .unwrap()
+                    .join(APP_ID)
+                    .join(SYNC_LIST_FILE_NAME),
+            )
+            .unwrap_or_default(),
+        )
+        .unwrap_or_default();
         Self {
             is_connected_to_server: false,
             ignore_list_editor_text: String::new(),
-            ignore_string_list: vec![],
-            folders_to_sync: vec![],
-            ignore_folder_id_list: vec![],
+            ignore_string_list,
+            folders_to_sync,
         }
     }
 

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use iced::Task;
 use rfd::FileDialog;
+use url::Url;
 
 use crate::config::AppConfig;
 use crate::pages::gallery::page::GalleryPageMessage;
@@ -237,10 +238,51 @@ pub fn update(
         }
         SettingsPageMessage::SyncUpdateServerUrl(s) => state.server_url_editor_text = s,
         SettingsPageMessage::SyncSetServerUrl => {
-            app_config.sync_config.server_url = state.server_url_editor_text.clone();
+            if Url::parse(&state.server_url_editor_text).is_ok() {
+                app_config.sync_config.server_url = state
+                    .server_url_editor_text
+                    .split("://")
+                    .last()
+                    .unwrap()
+                    .to_string();
+                return Task::done(Message::SaveConfig).chain(Task::done(Message::ShowToast(
+                    true,
+                    String::from("Close and reopen the app to start using the new server url"),
+                )));
+            } else {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Please enter a valid URL"),
+                ));
+            }
+        }
+        SettingsPageMessage::SyncPickDefaultFolder => {
+            return Task::perform(
+                async {
+                    FileDialog::new()
+                        .set_directory("/")
+                        .set_can_create_directories(true)
+                        .pick_folder()
+                },
+                |selected_folder| {
+                    Message::Settings(SettingsPageMessage::SyncSetDefaultFolder(selected_folder))
+                },
+            );
+        }
+        SettingsPageMessage::SyncSetDefaultFolder(selected_folder_option) => {
+            if let Some(selected_folder) = selected_folder_option {
+                app_config.sync_config.default_data_storage_folder = selected_folder;
+                return Task::done(Message::SaveConfig).chain(Task::done(Message::ShowToast(
+                    true,
+                    String::from("Close and reopen the app to start using the new sync folder"),
+                )));
+            }
+        }
+        SettingsPageMessage::SyncSetShouldSync(b) => {
+            app_config.sync_config.should_sync = b;
             return Task::done(Message::SaveConfig).chain(Task::done(Message::ShowToast(
                 true,
-                String::from("Close and reopen the app to start using the new server url"),
+                String::from("Close and reopen the app to reflect the sync setting"),
             )));
         }
     }
