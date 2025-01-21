@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 use zspell::Dictionary;
@@ -16,6 +17,7 @@ use super::notes_utils::NoteStatistics;
 use super::update::update;
 use super::view::{main_view, tool_view};
 
+pub const CATEGORIES_FILE_NAME: &str = ".categories";
 pub const ARCHIVED_FILE_NAME: &str = ".archived";
 pub const TEXT_EDITOR_ID: &str = "TEXT_EDITOR_ID";
 pub const NEW_NOTE_TEXT_INPUT_ID: &str = "NEW_NOTE_TEXT_INPUT_ID";
@@ -56,7 +58,6 @@ impl SerializableColour {
 #[derive(Debug, Clone)]
 pub struct Note {
     pub button_title: String,
-    pub category_name: Option<String>,
     pub file_path: PathBuf,
     pub last_edited: u64,
 }
@@ -116,6 +117,7 @@ pub struct NotesPage {
     pub(crate) rename_note_entry_text: String,
     pub(crate) display_delete_view: bool,
     pub(crate) categories_list: Vec<NoteCategory>,
+    pub(crate) categorised_notes_list: HashMap<String, Vec<String>>,
     pub(crate) new_category_entry_text: String,
     pub(crate) current_color_picker_colour: iced::Color,
     pub(crate) show_colour_picker: bool,
@@ -164,10 +166,10 @@ pub enum NotesPageMessage {
     ToggleDeleteNoteView,
     ShowMenuForNote(Option<PathBuf>),
     LoadCategories,
-    SetCategoriesList(Vec<NoteCategory>),
+    SetCategoriesList((Vec<NoteCategory>, HashMap<String, Vec<String>>)),
     SaveCategoriesList,
     AddCategory,
-    DeleteCategory,
+    DeleteCategory(String),
     SetNewCategoryText(String),
     SetColourPickerColour(iced::Color),
     ToggleColourPicker,
@@ -184,6 +186,7 @@ pub enum NotesPageMessage {
     ToggleArchiveNoteView,
     ToggleShowArchivedNotes,
     LoadArchivedList,
+    CategoriseNote(Option<String>),
 }
 
 impl NotesPage {
@@ -248,6 +251,7 @@ impl NotesPage {
             display_archive_view: false,
             archived_notes_list: vec![],
             show_archived_notes: false,
+            categorised_notes_list: HashMap::new(),
         }
     }
 

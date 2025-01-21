@@ -1,12 +1,13 @@
 use iced::widget::text_editor;
 use regex::Regex;
 use std::{
+    collections::HashMap,
     error::Error,
     ffi::OsStr,
     fs::{self, File},
     io::BufWriter,
     os::linux::fs::MetadataExt,
-    path::{Component, Path, PathBuf},
+    path::PathBuf,
 };
 
 use pulldown_cmark::Options;
@@ -295,7 +296,6 @@ pub async fn read_notes_from_folder(selected_folder: PathBuf) -> Vec<Note> {
                     file_path.path().file_stem().unwrap().to_str().unwrap(),
                     30,
                 ),
-                category_name: find_nested_folder_name(&selected_folder, file_path.path()),
                 file_path: file_path.path().to_path_buf(),
                 last_edited: file_path.metadata().unwrap().st_mtime() as u64,
             }
@@ -325,21 +325,6 @@ pub fn take_first_n_chars(input: &str, n: usize) -> String {
         .unwrap_or(input.len());
 
     input[..end_index].to_string()
-}
-
-pub fn find_nested_folder_name(original_folder: &PathBuf, file_path: &Path) -> Option<String> {
-    if let Ok(relative_path) = file_path.strip_prefix(original_folder) {
-        let mut components = relative_path.components();
-
-        if let Some(Component::Normal(folder_name)) = components.next() {
-            // Checks if there's another component of the path, that tells you its a directory as the root filename wouldn't have another component
-            if components.next().is_some() {
-                return folder_name.to_str().map(|s| s.to_string());
-            }
-        }
-    }
-
-    None
 }
 
 pub async fn export_pdf(text_to_convert: String, md_file_path: Option<PathBuf>) -> (bool, String) {
@@ -466,6 +451,18 @@ pub async fn export_to_website(
             String::from("Can't export, markdown filename is not set"),
         )
     }
+}
+
+pub fn get_category_for_note(
+    categorised_notes_list: &HashMap<String, Vec<String>>,
+    note_name: &String,
+) -> Option<String> {
+    for (key, notes_list) in categorised_notes_list.iter() {
+        if notes_list.contains(note_name) {
+            return Some(key.clone());
+        }
+    }
+    None
 }
 
 #[cfg(test)]

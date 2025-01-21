@@ -13,6 +13,7 @@ use iced::{Element, Fill, Font};
 use crate::app::Message;
 use crate::pages::notes::page::NEW_NOTE_TEXT_INPUT_ID;
 
+use super::notes_utils::get_category_for_note;
 use super::page::{Note, NotesPage, NotesPageMessage, RENAME_NOTE_TEXT_INPUT_ID, TEXT_EDITOR_ID};
 
 pub fn main_view(state: &NotesPage) -> Element<Message> {
@@ -128,6 +129,7 @@ fn new_note_button(state: &NotesPage) -> Element<Message> {
                 iced::widget::tooltip::Position::Bottom
             ),
         ]
+        .spacing(5)
     } else {
         row![
             button(
@@ -264,13 +266,22 @@ fn sidebar_note_button<'a>(state: &'a NotesPage, note: &'a Note) -> Element<'a, 
     row![
         button(
             row![
-                if let Some(category_name) = &note.category_name {
+                if let Some(category_name) = get_category_for_note(
+                    &state.categorised_notes_list,
+                    &note
+                        .file_path
+                        .file_stem()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or("Couldn't read filename")
+                        .to_lowercase()
+                ) {
                     column![
                         container(Space::with_width(20.0).height(Length::Fixed(20.0))).style(
                             move |_| container::Style::default()
                                 .background(get_colour_for_category(
                                     &state.categories_list,
-                                    category_name
+                                    &category_name
                                 ))
                                 .border(iced::Border::default().rounded(5.0))
                         )

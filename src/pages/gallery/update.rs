@@ -63,8 +63,6 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                                 .filter_entry(|entry| {
                                     !entry.path().ends_with(THUMBNAIL_FOLDER_NAME)
                                         && !entry.path().ends_with(FACE_DATA_FOLDER_NAME)
-                                        && !entry.path().ends_with(".backup_face_data")
-                                    // TODO remove this
                                 });
                             let mut all_image_files = directory_iterator
                                 .filter_map(|read_dir_object| read_dir_object.ok())

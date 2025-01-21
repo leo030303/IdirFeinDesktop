@@ -4,7 +4,7 @@ use iced::{
 };
 use loro::{LoroDoc, UndoManager, VersionVector};
 use rfd::FileDialog;
-use std::{fs, path::PathBuf};
+use std::{collections::HashMap, fs};
 
 use crate::{
     app::Message,
@@ -13,13 +13,14 @@ use crate::{
 
 use super::{
     notes_utils::{
-        apply_edit_to_note, export_pdf, export_to_website, read_file_to_note,
-        read_notes_from_folder, select_specific_string_in_editor, NoteStatistics,
+        apply_edit_to_note, export_pdf, export_to_website, get_category_for_note,
+        read_file_to_note, read_notes_from_folder, select_specific_string_in_editor,
+        NoteStatistics,
     },
     page::{
         NoteCategory, NotesPage, NotesPageMessage, SerializableColour, ARCHIVED_FILE_NAME,
-        INITIAL_ORIGIN_STR, LORO_NOTE_ID, MAX_UNDO_STEPS, NEW_NOTE_TEXT_INPUT_ID,
-        RENAME_NOTE_TEXT_INPUT_ID,
+        CATEGORIES_FILE_NAME, INITIAL_ORIGIN_STR, LORO_NOTE_ID, MAX_UNDO_STEPS,
+        NEW_NOTE_TEXT_INPUT_ID, RENAME_NOTE_TEXT_INPUT_ID,
     },
 };
 
@@ -389,14 +390,14 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             if let Some(mut selected_folder) = state.selected_folder.clone() {
                 return Task::perform(
                     async move {
-                        selected_folder.push(".categories.json");
+                        selected_folder.push(CATEGORIES_FILE_NAME);
                         let categories_file = selected_folder;
                         if let Ok(categories_json) = fs::read_to_string(categories_file) {
-                            let categories_list: Vec<NoteCategory> =
+                            let categories_list: (Vec<NoteCategory>, HashMap<String, Vec<String>>) =
                                 serde_json::from_str(&categories_json).unwrap_or_default();
                             categories_list
                         } else {
-                            vec![]
+                            (vec![], HashMap::new())
                         }
                     },
                     |categories_list| {
@@ -406,14 +407,18 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             }
         }
         NotesPageMessage::SetCategoriesList(categories_list) => {
-            state.categories_list = categories_list
+            state.categories_list = categories_list.0;
+            state.categorised_notes_list = categories_list.1;
         }
         NotesPageMessage::SaveCategoriesList => {
-            let categories_list = state.categories_list.clone();
+            let categories_list = (
+                state.categories_list.clone(),
+                state.categorised_notes_list.clone(),
+            );
             if let Some(mut selected_folder) = state.selected_folder.clone() {
                 return Task::perform(
                     async move {
-                        selected_folder.push(".categories.json");
+                        selected_folder.push(CATEGORIES_FILE_NAME);
                         let categories_file = selected_folder;
                         match serde_json::to_string(&categories_list) {
                             Ok(serialised_categories) => {
@@ -442,23 +447,11 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                 SerializableColour::from_iced_color(state.current_color_picker_colour);
             if serializable_colour != SerializableColour::default() {
                 if !state.new_category_entry_text.is_empty() {
-                    let invalid_chars = r#"/\?%*:|"<>"#;
-                    if !state
-                        .new_category_entry_text
-                        .chars()
-                        .any(|c| invalid_chars.contains(c) || c.is_control())
-                    {
-                        state.categories_list.push(NoteCategory {
-                            name: state.new_category_entry_text.clone(),
-                            colour: serializable_colour,
-                        });
-                        return Task::done(Message::Notes(NotesPageMessage::SaveCategoriesList));
-                    } else {
-                        return Task::done(Message::ShowToast(
-                            false,
-                            format!("Category name can't contain any of {invalid_chars}"),
-                        ));
-                    }
+                    state.categories_list.push(NoteCategory {
+                        name: state.new_category_entry_text.clone(),
+                        colour: serializable_colour,
+                    });
+                    return Task::done(Message::Notes(NotesPageMessage::SaveCategoriesList));
                 } else {
                     return Task::done(Message::ShowToast(
                         false,
@@ -472,7 +465,19 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                 ));
             }
         }
-        NotesPageMessage::DeleteCategory => todo!(),
+        NotesPageMessage::DeleteCategory(category_name_to_remove) => {
+            state.categories_list.remove(
+                state
+                    .categories_list
+                    .iter()
+                    .position(|category| category.name == category_name_to_remove)
+                    .unwrap(),
+            );
+            state
+                .categorised_notes_list
+                .remove(&category_name_to_remove);
+            return Task::done(Message::Notes(NotesPageMessage::SaveCategoriesList));
+        }
         NotesPageMessage::SetNewCategoryText(s) => state.new_category_entry_text = s,
         NotesPageMessage::SetColourPickerColour(colour) => {
             state.current_color_picker_colour = colour;
@@ -601,6 +606,36 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                     vec![]
                 };
             state.archived_notes_list = archived_notes_list;
+        }
+        NotesPageMessage::CategoriseNote(category_option) => {
+            let target_note_name = state
+                .current_note_being_managed_path
+                .as_ref()
+                .unwrap()
+                .file_stem()
+                .unwrap_or_default()
+                .to_str()
+                .unwrap_or("Couldn't read filename")
+                .to_lowercase();
+            if let Some(category_name) = category_option {
+                state
+                    .categorised_notes_list
+                    .get_mut(&category_name)
+                    .unwrap()
+                    .push(target_note_name);
+            } else if let Some(category_name) =
+                get_category_for_note(&state.categorised_notes_list, &target_note_name)
+            {
+                if let Some(notes_list) = state.categorised_notes_list.get_mut(&category_name) {
+                    notes_list.remove(
+                        notes_list
+                            .iter()
+                            .position(|note_name| *note_name == target_note_name)
+                            .unwrap(),
+                    );
+                }
+            }
+            return Task::done(Message::Notes(NotesPageMessage::SaveCategoriesList));
         }
     }
     Task::none()
