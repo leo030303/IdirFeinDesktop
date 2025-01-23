@@ -18,6 +18,8 @@ pub struct SyncPageConfig {
     pub server_url: String,
     pub default_data_storage_folder: PathBuf,
     pub should_sync: bool,
+    pub client_username: Option<String>,
+    pub client_secret: Option<Vec<u8>>,
 }
 
 impl Default for SyncPageConfig {
@@ -26,6 +28,8 @@ impl Default for SyncPageConfig {
             server_url: String::new(),
             default_data_storage_folder: dirs::home_dir().unwrap().join("idirfein"),
             should_sync: false,
+            client_username: None,
+            client_secret: None,
         }
     }
 }

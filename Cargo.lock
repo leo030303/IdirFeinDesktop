@@ -2852,6 +2852,7 @@ version = "0.1.0"
 dependencies = [
  "arboard",
  "async-tungstenite",
+ "base64 0.22.1",
  "bytes",
  "dirs 5.0.1",
  "fast_rsync",

@@ -8,3 +8,8 @@ pub fn get_auth_pair() -> (String, String) {
     let (client_id, totp_seed) = get_auth_details();
     (client_id, totp_seed)
 }
+
+pub fn calculate_totp(_client_secret: &[u8]) -> String {
+    // TODO calculate properly
+    String::from("12345")
+}

@@ -1,5 +1,5 @@
 use iced::{
-    widget::{button, column, container, row, svg, text, text_input, Svg, Tooltip},
+    widget::{button, column, container, row, scrollable, svg, text, text_input, Svg, Tooltip},
     Alignment::Center,
     Element, Font, Length,
 };
@@ -53,44 +53,46 @@ fn ignore_list_manager(state: &SyncPage) -> Element<Message> {
             button(text("Add")).on_press(Message::Sync(SyncPageMessage::AddToIgnoreList))
         ]
         .width(Length::Fill),
-        column(
-            state
-                .ignore_string_list
-                .iter()
-                .enumerate()
-                .map(|(index, ignore_list_item)| {
-                    container(
-                        row![
-                            text(ignore_list_item)
-                                .font(Font {
-                                    weight: iced::font::Weight::Medium,
-                                    ..Default::default()
-                                })
-                                .align_y(Center)
-                                .width(Length::Fill)
-                                .height(Length::Shrink),
-                            Tooltip::new(
-                                button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                                    "../../../icons/delete.svg"
-                                ))))
-                                .on_press(Message::Sync(SyncPageMessage::DeleteFromIgnoreList(
-                                    index
-                                )))
-                                .style(button::danger)
-                                .width(Length::Fixed(50.0))
-                                .height(Length::Fixed(30.0)),
-                                "Remove",
-                                iced::widget::tooltip::Position::Bottom
-                            ),
-                        ]
-                        .padding(5)
-                        .spacing(10),
-                    )
-                    .style(container::bordered_box)
-                    .into()
-                })
+        scrollable(
+            column(
+                state
+                    .ignore_string_list
+                    .iter()
+                    .enumerate()
+                    .map(|(index, ignore_list_item)| {
+                        container(
+                            row![
+                                text(ignore_list_item)
+                                    .font(Font {
+                                        weight: iced::font::Weight::Medium,
+                                        ..Default::default()
+                                    })
+                                    .align_y(Center)
+                                    .width(Length::Fill)
+                                    .height(Length::Shrink),
+                                Tooltip::new(
+                                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                        "../../../icons/delete.svg"
+                                    ))))
+                                    .on_press(Message::Sync(SyncPageMessage::DeleteFromIgnoreList(
+                                        index
+                                    )))
+                                    .style(button::danger)
+                                    .width(Length::Fixed(50.0))
+                                    .height(Length::Fixed(30.0)),
+                                    "Remove",
+                                    iced::widget::tooltip::Position::Bottom
+                                ),
+                            ]
+                            .padding(5)
+                            .spacing(10),
+                        )
+                        .style(container::bordered_box)
+                        .into()
+                    })
+            )
+            .spacing(10)
         )
-        .spacing(10)
     ]
     .spacing(10)
     .width(Length::FillPortion(1))
@@ -107,43 +109,45 @@ fn sync_folder_manager(state: &SyncPage) -> Element<Message> {
         )
         .width(Length::Fill)
         .on_press(Message::Sync(SyncPageMessage::PickNewSyncListFolder))],
-        column(
-            state
-                .folders_to_sync
-                .iter()
-                .map(|(folder_id, folder_path)| {
-                    container(
-                        row![
-                            text(folder_path.to_str().unwrap_or("Error reading folder path"))
-                                .font(Font {
-                                    weight: iced::font::Weight::Medium,
-                                    ..Default::default()
-                                })
-                                .align_y(Center)
-                                .width(Length::Fill)
-                                .height(Length::Shrink),
-                            Tooltip::new(
-                                button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                                    "../../../icons/delete.svg"
-                                ))))
-                                .on_press(Message::Sync(SyncPageMessage::DeleteFromFolderList(
-                                    folder_id.clone()
-                                )))
-                                .style(button::danger)
-                                .width(Length::Fixed(50.0))
-                                .height(Length::Fixed(30.0)),
-                                "Remove",
-                                iced::widget::tooltip::Position::Bottom
-                            ),
-                        ]
-                        .padding(5)
-                        .spacing(10),
-                    )
-                    .style(container::bordered_box)
-                    .into()
-                })
+        scrollable(
+            column(
+                state
+                    .folders_to_sync
+                    .iter()
+                    .map(|(folder_id, folder_path)| {
+                        container(
+                            row![
+                                text(folder_path.to_str().unwrap_or("Error reading folder path"))
+                                    .font(Font {
+                                        weight: iced::font::Weight::Medium,
+                                        ..Default::default()
+                                    })
+                                    .align_y(Center)
+                                    .width(Length::Fill)
+                                    .height(Length::Shrink),
+                                Tooltip::new(
+                                    button(Svg::new(svg::Handle::from_memory(include_bytes!(
+                                        "../../../icons/delete.svg"
+                                    ))))
+                                    .on_press(Message::Sync(SyncPageMessage::DeleteFromFolderList(
+                                        folder_id.clone()
+                                    )))
+                                    .style(button::danger)
+                                    .width(Length::Fixed(50.0))
+                                    .height(Length::Fixed(30.0)),
+                                    "Remove",
+                                    iced::widget::tooltip::Position::Bottom
+                                ),
+                            ]
+                            .padding(5)
+                            .spacing(10),
+                        )
+                        .style(container::bordered_box)
+                        .into()
+                    })
+            )
+            .spacing(10)
         )
-        .spacing(10)
     ]
     .spacing(10)
     .width(Length::FillPortion(1))

@@ -24,7 +24,7 @@ pub struct AppConfig {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            theme_string: Self::get_string_from_theme(Theme::Light),
+            theme_string: Self::get_string_from_theme(Theme::TokyoNightStorm),
             default_page_on_open: Page::Notes,
             notes_config: NotesPageConfig::default(),
             passwords_config: PasswordPageConfig::default(),

@@ -45,6 +45,7 @@ pub enum Message {
     SaveConfig,
     ServerMessageEvent(socket_utils::Event),
     SendServerMessage(String),
+    FinishSetup,
 }
 
 pub struct AppState {
@@ -163,6 +164,11 @@ impl AppState {
                     println!("Disconnected");
                 }
             }
+            Message::FinishSetup => {
+                self.is_setting_up_server = false;
+                self.config = self.setup_wizard.work_in_progress_client_config.clone();
+                return Task::done(Message::SaveConfig);
+            }
             Message::None => (),
         }
         Task::none()
@@ -170,39 +176,39 @@ impl AppState {
 
     pub fn subscription(&self) -> Subscription<Message> {
         let mut subscriptions_vec = vec![];
-        if !self.is_setting_up_server {
-            subscriptions_vec.push(event::listen_with(|event, status, _id| {
-                match (event, status) {
-                    (Event::Window(window::Event::CloseRequested), _) => {
-                        Some(Message::CloseWindowRequest)
-                    }
-                    (
-                        Event::Keyboard(keyboard::Event::KeyPressed {
-                            key: Key::Character(pressed_char),
-                            modifiers: Modifiers::ALT,
-                            ..
-                        }),
-                        _,
-                    ) => {
-                        if pressed_char.as_ref() == "1" {
-                            Some(Message::ChangePage(Page::Notes))
-                        } else if pressed_char.as_ref() == "2" {
-                            Some(Message::ChangePage(Page::Tasks))
-                        } else if pressed_char.as_ref() == "3" {
-                            Some(Message::ChangePage(Page::Passwords))
-                        } else if pressed_char.as_ref() == "4" {
-                            Some(Message::ChangePage(Page::Sync))
-                        } else if pressed_char.as_ref() == "5" {
-                            Some(Message::ChangePage(Page::Gallery))
-                        } else if pressed_char.as_ref() == "6" {
-                            Some(Message::ChangePage(Page::Settings))
-                        } else {
-                            None
-                        }
-                    }
-                    _ => None,
+        subscriptions_vec.push(event::listen_with(|event, status, _id| {
+            match (event, status) {
+                (Event::Window(window::Event::CloseRequested), _) => {
+                    Some(Message::CloseWindowRequest)
                 }
-            }));
+                (
+                    Event::Keyboard(keyboard::Event::KeyPressed {
+                        key: Key::Character(pressed_char),
+                        modifiers: Modifiers::ALT,
+                        ..
+                    }),
+                    _,
+                ) => {
+                    if pressed_char.as_ref() == "1" {
+                        Some(Message::ChangePage(Page::Notes))
+                    } else if pressed_char.as_ref() == "2" {
+                        Some(Message::ChangePage(Page::Tasks))
+                    } else if pressed_char.as_ref() == "3" {
+                        Some(Message::ChangePage(Page::Passwords))
+                    } else if pressed_char.as_ref() == "4" {
+                        Some(Message::ChangePage(Page::Sync))
+                    } else if pressed_char.as_ref() == "5" {
+                        Some(Message::ChangePage(Page::Gallery))
+                    } else if pressed_char.as_ref() == "6" {
+                        Some(Message::ChangePage(Page::Settings))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            }
+        }));
+        if !self.is_setting_up_server {
             match self.current_page {
                 Page::Settings => (),
                 Page::Passwords => {

@@ -4,6 +4,7 @@ use iced::{Element, Task};
 use serde::{Deserialize, Serialize};
 
 use crate::app::Message;
+use crate::config::AppConfig;
 
 use super::update::update;
 use super::view::main_view;
@@ -32,9 +33,14 @@ impl Default for ServerConfig {
 pub struct SetupWizard {
     pub current_step: SetupWizardStep,
     pub work_in_progress_server_config: ServerConfig,
+    pub work_in_progress_client_config: AppConfig,
     pub port_input_text: String,
     pub static_ip_input_text: String,
     pub new_user_name_input_text: String,
+    pub server_url_input_text: String,
+    pub client_username_input_text: String,
+    pub client_secret_input_text: String,
+    pub is_successful_connection: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -47,6 +53,12 @@ pub enum SetupWizardMessage {
     AddNewUser,
     UpdateNewUserNameInputText(String),
     SetIsLanOnly(bool),
+    UpdateServerUrlInputText(String),
+    UpdateClientUsernameInputText(String),
+    UpdateClientSecretInputText(String),
+    SetExistingServerDetails,
+    TestConnection,
+    SetConnectionSuccess(Option<bool>),
 }
 
 #[derive(Debug, Clone)]
@@ -55,7 +67,7 @@ pub enum SetupWizardStep {
     DecideWhetherToSetupServer,
 
     // Connect to existing server path
-    /// Please enter your server Url and totp secret, ask your admin for these, share securely, you won't need these again
+    /// Please enter your server Url, username, and totp secret, ask your admin for these, share securely, you won't need these again
     EnterServerUrlAndTotpSecret,
     /// Tries to connect to server, if fails theres a back button to reenter previous details
     ConfirmConnection,
@@ -110,6 +122,11 @@ impl SetupWizard {
             static_ip_input_text: format!("{:?}", server_config.static_ip),
             new_user_name_input_text: String::new(),
             work_in_progress_server_config: server_config,
+            work_in_progress_client_config: AppConfig::default(),
+            server_url_input_text: String::new(),
+            client_username_input_text: String::new(),
+            client_secret_input_text: String::new(),
+            is_successful_connection: None,
         }
     }
 
