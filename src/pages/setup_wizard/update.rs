@@ -1,13 +1,10 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use base64::Engine;
 use iced::Task;
 use url::Url;
 
-use crate::{
-    app::Message,
-    utils::{auth_utils, sync_utils::Filedata},
-};
+use crate::{app::Message, utils::auth_utils};
 
 use super::page::{SetupWizard, SetupWizardMessage, SetupWizardStep};
 
@@ -15,7 +12,7 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
     match message {
         SetupWizardMessage::GoToStep(step_to_go_to) => {
             state.current_step = step_to_go_to;
-            state.is_successful_connection = None;
+            state.connection_has_been_attempted = false;
         }
 
         SetupWizardMessage::SetServerPort => {
@@ -108,16 +105,16 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                 .last()
                 .map(|item| item.to_string())
                 .expect("Just checked this");
-            state.is_successful_connection = None;
+            state.connection_has_been_attempted = false;
 
             return Task::perform(
                 async move {
-                    let mut post_server_url_with_auth =
+                    let mut server_url_with_auth =
                         Url::parse(&(String::from("http://") + &server_url)) // TODO Change to https for prod
                             .unwrap()
-                            .join("/sync/initialise")
+                            .join("/sync/first_sync")
                             .unwrap();
-                    post_server_url_with_auth
+                    server_url_with_auth
                         .query_pairs_mut()
                         .append_pair("client_id", &client_username);
 
@@ -125,39 +122,57 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                     let mut retry_counter = 0;
                     loop {
                         if retry_counter >= 3 {
-                            break false;
+                            break None;
                         }
                         match reqwest::Client::new()
-                            .post(post_server_url_with_auth.as_ref())
-                            .body(
-                                serde_json::to_string(&(
-                                    Vec::<Filedata>::new(),
-                                    Vec::<String>::new(),
-                                ))
-                                .expect("Can't fail"),
-                            )
+                            .get(server_url_with_auth.as_ref())
                             .bearer_auth(&auth_token)
                             .send()
                             .await
                         {
                             Ok(res) => {
-                                break res.status().is_success();
+                                if res.status().is_success() {
+                                    break res.bytes().await.ok().and_then(|res_bytes| {
+                                        serde_json::from_slice::<HashMap<String, Vec<String>>>(
+                                            &res_bytes,
+                                        )
+                                        .ok()
+                                    });
+                                }
                             }
                             Err(err) => {
-                                println!("Sync post error, will retry: {err:?}");
+                                println!("Sync get error, will retry: {err:?}");
                             }
                         }
                         retry_counter += 1;
                         tokio::time::sleep(Duration::from_secs(5)).await;
                     }
                 },
-                |is_success| {
-                    Message::SetupWizard(SetupWizardMessage::SetConnectionSuccess(Some(is_success)))
+                |res_option| {
+                    Message::SetupWizard(SetupWizardMessage::SetRemoteFolderInfo(res_option))
                 },
             );
         }
-        SetupWizardMessage::SetConnectionSuccess(b) => {
-            state.is_successful_connection = b;
+        SetupWizardMessage::SetRemoteFolderInfo(remote_folders_info_option) => {
+            state.connection_has_been_attempted = true;
+            state.remote_folders_info = remote_folders_info_option;
+        }
+        SetupWizardMessage::SetSelectedRemoteFolder(selected_remote_folder) => {
+            state.selected_remote_folder = selected_remote_folder;
+        }
+        SetupWizardMessage::IgnoreFolderId(id_to_ignore) => {
+            state
+                .work_in_progress_client_config
+                .sync_config
+                .ignored_remote_folder_ids
+                .push(id_to_ignore);
+        }
+        SetupWizardMessage::UnignoreFolderId(index_to_remove) => {
+            state
+                .work_in_progress_client_config
+                .sync_config
+                .ignored_remote_folder_ids
+                .remove(index_to_remove);
         }
     }
     Task::none()

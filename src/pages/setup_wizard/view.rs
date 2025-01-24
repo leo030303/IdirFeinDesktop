@@ -1,4 +1,4 @@
-use iced::{Element, Length};
+use iced::{widget::scrollable, Element, Length};
 
 use crate::app::Message;
 use iced::widget::{button, column, container, row, text, text_input, Space};
@@ -102,8 +102,8 @@ fn enter_server_url_and_totp_secret_view(state: &SetupWizard) -> Element<Message
 
 fn confirm_connection_view(state: &SetupWizard) -> Element<Message> {
     container(
-        if let Some(is_success) = state.is_successful_connection {
-            if is_success {
+        if state.connection_has_been_attempted {
+            if state.remote_folders_info.is_some(){
                 column![
                     text("Connection Successful!")
                         .width(Length::Fill)
@@ -156,8 +156,58 @@ fn confirm_connection_view(state: &SetupWizard) -> Element<Message> {
     .into()
 }
 
-fn choose_remote_folders_to_sync_view(_state: &SetupWizard) -> Element<Message> {
-    "ChooseRemoteFoldersToSync ".into()
+fn choose_remote_folders_to_sync_view(state: &SetupWizard) -> Element<Message> {
+    container(column![
+        text("Select which remote folders to sync here")
+            .width(Length::Fill)
+            .center()
+            .size(24),
+        text("You're successfully connected to the server. Choose from the list of remote folders to decide which ones you want downloaded to this device and which you want to ignore")
+            .width(Length::Fill)
+            .center()
+            .size(20),
+        row![
+            column![
+            text("Remote Folders").size(20).width(Length::Fill).center(),
+            scrollable(column(state.remote_folders_info.as_ref().expect("Shouldn't have been able to get to that page if this is None, please report this as a bug").iter().filter(|(folder_id, _)| !state.work_in_progress_client_config.sync_config.ignored_remote_folder_ids.contains(folder_id)).map(|(folder_id, list_of_paths)| row![
+                button(text(format!("ID: {folder_id} Files Count: {}", list_of_paths.len()))).on_press(Message::SetupWizard(SetupWizardMessage::SetSelectedRemoteFolder(Some(folder_id.clone())))).width(Length::Fill),
+                button("Ignore").style(button::danger).on_press(Message::SetupWizard(SetupWizardMessage::IgnoreFolderId(folder_id.clone())))
+            ].spacing(5).into())).spacing(5)).width(Length::Fill).height(Length::FillPortion(1)),
+            Space::with_height(Length::Fixed(10.0)),
+            text("Ignored folders").size(20).width(Length::Fill).center(),
+            scrollable(column(state.work_in_progress_client_config.sync_config.ignored_remote_folder_ids.iter().enumerate().map(|(index, folder_id)| row![
+                button(text(format!("Ignored: {folder_id}"))).on_press(Message::SetupWizard(SetupWizardMessage::SetSelectedRemoteFolder(Some(folder_id.clone())))).width(Length::Fill),
+                button("Unignore").on_press(Message::SetupWizard(SetupWizardMessage::UnignoreFolderId(index)))
+            ].spacing(5).into())).spacing(5)).width(Length::Fill).height(Length::FillPortion(1)),
+                
+            ],
+            if let Some(selected_remote_folder_id) = state.selected_remote_folder.as_ref() {
+            column![
+                scrollable(
+                    column![
+                        text(format!("ID: {selected_remote_folder_id}")).size(20).width(Length::Fill).center(),
+                        text(
+                            state.remote_folders_info.as_ref().expect("Shouldn't have been able to get to that page if this is None, please report this as a bug")
+                            .get(selected_remote_folder_id)
+                            .expect("This should be an item in the array, please report this as a bug")
+                            .join("\n")
+                            )
+                    ]
+                )
+            ].width(Length::Fill)
+            } else {
+                column![]
+            }
+        ].spacing(10),
+        button(text("Continue").width(Length::Fill).center()).on_press(Message::SetupWizard(
+            SetupWizardMessage::GoToStep(
+                SetupWizardStep::ExistingServerCloseWizard
+            )))
+        .width(Length::Fill)
+    ].max_width(1200)
+    .padding(20)
+    .spacing(10)).center_x(Length::Fill)
+    .into()
 }
 fn existing_server_close_wizard_view(_state: &SetupWizard) -> Element<Message> {
     container(column![

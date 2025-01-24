@@ -20,6 +20,7 @@ pub struct SyncPageConfig {
     pub should_sync: bool,
     pub client_username: Option<String>,
     pub client_secret: Option<Vec<u8>>,
+    pub ignored_remote_folder_ids: Vec<String>,
 }
 
 impl Default for SyncPageConfig {
@@ -30,6 +31,7 @@ impl Default for SyncPageConfig {
             should_sync: false,
             client_username: None,
             client_secret: None,
+            ignored_remote_folder_ids: vec![],
         }
     }
 }

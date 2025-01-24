@@ -40,7 +40,9 @@ pub struct SetupWizard {
     pub server_url_input_text: String,
     pub client_username_input_text: String,
     pub client_secret_input_text: String,
-    pub is_successful_connection: Option<bool>,
+    pub connection_has_been_attempted: bool,
+    pub remote_folders_info: Option<HashMap<String, Vec<String>>>,
+    pub selected_remote_folder: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -58,7 +60,10 @@ pub enum SetupWizardMessage {
     UpdateClientSecretInputText(String),
     SetExistingServerDetails,
     TestConnection,
-    SetConnectionSuccess(Option<bool>),
+    SetRemoteFolderInfo(Option<HashMap<String, Vec<String>>>),
+    SetSelectedRemoteFolder(Option<String>),
+    IgnoreFolderId(String),
+    UnignoreFolderId(usize),
 }
 
 #[derive(Debug, Clone)]
@@ -126,7 +131,9 @@ impl SetupWizard {
             server_url_input_text: String::new(),
             client_username_input_text: String::new(),
             client_secret_input_text: String::new(),
-            is_successful_connection: None,
+            connection_has_been_attempted: false,
+            remote_folders_info: None,
+            selected_remote_folder: None,
         }
     }
 
