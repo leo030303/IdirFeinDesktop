@@ -102,6 +102,7 @@ pub struct SyncManager {
     pub list_of_folders: HashMap<String, PathBuf>,
     pub client_file_list: Vec<Filedata>,
     pub client_ignore_list: Vec<String>,
+    pub client_ignored_remote_folders_list: Vec<String>,
     pub default_data_storage_folder: PathBuf,
 }
 
@@ -110,6 +111,7 @@ impl SyncManager {
         list_of_folders: HashMap<String, PathBuf>,
         client_ignore_list: Vec<String>,
         default_data_storage_folder: PathBuf,
+        client_ignored_remote_folders_list: Vec<String>,
     ) -> Self {
         let previously_synced_client_file_list = vec![]; // TODO read from config
         let client_file_list = SyncManager::get_list_of_files_to_sync(
@@ -122,6 +124,7 @@ impl SyncManager {
             client_file_list,
             client_ignore_list,
             default_data_storage_folder,
+            client_ignored_remote_folders_list,
         }
     }
     pub fn get_list_of_files_to_sync(
@@ -287,13 +290,22 @@ impl SyncManager {
     }
     pub fn get_initialiser_data(&self) -> String {
         println!("{:?}", self.client_file_list); // TODO Remove this
-        serde_json::to_string(&(
-            self.client_file_list.clone(),
-            self.client_ignore_list.clone(),
-        ))
+        serde_json::to_string(&SyncInitialiserData {
+            client_file_list: self.client_file_list.clone(),
+            client_ignore_list: self.client_ignore_list.clone(),
+            client_ignored_remote_folders_list: self.client_ignored_remote_folders_list.clone(),
+        })
         .unwrap()
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SyncInitialiserData {
+    pub client_file_list: Vec<Filedata>,
+    pub client_ignore_list: Vec<String>,
+    pub client_ignored_remote_folders_list: Vec<String>,
+}
+
 /// Get the ideal block size for a given file, based off the rsync implementation https://git.samba.org/?p=rsync.git;a=blob;f=generator.c;h=5538a92dd57ddf8671a2404a7308ada73a710f58;hb=HEAD#l600
 pub fn get_ideal_block_size(file_size: u64) -> u32 {
     let sqrt = (file_size as f64).sqrt();

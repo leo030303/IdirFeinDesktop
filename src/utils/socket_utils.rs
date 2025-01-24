@@ -27,6 +27,7 @@ pub fn connect(
     folders_to_sync: HashMap<String, PathBuf>,
     ignore_list: Vec<String>,
     default_data_storage_folder: PathBuf,
+    client_ignored_remote_folders_list: Vec<String>,
 ) -> impl Stream<Item = Event> {
     stream::channel(100, |mut output| async move {
         let mut state = ConnectionState::Disconnected;
@@ -40,8 +41,12 @@ pub fn connect(
             .query_pairs_mut()
             .append_pair("client_id", &client_id);
 
-        let mut sync_manager =
-            SyncManager::new(folders_to_sync, ignore_list, default_data_storage_folder);
+        let mut sync_manager = SyncManager::new(
+            folders_to_sync,
+            ignore_list,
+            default_data_storage_folder,
+            client_ignored_remote_folders_list,
+        );
 
         let res = loop {
             match reqwest::Client::new()

@@ -234,6 +234,7 @@ impl AppState {
                             self.sync_page.folders_to_sync.clone(),
                             self.sync_page.ignore_string_list.clone(),
                             self.config.sync_config.default_data_storage_folder.clone(),
+                            self.config.sync_config.ignored_remote_folder_ids.clone(),
                         ),
                     )
                     .map(Message::ServerMessageEvent),
