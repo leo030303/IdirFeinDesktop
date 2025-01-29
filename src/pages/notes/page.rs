@@ -198,9 +198,11 @@ impl NotesPage {
         undo_manager.set_max_undo_steps(MAX_UNDO_STEPS);
         undo_manager.add_exclude_origin_prefix(INITIAL_ORIGIN_STR);
 
-        let aff_content = include_str!("../../../resources/spelling_dictionaries/english_gb.aff");
+        let aff_content =
+            include_str!("../../../data/resources/spelling_dictionaries/english_gb.aff");
 
-        let dic_content = include_str!("../../../resources/spelling_dictionaries/english_gb.dic");
+        let dic_content =
+            include_str!("../../../data/resources/spelling_dictionaries/english_gb.dic");
 
         let spell_check_dictionary: Dictionary = zspell::builder()
             .config_str(aff_content)

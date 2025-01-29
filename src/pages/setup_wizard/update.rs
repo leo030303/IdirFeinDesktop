@@ -4,9 +4,17 @@ use base64::Engine;
 use iced::Task;
 use url::Url;
 
+use crate::constants::APP_ID;
 use crate::{app::Message, utils::auth_utils};
 
-use super::page::{SetupWizard, SetupWizardMessage, SetupWizardStep};
+use super::{
+    page::{DiskInfo, SetupWizard, SetupWizardMessage, SetupWizardStep},
+    setup_wizard_utils,
+};
+
+const RPI_OS_IMAGE_ARCHIVE_FILENAME: &str = "rpi_os_lite.img.xz";
+const RPI_OS_IMAGE_EXTRACTED_FILENAME: &str = "rpi_os_lite.img";
+const RASPBERRY_PI_OS_LITE_DOWNLOAD_LINK: &str = "https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-11-19/2024-11-19-raspios-bookworm-arm64-lite.img.xz";
 
 pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Message> {
     match message {
@@ -173,6 +181,75 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                 .sync_config
                 .ignored_remote_folder_ids
                 .remove(index_to_remove);
+        }
+        SetupWizardMessage::SetSyncFrequency(sync_frequency) => {
+            state
+                .work_in_progress_client_config
+                .sync_config
+                .sync_frequency_settings = sync_frequency;
+        }
+        SetupWizardMessage::SetSetupType(setup_type) => {
+            state.setup_type = setup_type;
+        }
+        SetupWizardMessage::GetListOfDisks => {
+            let disks = sysinfo::Disks::new_with_refreshed_list();
+            state.list_of_disks = disks.list().iter().map(DiskInfo::from_disk).collect();
+        }
+        SetupWizardMessage::SetProgressBarValue(progress) => {
+            state.progress_bar_value = progress;
+        }
+        SetupWizardMessage::DownloadImg => {
+            let mut iso_download_file_path =
+                dirs::data_local_dir().expect("No config directory, big problem");
+            iso_download_file_path.push(APP_ID);
+            iso_download_file_path.push("rpi_os_lite.img.xz");
+            return Task::run(
+                setup_wizard_utils::download_file(
+                    RASPBERRY_PI_OS_LITE_DOWNLOAD_LINK.to_owned(),
+                    iso_download_file_path,
+                ),
+                |progress_result| match progress_result {
+                    Ok(progress) => {
+                        Message::SetupWizard(SetupWizardMessage::SetProgressBarValue(progress))
+                    }
+                    Err(err) => Message::ShowToast(false, format!("Error with download: {err}")),
+                },
+            )
+            .chain(Task::done(Message::SetupWizard(
+                SetupWizardMessage::ExtractImg,
+            )));
+        }
+        SetupWizardMessage::FlashSdCard => {
+            let mut extracted_img_file_path =
+                dirs::data_local_dir().expect("No config directory, big problem");
+            extracted_img_file_path.push(APP_ID);
+            extracted_img_file_path.push(RPI_OS_IMAGE_EXTRACTED_FILENAME);
+            setup_wizard_utils::flash_img_to_sd_card(extracted_img_file_path);
+        }
+        SetupWizardMessage::ExtractImg => {
+            let mut img_archive_download_file_path =
+                dirs::data_local_dir().expect("No config directory, big problem");
+            img_archive_download_file_path.push(APP_ID);
+            img_archive_download_file_path.push(RPI_OS_IMAGE_ARCHIVE_FILENAME);
+            let mut extracted_img_file_path =
+                dirs::data_local_dir().expect("No config directory, big problem");
+            extracted_img_file_path.push(APP_ID);
+            extracted_img_file_path.push(RPI_OS_IMAGE_EXTRACTED_FILENAME);
+            return Task::run(
+                setup_wizard_utils::extract_img(
+                    img_archive_download_file_path,
+                    extracted_img_file_path,
+                ),
+                |progress_result| match progress_result {
+                    Ok(progress) => {
+                        Message::SetupWizard(SetupWizardMessage::SetProgressBarValue(progress))
+                    }
+                    Err(err) => Message::ShowToast(false, format!("Error with download: {err}")),
+                },
+            )
+            .chain(Task::done(Message::SetupWizard(
+                SetupWizardMessage::FlashSdCard,
+            )));
         }
     }
     Task::none()

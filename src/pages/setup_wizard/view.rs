@@ -1,9 +1,10 @@
-use iced::{widget::scrollable, Element, Length};
+
+use iced::{widget::{progress_bar, scrollable}, Alignment::Center, Element, Length};
 
 use crate::app::Message;
 use iced::widget::{button, column, container, row, text, text_input, Space};
 
-use super::page::{SetupWizard, SetupWizardMessage, SetupWizardStep};
+use super::page::{SetupProgressBarValue, SetupType, SetupWizard, SetupWizardMessage, SetupWizardStep};
 
 pub fn main_view(state: &SetupWizard) -> Element<Message> {
     match state.current_step {
@@ -13,8 +14,7 @@ pub fn main_view(state: &SetupWizard) -> Element<Message> {
         }
         SetupWizardStep::ConfirmConnection => confirm_connection_view(state),
         SetupWizardStep::ChooseRemoteFoldersToSync => choose_remote_folders_to_sync_view(state),
-        SetupWizardStep::ExistingServerCloseWizard => existing_server_close_wizard_view(state),
-        SetupWizardStep::OfflineSetupCloseWizard => offline_setup_close_wizard_view(state),
+        SetupWizardStep::CloseWizard => close_wizard_view(state),
         SetupWizardStep::OptionalSetupWlanChoice => optional_setup_wlan_choice_view(state),
         SetupWizardStep::SetupPortForwarding => setup_port_forwarding_view(state),
         SetupWizardStep::SetupDuckDns => setup_duck_dns_view(state),
@@ -30,19 +30,19 @@ pub fn main_view(state: &SetupWizard) -> Element<Message> {
             pick_device_which_is_target_sd_card_view(state)
         }
         SetupWizardStep::ConfirmSdCardChoice => confirm_sd_card_choice_view(state),
-        SetupWizardStep::FlashingSdCard => flashing_sd_card_view(state),
+        SetupWizardStep::SettingUpSdCard => setting_up_sd_card_view(state),
         SetupWizardStep::SdCardSetupCompletePleaseEject => {
             sd_card_setup_complete_please_eject_view(state)
         }
         SetupWizardStep::PlugInServerConfirmConnection => {
             plug_in_server_confirm_connection_view(state)
         }
-        SetupWizardStep::FullSetupCloseWizard => full_setup_close_wizard_view(state),
     }
 }
 
-fn decide_whether_to_setup_server_view(_state: &SetupWizard) -> Element<Message> {
+fn decide_whether_to_setup_server_view(state: &SetupWizard) -> Element<Message> {
     column![
+        button(text("Test").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::SettingUpSdCard ))).width(Length::Fill),
         text("Welcome to IdirFéin!")
             .width(Length::Fill)
             .center()
@@ -56,21 +56,33 @@ fn decide_whether_to_setup_server_view(_state: &SetupWizard) -> Element<Message>
                 text("Use Offline").width(Length::Fill).center().size(24),
                 text("Use IdirFéin straight away with no setup required, but with no data syncing between devices. All other features will work as normal. You can always enter your details in settings later to connect to an existing server, but you will not be able to setup a new server without resetting your settings").width(Length::Fill).center(),
                 Space::with_height(Length::Fill),
-                button(text("Use Offline").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::OfflineSetupCloseWizard))).width(Length::Fill)
+                if matches!(state.setup_type, SetupType::NoServerSetup) {
+                    button(text("Confirm Choice").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::CloseWizard))).width(Length::Fill)
+                } else {
+                    button(text("Use Offline").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::SetSetupType(SetupType::NoServerSetup))).width(Length::Fill)
+                }
             ])
         .style(container::bordered_box).padding(10),
             container(column![
                 text("Connect to an existing server").width(Length::Fill).center().size(24),
                 text("Connect to a server that you or someone else has previously set up. To do this, you will need the server url, your username, and your auth token. Ask your admin for these, and never share them with anyone as they will have full access to your server.").width(Length::Fill).center(),
                 Space::with_height(Length::Fill),
-                button(text("Connect to existing server").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::EnterServerUrlAndTotpSecret))).width(Length::Fill)
+                if matches!(state.setup_type, SetupType::ConnectToExistingServerSetup) {
+                    button(text("Confirm Choice").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::EnterServerUrlAndTotpSecret))).width(Length::Fill)
+                } else {
+                    button(text("Connect to existing server").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::SetSetupType(SetupType::ConnectToExistingServerSetup))).width(Length::Fill)
+                }
             ])
         .style(container::bordered_box).padding(10),
             container(column![
                 text("Setup a new server").width(Length::Fill).center().size(24),
                 text("Setup a new server from scratch. To do this, you will need:\n 1. A Raspberry Pi Zero or similar\n 2. An SD card to use with the device\n 3. A harddrive for data storage\n 4. You must be connected to the internet router you intend to host the server from, and you need to be able to access the router settings\n\nSetup should take around 30 minutes").width(Length::Fill).center(),
                 Space::with_height(Length::Fill),
-                button(text("Setup a new server").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::OptionalSetupWlanChoice))).width(Length::Fill)
+                if matches!(state.setup_type, SetupType::FullServerSetup) {
+                    button(text("Confirm Choice").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::OptionalSetupWlanChoice))).width(Length::Fill)
+                } else {
+                    button(text("Setup a new server").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::SetSetupType(SetupType::FullServerSetup))).width(Length::Fill)
+                }
             ])
         .style(container::bordered_box).padding(10),
         ].spacing(20)
@@ -142,10 +154,10 @@ fn confirm_connection_view(state: &SetupWizard) -> Element<Message> {
                     .width(Length::Fill)
                     .center()
                     .size(24),
-        text("This might take a minute. Make sure you're connected to the entire and the server is on.")
-            .width(Length::Fill)
-            .center()
-            .size(20),
+                text("This might take a minute. Make sure you're connected to the entire and the server is on.")
+                    .width(Length::Fill)
+                    .center()
+                    .size(20),
             ]
         }
         .max_width(800)
@@ -201,7 +213,7 @@ fn choose_remote_folders_to_sync_view(state: &SetupWizard) -> Element<Message> {
         ].spacing(10),
         button(text("Continue").width(Length::Fill).center()).on_press(Message::SetupWizard(
             SetupWizardMessage::GoToStep(
-                SetupWizardStep::ExistingServerCloseWizard
+                SetupWizardStep::CloseWizard
             )))
         .width(Length::Fill)
     ].max_width(1200)
@@ -209,32 +221,39 @@ fn choose_remote_folders_to_sync_view(state: &SetupWizard) -> Element<Message> {
     .spacing(10)).center_x(Length::Fill)
     .into()
 }
-fn existing_server_close_wizard_view(_state: &SetupWizard) -> Element<Message> {
+fn close_wizard_view(state: &SetupWizard) -> Element<Message> {
     container(column![
         text("All Done")
             .width(Length::Fill)
             .center()
             .size(24),
-        text("The server is connected and your data is being synced, click the button below to continue to the app.")
-            .width(Length::Fill)
-            .center()
-            .size(20),
-        button(text("Continue").width(Length::Fill).center()).on_press(Message::FinishSetup).width(Length::Fill)
-    ].max_width(800)
-    .padding(20)
-    .spacing(10)).center_x(Length::Fill)
-    .into()
-}
-fn offline_setup_close_wizard_view(_state: &SetupWizard) -> Element<Message> {
-    container(column![
-        text("All Done")
-            .width(Length::Fill)
-            .center()
-            .size(24),
-        text("You've chosen offline mode, so IdirFéin isn't syncing any data. All other features of the app work as normal. You can still connect to a server in the settings page")
-            .width(Length::Fill)
-            .center()
-            .size(20),
+        match state.setup_type {
+            SetupType::FullServerSetup => {
+                text("The server is connected and your data is being synced, click the button below to continue to the app.")
+                    .width(Length::Fill)
+                    .center()
+                    .size(20)
+            },
+            SetupType::ConnectToExistingServerSetup => {
+                text("The server is connected and your data is being synced, click the button below to continue to the app.")
+                    .width(Length::Fill)
+                    .center()
+                    .size(20)
+            },
+            SetupType::NoServerSetup => {
+                text("You've chosen offline mode, so IdirFéin isn't syncing any data. All other features of the app work as normal. You can still connect to a server in the settings page")
+                    .width(Length::Fill)
+                    .center()
+                    .size(20)
+            },
+            SetupType::NoneSelectedYet=> {
+                text("How did you even make it to this screen without selecting a setup type, strange one")
+                    .width(Length::Fill)
+                    .center()
+                    .size(20)
+                
+            }
+        },
         button(text("Continue").width(Length::Fill).center()).on_press(Message::FinishSetup).width(Length::Fill)
     ].max_width(800)
     .padding(20)
@@ -250,8 +269,22 @@ fn setup_port_forwarding_view(_state: &SetupWizard) -> Element<Message> {
 fn setup_duck_dns_view(_state: &SetupWizard) -> Element<Message> {
     "setup_duck_dns_view".into()
 }
-fn insert_target_hardrive_into_this_computer_view(_state: &SetupWizard) -> Element<Message> {
-    "insert_target_hardrive_into_this_computer_view".into()
+fn insert_target_hardrive_into_this_computer_view(state: &SetupWizard) -> Element<Message> {
+    container(column![
+        text("Insert the hardrive you want to use for storage")
+            .width(Length::Fill)
+            .center()
+            .size(24),
+        text("Plug the harddrive you want to use into this computer. Once you have, press List Disks, and then select it from the list. If you're unsure which disk it is, try removing it, clicking List Disks, taking note of all of them, and then plugging the device back in and refreshing the list to see which one is new. On your server, its best to not have multiple external harddrives plugged in, as the target harddrive is identified by its size, which could overlap with another device.")
+            .width(Length::Fill)
+            .center()
+            .size(16),
+        button(text("List Disks").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GetListOfDisks)).width(Length::Fill),
+        scrollable(column(state.list_of_disks.iter().map(|disk_info| text(format!("Name: {} Total Size: {} Is Removable: {}\n\n\n", disk_info.name, bytesize::to_string(disk_info.total_space, false), disk_info.is_removable)).into())))
+    ].max_width(800)
+    .padding(20)
+    .spacing(10)).center_x(Length::Fill)
+    .into()
 }
 fn confirm_target_harddrive_view(_state: &SetupWizard) -> Element<Message> {
     "confirm_target_harddrive_view".into()
@@ -268,15 +301,91 @@ fn pick_device_which_is_target_sd_card_view(_state: &SetupWizard) -> Element<Mes
 fn confirm_sd_card_choice_view(_state: &SetupWizard) -> Element<Message> {
     "confirm_sd_card_choice_view".into()
 }
-fn flashing_sd_card_view(_state: &SetupWizard) -> Element<Message> {
-    "flashing_sd_card_view".into()
+fn setting_up_sd_card_view(state: &SetupWizard) -> Element<Message> {
+    container(column![
+        text("Setting up SD card")
+            .width(Length::Fill)
+            .center()
+            .size(24),
+        text("Do not close the app. Do not turn off your device. Do not remove the SD card. This will take a few minutes")
+            .width(Length::Fill)
+            .center()
+            .size(16),
+            match state.progress_bar_value {
+    SetupProgressBarValue::WaitingToStart => {
+        column![button(text("Start").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::FlashSdCard )).width(Length::Fill)]
+        
+    },
+    SetupProgressBarValue::DownloadingImg(progress) => {
+            column![row![
+                text("Downloading IMG File").height(Length::Fixed(20.0)),
+                Space::with_width(Length::Fixed(20.0)),
+                container(
+                    progress_bar(0.0..=100.0, progress)
+                        .width(Length::Fill)
+                        .height(Length::Fixed(10.0))
+                        .style(progress_bar::primary)
+                )
+                .height(Length::Fixed(20.0))
+                .align_y(Center),
+                Space::with_width(Length::Fixed(10.0)),
+                text(format!("{:.2}%", progress))
+                    .height(Length::Fixed(20.0))
+                    .width(Length::Fixed(50.0)),
+                Space::with_width(Length::Fixed(10.0)),
+            ]
+            .padding(10)]
+        
+    },
+    SetupProgressBarValue::ExtractingImg(progress) => {
+            column![row![
+                text("Extracting IMG File").height(Length::Fixed(20.0)),
+                Space::with_width(Length::Fixed(20.0)),
+                container(
+                    progress_bar(0.0..=100.0, progress)
+                        .width(Length::Fill)
+                        .height(Length::Fixed(10.0))
+                        .style(progress_bar::primary)
+                )
+                .height(Length::Fixed(20.0))
+                .align_y(Center),
+                Space::with_width(Length::Fixed(10.0)),
+                text(format!("{:.2}%", progress))
+                    .height(Length::Fixed(20.0))
+                    .width(Length::Fixed(50.0)),
+                Space::with_width(Length::Fixed(10.0)),
+            ]
+            .padding(10)]
+        
+    },
+    SetupProgressBarValue::FlashingSdCard => {
+            column![
+                text("Flashing SD Card")
+                    .width(Length::Fill)
+                    .center()
+                    .size(20)
+            ]
+        
+    },
+    SetupProgressBarValue::WritingConfig => {
+            column![
+                text("Writing Config")
+                    .width(Length::Fill)
+                    .center()
+                    .size(20)
+            ]
+        
+    },
+    SetupProgressBarValue::Finished => {column![text("All Done").style(text::success)]},
+}
+    ].max_width(1200)
+    .padding(20)
+    .spacing(10)).center_x(Length::Fill)
+    .into()
 }
 fn sd_card_setup_complete_please_eject_view(_state: &SetupWizard) -> Element<Message> {
     "sd_card_setup_complete_please_eject_view".into()
 }
 fn plug_in_server_confirm_connection_view(_state: &SetupWizard) -> Element<Message> {
     "plug_in_server_confirm_connection_view".into()
-}
-fn full_setup_close_wizard_view(_state: &SetupWizard) -> Element<Message> {
-    "full_setup_close_wizard_view".into()
 }

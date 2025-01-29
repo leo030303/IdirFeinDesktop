@@ -35,8 +35,9 @@ use rten_tensor::prelude::*;
 use crate::pages::gallery::page::FACE_DATA_FOLDER_NAME;
 
 use super::page::{
-    FACE_DATA_FILE_NAME, PATH_TO_FACE_RECOGNITION_MODEL, PATH_TO_TEXT_DETECTION_MODEL,
-    PATH_TO_TEXT_RECOGNITION_MODEL, THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE, UNNAMED_STRING,
+    FACE_DATA_FILE_NAME, PATH_TO_FACE_EXTRACTION_MODEL, PATH_TO_FACE_RECOGNITION_MODEL,
+    PATH_TO_TEXT_DETECTION_MODEL, PATH_TO_TEXT_RECOGNITION_MODEL, THUMBNAIL_FOLDER_NAME,
+    THUMBNAIL_SIZE, UNNAMED_STRING,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,8 +103,14 @@ impl FaceData {
             ]
             .into_iter(),
         )?;
-        let mut opencv_face_recognizer =
-            FaceRecognizerSF::create_def(PATH_TO_FACE_RECOGNITION_MODEL, "")?;
+        let mut opencv_face_recognizer = FaceRecognizerSF::create_def(
+            &format!(
+                "{}{}",
+                crate::constants::PKGDATADIR,
+                PATH_TO_FACE_RECOGNITION_MODEL
+            ),
+            "",
+        )?;
         let bounds_img = original_image.crop_imm(
             bounds.x as u32,
             bounds.y as u32,
@@ -144,7 +151,11 @@ impl FaceExtractor {
 
         let big_face_extractor =
             FaceDetectorBuilder::new(FaceDetection::BlazeFace640(big_face_params))
-                .download()
+                .from_file(format!(
+                    "{}{}",
+                    crate::constants::PKGDATADIR,
+                    PATH_TO_FACE_EXTRACTION_MODEL
+                ))
                 .infer_params(InferParams {
                     provider: Provider::OrtCpu,
                     intra_threads: Some(5),
@@ -160,7 +171,11 @@ impl FaceExtractor {
 
         let medium_face_extractor =
             FaceDetectorBuilder::new(FaceDetection::BlazeFace640(medium_face_params))
-                .download()
+                .from_file(format!(
+                    "{}{}",
+                    crate::constants::PKGDATADIR,
+                    PATH_TO_FACE_EXTRACTION_MODEL
+                ))
                 .infer_params(InferParams {
                     provider: Provider::OrtCpu,
                     intra_threads: Some(5),
@@ -176,7 +191,11 @@ impl FaceExtractor {
 
         let small_face_extractor =
             FaceDetectorBuilder::new(FaceDetection::BlazeFace640(small_face_params))
-                .download()
+                .from_file(format!(
+                    "{}{}",
+                    crate::constants::PKGDATADIR,
+                    PATH_TO_FACE_EXTRACTION_MODEL
+                ))
                 .infer_params(InferParams {
                     provider: Provider::OrtCpu,
                     ..Default::default()
@@ -651,8 +670,15 @@ pub fn match_face_to_person(
         })
         .map(|(person_name, named_person_face_features)| {
             let unknown_face_features = unknown_face.matrix();
-            let opencv_face_recognizer =
-                FaceRecognizerSF::create_def(PATH_TO_FACE_RECOGNITION_MODEL, "").unwrap();
+            let opencv_face_recognizer = FaceRecognizerSF::create_def(
+                &format!(
+                    "{}{}",
+                    crate::constants::PKGDATADIR,
+                    PATH_TO_FACE_RECOGNITION_MODEL
+                ),
+                "",
+            )
+            .unwrap();
             let l2_score = opencv_face_recognizer.match_(
                 &named_person_face_features,
                 &unknown_face_features,
@@ -909,8 +935,16 @@ pub fn get_all_photos_by_name(target_name: String, parent_folders: &[PathBuf]) -
 }
 
 pub fn run_ocr(image_path: PathBuf) -> Result<String, Box<dyn std::error::Error>> {
-    let detection_model = rten::Model::load_file(PATH_TO_TEXT_DETECTION_MODEL)?;
-    let recognition_model = rten::Model::load_file(PATH_TO_TEXT_RECOGNITION_MODEL)?;
+    let detection_model = rten::Model::load_file(format!(
+        "{}{}",
+        crate::constants::PKGDATADIR,
+        PATH_TO_TEXT_DETECTION_MODEL
+    ))?;
+    let recognition_model = rten::Model::load_file(format!(
+        "{}{}",
+        crate::constants::PKGDATADIR,
+        PATH_TO_TEXT_RECOGNITION_MODEL
+    ))?;
 
     let engine = OcrEngine::new(OcrEngineParams {
         detection_model: Some(detection_model),

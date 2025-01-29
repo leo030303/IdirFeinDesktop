@@ -26,8 +26,6 @@ use crate::{
     Page,
 };
 
-pub const APP_ID: &str = "idirfein_desktop";
-
 #[derive(Debug, Clone)]
 pub enum Message {
     ChangePage(Page),

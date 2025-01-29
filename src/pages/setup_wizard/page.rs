@@ -1,13 +1,53 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use iced::{Element, Task};
 use serde::{Deserialize, Serialize};
 
 use crate::app::Message;
 use crate::config::AppConfig;
+use crate::pages::sync::page::SyncFrequencySettings;
 
 use super::update::update;
 use super::view::main_view;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SetupProgressBarValue {
+    WaitingToStart,
+    DownloadingImg(f32),
+    ExtractingImg(f32),
+    FlashingSdCard,
+    WritingConfig,
+    Finished,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiskInfo {
+    pub name: String,
+    pub mount_point: PathBuf,
+    pub total_space: u64,
+    pub available_space: u64,
+    pub is_removable: bool,
+}
+impl DiskInfo {
+    pub fn from_disk(disk: &sysinfo::Disk) -> Self {
+        Self {
+            name: disk.name().to_string_lossy().to_string(),
+            mount_point: disk.mount_point().to_path_buf(),
+            total_space: disk.total_space(),
+            available_space: disk.available_space(),
+            is_removable: disk.is_removable(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SetupType {
+    FullServerSetup,
+    ConnectToExistingServerSetup,
+    NoServerSetup,
+    NoneSelectedYet,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
@@ -43,6 +83,9 @@ pub struct SetupWizard {
     pub connection_has_been_attempted: bool,
     pub remote_folders_info: Option<HashMap<String, Vec<String>>>,
     pub selected_remote_folder: Option<String>,
+    pub setup_type: SetupType,
+    pub list_of_disks: Vec<DiskInfo>,
+    pub progress_bar_value: SetupProgressBarValue,
 }
 
 #[derive(Debug, Clone)]
@@ -64,6 +107,13 @@ pub enum SetupWizardMessage {
     SetSelectedRemoteFolder(Option<String>),
     IgnoreFolderId(String),
     UnignoreFolderId(usize),
+    SetSyncFrequency(SyncFrequencySettings),
+    SetSetupType(SetupType),
+    GetListOfDisks,
+    SetProgressBarValue(SetupProgressBarValue),
+    DownloadImg,
+    ExtractImg,
+    FlashSdCard,
 }
 
 #[derive(Debug, Clone)]
@@ -78,12 +128,8 @@ pub enum SetupWizardStep {
     ConfirmConnection,
     /// Choose which remote folders you want to hold on this device, if any
     ChooseRemoteFoldersToSync,
-    /// Device is setup and ready to use
-    ExistingServerCloseWizard,
 
-    // Use offline path
-    /// Remind the user they have no sync capabilities, but they can change this at any time in the settings
-    OfflineSetupCloseWizard,
+    CloseWizard,
 
     // Full server setup path
     /// Ask if the user wants to setup external WLAN access, explain what this means
@@ -109,13 +155,11 @@ pub enum SetupWizardStep {
     /// Confirm this is the device you want, all info will be wiped
     ConfirmSdCardChoice,
     /// Please wait while we setup your device, flash OS, flash server software, write config etc
-    FlashingSdCard,
+    SettingUpSdCard,
     /// SD card setup is complete, it has been ejected and is safe to remove
     SdCardSetupCompletePleaseEject,
     /// Please put the sd in your rpi zero and plug it in, a pop up appears when the app connects to the server successfully
     PlugInServerConfirmConnection,
-    /// Server setup is complete, click close, opens up regular device view
-    FullSetupCloseWizard,
 }
 
 impl SetupWizard {
@@ -134,6 +178,9 @@ impl SetupWizard {
             connection_has_been_attempted: false,
             remote_folders_info: None,
             selected_remote_folder: None,
+            setup_type: SetupType::NoneSelectedYet,
+            list_of_disks: vec![],
+            progress_bar_value: SetupProgressBarValue::WaitingToStart,
         }
     }
 

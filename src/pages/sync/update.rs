@@ -6,7 +6,8 @@ use iced::Task;
 use rfd::FileDialog;
 use uuid::Uuid;
 
-use crate::app::{Message, APP_ID};
+use crate::app::Message;
+use crate::constants::APP_ID;
 
 use super::page::{SyncPage, SyncPageMessage};
 

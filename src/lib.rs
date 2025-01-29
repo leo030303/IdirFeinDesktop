@@ -3,6 +3,8 @@ use std::fmt::Display;
 use iced::widget::svg::{self, Handle};
 use serde::{Deserialize, Serialize};
 
+#[rustfmt::skip]
+pub mod constants;
 pub mod app;
 pub mod config;
 pub mod pages;

@@ -1,7 +1,8 @@
 use iced::{Element, Task};
 use serde::{Deserialize, Serialize};
 
-use crate::app::{Message, APP_ID};
+use crate::app::Message;
+use crate::constants::APP_ID;
 
 use super::update::update;
 use super::view::{main_view, tool_view};
@@ -14,6 +15,16 @@ pub const IGNORE_LIST_FILE_NAME: &str = "sync_ignore_list.json";
 pub const SYNC_LIST_FILE_NAME: &str = "sync_folder_list.json";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SyncFrequencySettings {
+    SyncOnlyOnRequest,
+    SyncOnAppStart,
+    SyncOnAppStartAndEveryHour,
+    SyncOnAppStartAndEvery20Minutes,
+    SyncOnDeviceStartAndEveryHour,
+    SyncOnDeviceStartAndEvery20Minutes,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyncPageConfig {
     pub server_url: String,
     pub default_data_storage_folder: PathBuf,
@@ -21,6 +32,7 @@ pub struct SyncPageConfig {
     pub client_username: Option<String>,
     pub client_secret: Option<Vec<u8>>,
     pub ignored_remote_folder_ids: Vec<String>,
+    pub sync_frequency_settings: SyncFrequencySettings,
 }
 
 impl Default for SyncPageConfig {
@@ -32,6 +44,7 @@ impl Default for SyncPageConfig {
             client_username: None,
             client_secret: None,
             ignored_remote_folder_ids: vec![],
+            sync_frequency_settings: SyncFrequencySettings::SyncOnlyOnRequest,
         }
     }
 }

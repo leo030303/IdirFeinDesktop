@@ -9,7 +9,8 @@ use fast_rsync::{Signature, SignatureOptions};
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
-use crate::{app::APP_ID, pages::sync::page::SYNC_LIST_FILE_NAME};
+use crate::constants::APP_ID;
+use crate::pages::sync::page::SYNC_LIST_FILE_NAME;
 
 const DEFAULT_CRYPTO_HASH_SIZE: u32 = 16;
 

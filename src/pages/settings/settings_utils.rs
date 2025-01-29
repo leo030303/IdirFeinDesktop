@@ -1,6 +1,7 @@
 use std::{fs, path::Path};
 
-use crate::{app::APP_ID, config::AppConfig};
+use crate::config::AppConfig;
+use crate::constants::APP_ID;
 
 pub async fn save_settings_to_file(config: AppConfig) -> (bool, String) {
     let mut config_file_path = dirs::config_dir().expect("No config directory, big problem");
