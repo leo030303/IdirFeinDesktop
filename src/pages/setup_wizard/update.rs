@@ -251,6 +251,17 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                 SetupWizardMessage::FlashSdCard,
             )));
         }
+        SetupWizardMessage::DownloadExtraData => {
+            return Task::run(
+                setup_wizard_utils::download_extra_files(),
+                |progress_result| match progress_result {
+                    Ok(progress) => {
+                        Message::SetupWizard(SetupWizardMessage::SetProgressBarValue(progress))
+                    }
+                    Err(err) => Message::ShowToast(false, format!("Error with download: {err}")),
+                },
+            );
+        }
     }
     Task::none()
 }

@@ -15,7 +15,54 @@ use tokio::{
     io::{AsyncBufRead, AsyncRead, AsyncReadExt, AsyncWriteExt, BufReader, BufWriter},
 };
 
-use super::page::SetupProgressBarValue;
+use crate::constants::APP_ID;
+
+use super::{page::SetupProgressBarValue, APP_DATA_URLS};
+
+pub fn download_extra_files() -> impl Stream<Item = Result<SetupProgressBarValue, String>> {
+    try_channel(1, move |mut output| async move {
+        let total = APP_DATA_URLS.len();
+        let mut downloaded = 0;
+        let idirfein_data_dir = dirs::data_dir()
+            .expect("Can't find data dir")
+            .as_path()
+            .join(APP_ID);
+
+        for (download_url, filename) in APP_DATA_URLS {
+            println!("downloading {download_url} to {filename}");
+            let destination_path = idirfein_data_dir.join(filename);
+            let response = reqwest::get(download_url)
+                .await
+                .map_err(|err| err.to_string())?;
+            fs::create_dir_all(destination_path.parent().unwrap_or(Path::new("/")))
+                .await
+                .map_err(|err| err.to_string())?;
+
+            let mut dest_file = File::create(destination_path)
+                .await
+                .map_err(|err| err.to_string())?;
+            let mut byte_stream = response.bytes_stream();
+
+            while let Some(next_bytes) = byte_stream.next().await {
+                let bytes = next_bytes.map_err(|err| err.to_string())?;
+                dest_file
+                    .write_all(&bytes)
+                    .await
+                    .map_err(|err| err.to_string())?;
+            }
+            downloaded += 1;
+            let _ = output
+                .send(SetupProgressBarValue::DownloadingFile(
+                    100.0 * downloaded as f32 / total as f32,
+                ))
+                .await;
+        }
+
+        let _ = output.send(SetupProgressBarValue::Finished).await;
+
+        Ok(())
+    })
+}
 
 pub fn download_file(
     url: String,
@@ -28,7 +75,7 @@ pub fn download_file(
             .ok_or(String::from("No Content Length Header found"))?;
 
         let _ = output
-            .send(SetupProgressBarValue::DownloadingImg(0.0))
+            .send(SetupProgressBarValue::DownloadingFile(0.0))
             .await;
 
         fs::create_dir_all(destination_path.parent().unwrap_or(Path::new("/")))
@@ -50,7 +97,7 @@ pub fn download_file(
                 .map_err(|err| err.to_string())?;
 
             let _ = output
-                .send(SetupProgressBarValue::DownloadingImg(
+                .send(SetupProgressBarValue::DownloadingFile(
                     100.0 * downloaded as f32 / total as f32,
                 ))
                 .await;

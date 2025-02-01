@@ -14,7 +14,7 @@ use super::view::main_view;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SetupProgressBarValue {
     WaitingToStart,
-    DownloadingImg(f32),
+    DownloadingFile(f32),
     ExtractingImg(f32),
     FlashingSdCard,
     WritingConfig,
@@ -114,6 +114,7 @@ pub enum SetupWizardMessage {
     DownloadImg,
     ExtractImg,
     FlashSdCard,
+    DownloadExtraData,
 }
 
 #[derive(Debug, Clone)]
@@ -160,6 +161,9 @@ pub enum SetupWizardStep {
     SdCardSetupCompletePleaseEject,
     /// Please put the sd in your rpi zero and plug it in, a pop up appears when the app connects to the server successfully
     PlugInServerConfirmConnection,
+
+    /// Downloading extra data
+    DownloadExtraAppData,
 }
 
 impl SetupWizard {

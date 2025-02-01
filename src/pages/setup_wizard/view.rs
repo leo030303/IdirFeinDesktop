@@ -37,6 +37,7 @@ pub fn main_view(state: &SetupWizard) -> Element<Message> {
         SetupWizardStep::PlugInServerConfirmConnection => {
             plug_in_server_confirm_connection_view(state)
         }
+        SetupWizardStep::DownloadExtraAppData => download_extra_app_data(state) ,
     }
 }
 
@@ -57,7 +58,7 @@ fn decide_whether_to_setup_server_view(state: &SetupWizard) -> Element<Message> 
                 text("Use IdirFéin straight away with no setup required, but with no data syncing between devices. All other features will work as normal. You can always enter your details in settings later to connect to an existing server, but you will not be able to setup a new server without resetting your settings").width(Length::Fill).center(),
                 Space::with_height(Length::Fill),
                 if matches!(state.setup_type, SetupType::NoServerSetup) {
-                    button(text("Confirm Choice").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::CloseWizard))).width(Length::Fill)
+                    button(text("Confirm Choice").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::DownloadExtraAppData))).width(Length::Fill)
                 } else {
                     button(text("Use Offline").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::SetSetupType(SetupType::NoServerSetup))).width(Length::Fill)
                 }
@@ -213,7 +214,7 @@ fn choose_remote_folders_to_sync_view(state: &SetupWizard) -> Element<Message> {
         ].spacing(10),
         button(text("Continue").width(Length::Fill).center()).on_press(Message::SetupWizard(
             SetupWizardMessage::GoToStep(
-                SetupWizardStep::CloseWizard
+                SetupWizardStep::DownloadExtraAppData
             )))
         .width(Length::Fill)
     ].max_width(1200)
@@ -311,17 +312,17 @@ fn setting_up_sd_card_view(state: &SetupWizard) -> Element<Message> {
             .width(Length::Fill)
             .center()
             .size(16),
-            match state.progress_bar_value {
+            match &state.progress_bar_value {
     SetupProgressBarValue::WaitingToStart => {
         column![button(text("Start").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::FlashSdCard )).width(Length::Fill)]
         
     },
-    SetupProgressBarValue::DownloadingImg(progress) => {
+    SetupProgressBarValue::DownloadingFile(progress) => {
             column![row![
-                text("Downloading IMG File").height(Length::Fixed(20.0)),
+                text("Downloading files").height(Length::Fixed(20.0)),
                 Space::with_width(Length::Fixed(20.0)),
                 container(
-                    progress_bar(0.0..=100.0, progress)
+                    progress_bar(0.0..=100.0, *progress)
                         .width(Length::Fill)
                         .height(Length::Fixed(10.0))
                         .style(progress_bar::primary)
@@ -342,7 +343,7 @@ fn setting_up_sd_card_view(state: &SetupWizard) -> Element<Message> {
                 text("Extracting IMG File").height(Length::Fixed(20.0)),
                 Space::with_width(Length::Fixed(20.0)),
                 container(
-                    progress_bar(0.0..=100.0, progress)
+                    progress_bar(0.0..=100.0, *progress)
                         .width(Length::Fill)
                         .height(Length::Fixed(10.0))
                         .style(progress_bar::primary)
@@ -387,5 +388,52 @@ fn sd_card_setup_complete_please_eject_view(_state: &SetupWizard) -> Element<Mes
     "sd_card_setup_complete_please_eject_view".into()
 }
 fn plug_in_server_confirm_connection_view(_state: &SetupWizard) -> Element<Message> {
-    "plug_in_server_confirm_connection_view".into()
+    "plug_in_server_confirm_connection_view".into() // Should direct to download extra app data
+}
+
+fn download_extra_app_data(state: &SetupWizard) -> Element<Message> {
+    container(column![
+        text("Downloading extra app data")
+            .width(Length::Fill)
+            .center()
+            .size(24),
+        text("Do not close the app. Do not turn off your device. This will take a few minutes. You can see the files being downloaded here: https://github.com/leo030303/idirfein-resources")
+            .width(Length::Fill)
+            .center()
+            .size(16),
+            match &state.progress_bar_value {
+    SetupProgressBarValue::WaitingToStart => {
+        column![button(text("Start").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::DownloadExtraData )).width(Length::Fill)]
+        
+    },
+    SetupProgressBarValue::DownloadingFile(progress) => {
+            column![row![
+                text("Downloading").height(Length::Fixed(20.0)),
+                Space::with_width(Length::Fixed(20.0)),
+                container(
+                    progress_bar(0.0..=100.0, *progress)
+                        .width(Length::Fill)
+                        .height(Length::Fixed(10.0))
+                        .style(progress_bar::primary)
+                )
+                .height(Length::Fixed(20.0))
+                .align_y(Center),
+                Space::with_width(Length::Fixed(10.0)),
+                text(format!("{:.2}%", progress))
+                    .height(Length::Fixed(20.0))
+                    .width(Length::Fixed(50.0)),
+                Space::with_width(Length::Fixed(10.0)),
+            ]
+            .padding(10)]
+        
+    },
+    _ => {column![text("All Done").style(text::success), 
+                    button(text("Continue").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::CloseWizard))).width(Length::Fill)
+    ]},
+}
+    ].max_width(1200)
+    .padding(20)
+    .spacing(10)).center_x(Length::Fill)
+    .into()
+    
 }

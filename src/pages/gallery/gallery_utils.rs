@@ -32,7 +32,7 @@ use ocrs::{ImageSource, OcrEngine, OcrEngineParams};
 #[allow(unused)]
 use rten_tensor::prelude::*;
 
-use crate::pages::gallery::page::FACE_DATA_FOLDER_NAME;
+use crate::{constants::APP_ID, pages::gallery::page::FACE_DATA_FOLDER_NAME};
 
 use super::page::{
     FACE_DATA_FILE_NAME, PATH_TO_FACE_EXTRACTION_MODEL, PATH_TO_FACE_RECOGNITION_MODEL,
@@ -103,12 +103,15 @@ impl FaceData {
             ]
             .into_iter(),
         )?;
+        let idirfein_data_dir = dirs::data_dir()
+            .expect("Can't find data dir")
+            .as_path()
+            .join(APP_ID);
+
         let mut opencv_face_recognizer = FaceRecognizerSF::create_def(
-            &format!(
-                "{}{}",
-                crate::constants::PKGDATADIR,
-                PATH_TO_FACE_RECOGNITION_MODEL
-            ),
+            &idirfein_data_dir
+                .join(PATH_TO_FACE_RECOGNITION_MODEL)
+                .to_string_lossy(),
             "",
         )?;
         let bounds_img = original_image.crop_imm(
@@ -148,14 +151,19 @@ impl FaceExtractor {
             target_size: 160,
             ..BlazeFaceParams::default()
         };
+        let idirfein_data_dir = dirs::data_dir()
+            .expect("Can't find data dir")
+            .as_path()
+            .join(APP_ID);
 
         let big_face_extractor =
             FaceDetectorBuilder::new(FaceDetection::BlazeFace640(big_face_params))
-                .from_file(format!(
-                    "{}{}",
-                    crate::constants::PKGDATADIR,
-                    PATH_TO_FACE_EXTRACTION_MODEL
-                ))
+                .from_file(
+                    idirfein_data_dir
+                        .join(PATH_TO_FACE_EXTRACTION_MODEL)
+                        .to_string_lossy()
+                        .into_owned(),
+                )
                 .infer_params(InferParams {
                     provider: Provider::OrtCpu,
                     intra_threads: Some(5),
@@ -171,11 +179,12 @@ impl FaceExtractor {
 
         let medium_face_extractor =
             FaceDetectorBuilder::new(FaceDetection::BlazeFace640(medium_face_params))
-                .from_file(format!(
-                    "{}{}",
-                    crate::constants::PKGDATADIR,
-                    PATH_TO_FACE_EXTRACTION_MODEL
-                ))
+                .from_file(
+                    idirfein_data_dir
+                        .join(PATH_TO_FACE_EXTRACTION_MODEL)
+                        .to_string_lossy()
+                        .into_owned(),
+                )
                 .infer_params(InferParams {
                     provider: Provider::OrtCpu,
                     intra_threads: Some(5),
@@ -191,11 +200,12 @@ impl FaceExtractor {
 
         let small_face_extractor =
             FaceDetectorBuilder::new(FaceDetection::BlazeFace640(small_face_params))
-                .from_file(format!(
-                    "{}{}",
-                    crate::constants::PKGDATADIR,
-                    PATH_TO_FACE_EXTRACTION_MODEL
-                ))
+                .from_file(
+                    idirfein_data_dir
+                        .join(PATH_TO_FACE_EXTRACTION_MODEL)
+                        .to_string_lossy()
+                        .into_owned(),
+                )
                 .infer_params(InferParams {
                     provider: Provider::OrtCpu,
                     ..Default::default()
@@ -670,12 +680,15 @@ pub fn match_face_to_person(
         })
         .map(|(person_name, named_person_face_features)| {
             let unknown_face_features = unknown_face.matrix();
+            let idirfein_data_dir = dirs::data_dir()
+                .expect("Can't find data dir")
+                .as_path()
+                .join(APP_ID);
+
             let opencv_face_recognizer = FaceRecognizerSF::create_def(
-                &format!(
-                    "{}{}",
-                    crate::constants::PKGDATADIR,
-                    PATH_TO_FACE_RECOGNITION_MODEL
-                ),
+                &idirfein_data_dir
+                    .join(PATH_TO_FACE_RECOGNITION_MODEL)
+                    .to_string_lossy(),
                 "",
             )
             .unwrap();
@@ -935,16 +948,14 @@ pub fn get_all_photos_by_name(target_name: String, parent_folders: &[PathBuf]) -
 }
 
 pub fn run_ocr(image_path: PathBuf) -> Result<String, Box<dyn std::error::Error>> {
-    let detection_model = rten::Model::load_file(format!(
-        "{}{}",
-        crate::constants::PKGDATADIR,
-        PATH_TO_TEXT_DETECTION_MODEL
-    ))?;
-    let recognition_model = rten::Model::load_file(format!(
-        "{}{}",
-        crate::constants::PKGDATADIR,
-        PATH_TO_TEXT_RECOGNITION_MODEL
-    ))?;
+    let idirfein_data_dir = dirs::data_dir()
+        .expect("Can't find data dir")
+        .as_path()
+        .join(APP_ID);
+    let detection_model =
+        rten::Model::load_file(idirfein_data_dir.join(PATH_TO_TEXT_DETECTION_MODEL))?;
+    let recognition_model =
+        rten::Model::load_file(idirfein_data_dir.join(PATH_TO_TEXT_RECOGNITION_MODEL))?;
 
     let engine = OcrEngine::new(OcrEngineParams {
         detection_model: Some(detection_model),

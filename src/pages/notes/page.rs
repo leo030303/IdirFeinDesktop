@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
 use zspell::Dictionary;
@@ -12,6 +13,7 @@ use loro::{LoroDoc, UndoManager};
 use serde::{Deserialize, Serialize};
 
 use crate::app::Message;
+use crate::constants::APP_ID;
 
 use super::notes_utils::NoteStatistics;
 use super::update::update;
@@ -198,15 +200,30 @@ impl NotesPage {
         undo_manager.set_max_undo_steps(MAX_UNDO_STEPS);
         undo_manager.add_exclude_origin_prefix(INITIAL_ORIGIN_STR);
 
-        let aff_content =
-            include_str!("../../../data/resources/spelling_dictionaries/english_gb.aff");
+        let idirfein_data_dir = dirs::data_dir()
+            .expect("Can't find data dir")
+            .as_path()
+            .join(APP_ID);
+        let locale = current_locale::current_locale().expect("Can't get locale");
+        let aff_content = fs::read_to_string(
+            idirfein_data_dir
+                .join("dictionaries")
+                .join(locale.to_uppercase())
+                .join("index.aff"),
+        )
+        .unwrap_or_default();
 
-        let dic_content =
-            include_str!("../../../data/resources/spelling_dictionaries/english_gb.dic");
+        let dic_content = fs::read_to_string(
+            idirfein_data_dir
+                .join("dictionaries")
+                .join(locale.to_uppercase())
+                .join("index.dic"),
+        )
+        .unwrap_or_default();
 
         let spell_check_dictionary: Dictionary = zspell::builder()
-            .config_str(aff_content)
-            .dict_str(dic_content)
+            .config_str(&aff_content)
+            .dict_str(&dic_content)
             .build()
             .expect("failed to build dictionary!");
 

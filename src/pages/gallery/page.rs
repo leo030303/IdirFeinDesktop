@@ -28,10 +28,10 @@ pub(crate) const THUMBNAIL_FOLDER_NAME: &str = ".thumbnails";
 pub(crate) const FACE_DATA_FOLDER_NAME: &str = ".face_data";
 pub(crate) const FACE_DATA_FILE_NAME: &str = "extracted_faces.json";
 pub(crate) const PATH_TO_FACE_RECOGNITION_MODEL: &str =
-    "resources/models/face_recognition_sface_2021dec.onnx";
-pub(crate) const PATH_TO_FACE_EXTRACTION_MODEL: &str = "resources/models/blazefaces-640.onnx";
-pub(crate) const PATH_TO_TEXT_RECOGNITION_MODEL: &str = "resources/models/text-recognition.rten";
-pub(crate) const PATH_TO_TEXT_DETECTION_MODEL: &str = "resources/models/text-detection.rten";
+    "models/face_recognition_sface_2021dec.onnx";
+pub(crate) const PATH_TO_FACE_EXTRACTION_MODEL: &str = "models/blazefaces-640.onnx";
+pub(crate) const PATH_TO_TEXT_RECOGNITION_MODEL: &str = "models/text-recognition.rten";
+pub(crate) const PATH_TO_TEXT_DETECTION_MODEL: &str = "models/text-detection.rten";
 
 pub(crate) static GALLERY_SCROLLABLE_ID: Lazy<scrollable::Id> = Lazy::new(scrollable::Id::unique);
 pub(crate) static LIST_PEOPLE_SCROLL_ID: Lazy<scrollable::Id> = Lazy::new(scrollable::Id::unique);
