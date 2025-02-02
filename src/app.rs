@@ -277,7 +277,15 @@ impl AppState {
         };
         if !self.is_closing {
             if self.is_setting_up_server {
-                self.setup_wizard.view()
+                column![
+                    if self.show_toast {
+                        toast_widget(self)
+                    } else {
+                        container(row![]).height(10).into()
+                    },
+                    self.setup_wizard.view()
+                ]
+                .into()
             } else {
                 column![
                     row![

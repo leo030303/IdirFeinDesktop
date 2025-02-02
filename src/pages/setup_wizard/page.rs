@@ -55,7 +55,14 @@ pub struct ServerConfig {
     pub static_ip: String,
     pub users_list: HashMap<String, Vec<u8>>,
     pub is_lan_only: bool,
+    pub duckdns_domain: String,
+    pub duckdns_token: String,
     pub storage_harddrive_uuid: String,
+    pub wifi_ssid: String,
+    pub wifi_password: String,
+    pub country_name_option: Option<&'static str>,
+    pub wpa_supplicant_file_content: String,
+    pub server_password: String,
 }
 
 impl Default for ServerConfig {
@@ -66,6 +73,13 @@ impl Default for ServerConfig {
             users_list: HashMap::new(),
             is_lan_only: true,
             storage_harddrive_uuid: String::new(),
+            duckdns_domain: String::new(),
+            duckdns_token: String::new(),
+            wifi_ssid: String::new(),
+            wifi_password: String::new(),
+            country_name_option: None,
+            wpa_supplicant_file_content: String::new(),
+            server_password: String::new(),
         }
     }
 }
@@ -74,8 +88,6 @@ pub struct SetupWizard {
     pub current_step: SetupWizardStep,
     pub work_in_progress_server_config: ServerConfig,
     pub work_in_progress_client_config: AppConfig,
-    pub port_input_text: String,
-    pub static_ip_input_text: String,
     pub new_user_name_input_text: String,
     pub server_url_input_text: String,
     pub client_username_input_text: String,
@@ -91,10 +103,7 @@ pub struct SetupWizard {
 #[derive(Debug, Clone)]
 pub enum SetupWizardMessage {
     GoToStep(SetupWizardStep),
-    SetServerPort,
-    UpdateServerPortInputText(String),
-    SetServerStaticIp,
-    UpdateServerStaticIpInputText(String),
+    UpdateServerStaticIp(String),
     AddNewUser,
     UpdateNewUserNameInputText(String),
     SetIsLanOnly(bool),
@@ -115,6 +124,15 @@ pub enum SetupWizardMessage {
     ExtractImg,
     FlashSdCard,
     DownloadExtraData,
+    ConfirmRemoteAccessDetails,
+    LinkClicked(&'static str),
+    UpdateServerDuckDnsDomain(String),
+    UpdateServerDuckDnsToken(String),
+    UpdateWifiSsid(String),
+    UpdateWifiPassword(String),
+    SetWifiCountryName(&'static str),
+    SetWifiDetails,
+    UpdateServerPassword(String),
 }
 
 #[derive(Debug, Clone)]
@@ -133,16 +151,20 @@ pub enum SetupWizardStep {
     CloseWizard,
 
     // Full server setup path
+    /// Say to setup 2.4ghz, get wifi ssid and password and country code, create wpa_supplicant file which gets written
+    GetWifiDetails,
+
     /// Ask if the user wants to setup external WLAN access, explain what this means
-    OptionalSetupWlanChoice,
-
-    // Optional WLAN setup
     /// Prompts user to set up port forwarding, give links to guides, says what port to use, confirm when done
-    SetupPortForwarding,
     /// Prompts user to go to DuckDNS and set up credentials, enter when done
-    SetupDuckDns,
+    OptionalSetupRemoteAccess,
 
-    // Continued path
+    /// Get the user to set the passwords for the raspberry pi server
+    SetRpiServerPassword,
+
+    /// Get the user to create the list of users for server syncing
+    CreateServerUsers,
+
     /// Plug in the harddrive to be used, select it from list so config can store its UUID
     InsertTargetHardriveIntoThisComputer,
     /// Confirm this is the harddrive you want to use
@@ -171,8 +193,6 @@ impl SetupWizard {
         let server_config = ServerConfig::default();
         Self {
             current_step: SetupWizardStep::DecideWhetherToSetupServer,
-            port_input_text: format!("{:?}", server_config.port),
-            static_ip_input_text: format!("{:?}", server_config.static_ip),
             new_user_name_input_text: String::new(),
             work_in_progress_server_config: server_config,
             work_in_progress_client_config: AppConfig::default(),

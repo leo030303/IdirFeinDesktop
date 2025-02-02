@@ -7,6 +7,8 @@ use url::Url;
 use crate::constants::APP_ID;
 use crate::{app::Message, utils::auth_utils};
 
+use super::constants::COUNTRY_CODES_FOR_WIFI_SETUP;
+use super::setup_wizard_utils::is_valid_ip;
 use super::{
     page::{DiskInfo, SetupWizard, SetupWizardMessage, SetupWizardStep},
     setup_wizard_utils,
@@ -23,24 +25,16 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
             state.connection_has_been_attempted = false;
         }
 
-        SetupWizardMessage::SetServerPort => {
-            if let Ok(parsed_port) = state.port_input_text.parse::<u32>() {
-                state.work_in_progress_server_config.port = parsed_port;
-            }
-        }
-        SetupWizardMessage::UpdateServerPortInputText(s) => {
-            state.port_input_text = s;
-        }
-        SetupWizardMessage::SetServerStaticIp => {
-            if !state.static_ip_input_text.is_empty() {
-                state.work_in_progress_server_config.static_ip = state.static_ip_input_text.clone();
-            }
-        }
-        SetupWizardMessage::UpdateServerStaticIpInputText(s) => {
-            state.static_ip_input_text = s;
+        SetupWizardMessage::UpdateServerStaticIp(s) => {
+            state.work_in_progress_server_config.static_ip = s;
         }
         SetupWizardMessage::AddNewUser => {
-            if !state.new_user_name_input_text.is_empty() {
+            if !state.new_user_name_input_text.is_empty()
+                && !state
+                    .work_in_progress_server_config
+                    .users_list
+                    .contains_key(&state.new_user_name_input_text)
+            {
                 let new_user_name = state.new_user_name_input_text.clone();
                 state.new_user_name_input_text = String::new();
                 let new_user_auth_token: Vec<u8> = loop {
@@ -219,13 +213,6 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                 SetupWizardMessage::ExtractImg,
             )));
         }
-        SetupWizardMessage::FlashSdCard => {
-            let mut extracted_img_file_path =
-                dirs::data_local_dir().expect("No config directory, big problem");
-            extracted_img_file_path.push(APP_ID);
-            extracted_img_file_path.push(RPI_OS_IMAGE_EXTRACTED_FILENAME);
-            setup_wizard_utils::flash_img_to_sd_card(extracted_img_file_path);
-        }
         SetupWizardMessage::ExtractImg => {
             let mut img_archive_download_file_path =
                 dirs::data_local_dir().expect("No config directory, big problem");
@@ -251,6 +238,25 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                 SetupWizardMessage::FlashSdCard,
             )));
         }
+        SetupWizardMessage::FlashSdCard => {
+            let mut extracted_img_file_path =
+                dirs::data_local_dir().expect("No config directory, big problem");
+            extracted_img_file_path.push(APP_ID);
+            extracted_img_file_path.push(RPI_OS_IMAGE_EXTRACTED_FILENAME);
+            let temp_target_name = String::from("mmcblk0"); // TODO change to selected option
+            return Task::run(
+                setup_wizard_utils::flash_img_to_sd_card(extracted_img_file_path, temp_target_name),
+                |progress_result| match progress_result {
+                    Ok(progress) => {
+                        Message::SetupWizard(SetupWizardMessage::SetProgressBarValue(progress))
+                    }
+                    Err(err) => Message::ShowToast(false, format!("Error with flashing: {err}")),
+                },
+            );
+            // .chain(Task::done(Message::SetupWizard(
+            //     SetupWizardMessage::WriteConfig,
+            // ))); TODO uncomment
+        }
         SetupWizardMessage::DownloadExtraData => {
             return Task::run(
                 setup_wizard_utils::download_extra_files(),
@@ -261,6 +267,128 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                     Err(err) => Message::ShowToast(false, format!("Error with download: {err}")),
                 },
             );
+        }
+        SetupWizardMessage::ConfirmRemoteAccessDetails => {
+            if state.work_in_progress_server_config.static_ip.is_empty() {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Static IP can't be blank"),
+                ));
+            }
+            if !is_valid_ip(&state.work_in_progress_server_config.static_ip) {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Static IP has invalid format"),
+                ));
+            }
+            if state
+                .work_in_progress_server_config
+                .duckdns_domain
+                .is_empty()
+            {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("DuckDNS domain can't be blank"),
+                ));
+            }
+            if state
+                .work_in_progress_server_config
+                .duckdns_token
+                .is_empty()
+            {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("DuckDNS token can't be blank"),
+                ));
+            }
+            state.work_in_progress_server_config.is_lan_only = false;
+            return Task::done(Message::SetupWizard(SetupWizardMessage::GoToStep(
+                SetupWizardStep::SetRpiServerPassword,
+            )));
+        }
+        SetupWizardMessage::LinkClicked(link) => {
+            opener::open(link).unwrap();
+        }
+        SetupWizardMessage::UpdateServerDuckDnsDomain(s) => {
+            state.work_in_progress_server_config.duckdns_domain = s;
+        }
+        SetupWizardMessage::UpdateServerDuckDnsToken(s) => {
+            state.work_in_progress_server_config.duckdns_token = s;
+        }
+        SetupWizardMessage::UpdateWifiSsid(s) => {
+            state.work_in_progress_server_config.wifi_ssid = s;
+        }
+        SetupWizardMessage::UpdateWifiPassword(s) => {
+            state.work_in_progress_server_config.wifi_password = s;
+        }
+        SetupWizardMessage::SetWifiCountryName(selected_country_name) => {
+            state.work_in_progress_server_config.country_name_option = Some(selected_country_name);
+        }
+        SetupWizardMessage::SetWifiDetails => {
+            if state.work_in_progress_server_config.wifi_ssid.is_empty() {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("SSID can't be blank"),
+                ));
+            }
+            if state
+                .work_in_progress_server_config
+                .wifi_password
+                .is_empty()
+            {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Password can't be blank"),
+                ));
+            }
+            if state
+                .work_in_progress_server_config
+                .country_name_option
+                .is_none()
+            {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Country can't be blank"),
+                ));
+            }
+
+            let country_code = COUNTRY_CODES_FOR_WIFI_SETUP
+                .iter()
+                .find_map(|(country_name, country_code)| {
+                    if *country_name
+                        == state
+                            .work_in_progress_server_config
+                            .country_name_option
+                            .expect("Has to be some, just checked this")
+                    {
+                        Some(country_code)
+                    } else {
+                        None
+                    }
+                })
+                .expect("All country names have to be in list");
+            state
+                .work_in_progress_server_config
+                .wpa_supplicant_file_content = format!(
+                r#"country={}
+update_config=1
+ctrl_interface=/var/run/wpa_supplicant
+
+network={{
+ scan_ssid=1
+ ssid="{}"
+ psk="{}"
+}}"#,
+                country_code,
+                state.work_in_progress_server_config.wifi_ssid,
+                state.work_in_progress_server_config.wifi_password
+            );
+            return Task::done(Message::SetupWizard(SetupWizardMessage::GoToStep(
+                SetupWizardStep::OptionalSetupRemoteAccess,
+            )));
+        }
+        SetupWizardMessage::UpdateServerPassword(s) => {
+            state.work_in_progress_server_config.server_password = s;
         }
     }
     Task::none()

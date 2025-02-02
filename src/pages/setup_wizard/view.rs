@@ -1,10 +1,10 @@
 
-use iced::{widget::{progress_bar, scrollable}, Alignment::Center, Element, Length};
+use iced::{widget::{pick_list, progress_bar, rich_text, scrollable, span}, Alignment::Center, Element, Font, Length};
 
 use crate::app::Message;
 use iced::widget::{button, column, container, row, text, text_input, Space};
 
-use super::page::{SetupProgressBarValue, SetupType, SetupWizard, SetupWizardMessage, SetupWizardStep};
+use super::{constants::COUNTRY_CODES_FOR_WIFI_SETUP, page::{SetupProgressBarValue, SetupType, SetupWizard, SetupWizardMessage, SetupWizardStep}};
 
 pub fn main_view(state: &SetupWizard) -> Element<Message> {
     match state.current_step {
@@ -15,9 +15,7 @@ pub fn main_view(state: &SetupWizard) -> Element<Message> {
         SetupWizardStep::ConfirmConnection => confirm_connection_view(state),
         SetupWizardStep::ChooseRemoteFoldersToSync => choose_remote_folders_to_sync_view(state),
         SetupWizardStep::CloseWizard => close_wizard_view(state),
-        SetupWizardStep::OptionalSetupWlanChoice => optional_setup_wlan_choice_view(state),
-        SetupWizardStep::SetupPortForwarding => setup_port_forwarding_view(state),
-        SetupWizardStep::SetupDuckDns => setup_duck_dns_view(state),
+        SetupWizardStep::OptionalSetupRemoteAccess => optional_setup_remote_access_view(state),
         SetupWizardStep::InsertTargetHardriveIntoThisComputer => {
             insert_target_hardrive_into_this_computer_view(state)
         }
@@ -38,7 +36,77 @@ pub fn main_view(state: &SetupWizard) -> Element<Message> {
             plug_in_server_confirm_connection_view(state)
         }
         SetupWizardStep::DownloadExtraAppData => download_extra_app_data(state) ,
+        SetupWizardStep::GetWifiDetails => get_wifi_details(state),
+        SetupWizardStep::SetRpiServerPassword => set_rpi_server_password(state),
+        SetupWizardStep::CreateServerUsers => create_server_users(state),
     }
+}
+
+fn set_rpi_server_password(state: &SetupWizard) -> Element<Message> {
+    container(column![
+        text("Set Password for the server")
+            .width(Length::Fill)
+            .center()
+            .size(24),
+        text("Pick the password for the server. You'll never need this for standard use of IdirFéin, but its important for securing your server, so make sure its sufficiently complex.")
+            .width(Length::Fill)
+            .center()
+            .size(20),
+        text_input("Server Password", &state.work_in_progress_server_config.server_password).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateServerPassword(s))),
+        if state.work_in_progress_server_config.server_password.is_empty() {
+            button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
+        } else {
+            button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
+                .on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::CreateServerUsers)))
+        }
+    ].max_width(800)
+    .padding(20)
+    .spacing(10)).center_x(Length::Fill)
+    .into()
+    
+}
+
+fn create_server_users(state: &SetupWizard) -> Element<Message> {
+    container(column![
+        text("Create server users")
+            .width(Length::Fill)
+            .center()
+            .size(24),
+        text("Create the user accounts for the server. You can't make more later, and you'll need to tell each of the users what their username and password is for them to be able to connect. All users have access to the same data on the server.")
+            .width(Length::Fill)
+            .center()
+            .size(20),
+        row![
+            text_input("New user name", &state.new_user_name_input_text).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateNewUserNameInputText(s))),
+            button(text("Add user").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::AddNewUser))
+        ].spacing(10),
+        text("Users list")
+            .width(Length::Fill)
+            .center()
+            .size(20),
+        scrollable(
+            column(state.work_in_progress_server_config.users_list.keys().map(|username| {
+                container(
+                    row![text(username)
+                        .font(Font {
+                            weight: iced::font::Weight::Medium,
+                            ..Default::default()
+                        })
+                        .align_y(Center)
+                        .width(Length::Fill)
+                        .height(Length::Shrink)
+                    ].padding(10).width(Length::Fill)
+                )
+                .style(container::bordered_box)
+                .into()
+            })).spacing(5)
+        ),
+        button(text("Continue").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::InsertTargetHardriveIntoThisComputer))).width(Length::Fill),
+    ].max_width(800)
+    .padding(20)
+    .spacing(10)).center_x(Length::Fill)
+    .into()
+    
 }
 
 fn decide_whether_to_setup_server_view(state: &SetupWizard) -> Element<Message> {
@@ -59,6 +127,7 @@ fn decide_whether_to_setup_server_view(state: &SetupWizard) -> Element<Message> 
                 Space::with_height(Length::Fill),
                 if matches!(state.setup_type, SetupType::NoServerSetup) {
                     button(text("Confirm Choice").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::DownloadExtraAppData))).width(Length::Fill)
+                        .style(button::success)
                 } else {
                     button(text("Use Offline").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::SetSetupType(SetupType::NoServerSetup))).width(Length::Fill)
                 }
@@ -70,6 +139,7 @@ fn decide_whether_to_setup_server_view(state: &SetupWizard) -> Element<Message> 
                 Space::with_height(Length::Fill),
                 if matches!(state.setup_type, SetupType::ConnectToExistingServerSetup) {
                     button(text("Confirm Choice").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::EnterServerUrlAndTotpSecret))).width(Length::Fill)
+                        .style(button::success)
                 } else {
                     button(text("Connect to existing server").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::SetSetupType(SetupType::ConnectToExistingServerSetup))).width(Length::Fill)
                 }
@@ -80,7 +150,8 @@ fn decide_whether_to_setup_server_view(state: &SetupWizard) -> Element<Message> 
                 text("Setup a new server from scratch. To do this, you will need:\n 1. A Raspberry Pi Zero or similar\n 2. An SD card to use with the device\n 3. A harddrive for data storage\n 4. You must be connected to the internet router you intend to host the server from, and you need to be able to access the router settings\n\nSetup should take around 30 minutes").width(Length::Fill).center(),
                 Space::with_height(Length::Fill),
                 if matches!(state.setup_type, SetupType::FullServerSetup) {
-                    button(text("Confirm Choice").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::OptionalSetupWlanChoice))).width(Length::Fill)
+                    button(text("Confirm Choice").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::GetWifiDetails))).width(Length::Fill)
+                        .style(button::success)
                 } else {
                     button(text("Setup a new server").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::SetSetupType(SetupType::FullServerSetup))).width(Length::Fill)
                 }
@@ -261,14 +332,42 @@ fn close_wizard_view(state: &SetupWizard) -> Element<Message> {
     .spacing(10)).center_x(Length::Fill)
     .into()
 }
-fn optional_setup_wlan_choice_view(_state: &SetupWizard) -> Element<Message> {
-    "optional_setup_wlan_choice_view".into()
-}
-fn setup_port_forwarding_view(_state: &SetupWizard) -> Element<Message> {
-    "setup_port_forwarding_view".into()
-}
-fn setup_duck_dns_view(_state: &SetupWizard) -> Element<Message> {
-    "setup_duck_dns_view".into()
+fn optional_setup_remote_access_view(state: &SetupWizard) -> Element<Message> {
+    column![
+        text("Setup remote access (optional)")
+            .width(Length::Fill)
+            .center()
+            .size(24),
+        text("If you'd like to be able to access the server from anywhere you can set up remote access. If you don't, you'll only be able to sync when you're connected to the same WiFi as the server. If you want to change this later, you'll need to set the server up from scratch.")
+            .width(Length::Fill)
+            .center()
+            .size(20),
+        row![
+            container(column![
+                text("Setup remote access").width(Length::Fill).center().size(24),
+                text("Set static local IP for server:").width(Length::Fill).center(),
+                text_input("Static IP (x.x.x.x)", &state.work_in_progress_server_config.static_ip).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateServerStaticIp(s))),
+                rich_text![span("Go to "), span("https://portforward.com/router.htm").underline(true).link(Message::SetupWizard(SetupWizardMessage::LinkClicked("https://portforward.com/router.htm"))), span(format!(" and find your router on the list. This will give you a guide on how to setup port forwarding. You need to set port 443 to go to port {0} on IP {1}", state.work_in_progress_server_config.port, state.work_in_progress_server_config.static_ip))].width(Length::Fill).center(),
+                rich_text![span("When you're done that, go to "), span("https://www.duckdns.org/").underline(true).link(Message::SetupWizard(SetupWizardMessage::LinkClicked("https://www.duckdns.org/"))), span(" and make an account. Once thats done, add your desired domain, and copy the domain (the yourdomain part of yourdomain.duckdns.org) and your token into the fields below.")].width(Length::Fill).center(),
+                text_input("DuckDNS Domain", &state.work_in_progress_server_config.duckdns_domain).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateServerDuckDnsDomain(s))),
+                text_input("DuckDNS Token", &state.work_in_progress_server_config.duckdns_token).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateServerDuckDnsToken(s))),
+                Space::with_height(Length::Fill),
+                button(text("Finish remote access setup").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::ConfirmRemoteAccessDetails)).width(Length::Fill)
+                    .style(button::success)
+            ].spacing(5))
+            .style(container::bordered_box).padding(10),
+            container(column![
+                text("Use on local network only").width(Length::Fill).center().size(24),
+                text("You won't be able to access the server when you aren't connected to the same WiFi as the server. You can't change this later without setting up the server from scratch.").width(Length::Fill).center(),
+                Space::with_height(Length::Fill),
+                    button(text("Use on local network only").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::SetRpiServerPassword))).width(Length::Fill)
+            ])
+        .style(container::bordered_box).padding(10),
+        ].spacing(20)
+    ]
+    .padding(20)
+    .spacing(10)
+    .into()
 }
 fn insert_target_hardrive_into_this_computer_view(state: &SetupWizard) -> Element<Message> {
     container(column![
@@ -308,13 +407,13 @@ fn setting_up_sd_card_view(state: &SetupWizard) -> Element<Message> {
             .width(Length::Fill)
             .center()
             .size(24),
-        text("Do not close the app. Do not turn off your device. Do not remove the SD card. This will take a few minutes")
+        text("Do not close the app. Do not turn off your device. Do not remove the SD card. This will take a few minutes. You will be asked to authorise the app to write to the SD card.")
             .width(Length::Fill)
             .center()
             .size(16),
             match &state.progress_bar_value {
     SetupProgressBarValue::WaitingToStart => {
-        column![button(text("Start").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::FlashSdCard )).width(Length::Fill)]
+        column![button(text("Start").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::DownloadImg)).width(Length::Fill)]
         
     },
     SetupProgressBarValue::DownloadingFile(progress) => {
@@ -364,7 +463,7 @@ fn setting_up_sd_card_view(state: &SetupWizard) -> Element<Message> {
                 text("Flashing SD Card")
                     .width(Length::Fill)
                     .center()
-                    .size(20)
+                    .size(20),
             ]
         
     },
@@ -389,6 +488,38 @@ fn sd_card_setup_complete_please_eject_view(_state: &SetupWizard) -> Element<Mes
 }
 fn plug_in_server_confirm_connection_view(_state: &SetupWizard) -> Element<Message> {
     "plug_in_server_confirm_connection_view".into() // Should direct to download extra app data
+}
+
+fn get_wifi_details(state: &SetupWizard) -> Element<Message> {
+    container(column![
+        text("Enter WiFi Details")
+            .width(Length::Fill)
+            .center()
+            .size(24),
+        text("Before you start, log onto your router and ensure there is a separate 2.4Ghz WiFi channel, and enter the SSID for that channel. The Raspberry Pi Zero only works with 2.4Ghz, not 5Ghz. If you don't set this up, the server will be unable to connect to WiFi.")
+            .width(Length::Fill).style(text::danger)
+            .center()
+            .size(20),
+        text_input("WiFi SSID", &state.work_in_progress_server_config.wifi_ssid).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateWifiSsid(s))),
+        text_input("WiFi Password", &state.work_in_progress_server_config.wifi_password).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateWifiPassword(s))),
+        column![
+            text("Select your country"),
+            pick_list(
+                COUNTRY_CODES_FOR_WIFI_SETUP
+                    .into_iter()
+                    .map(|(country_name, _country_code)| country_name)
+                    .collect::<Vec<&'static str>>(),
+                state.work_in_progress_server_config.country_name_option,
+                |country_name| Message::SetupWizard(SetupWizardMessage::SetWifiCountryName(country_name)),
+            )
+        ]
+        .spacing(10),
+        button(text("Continue").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::SetWifiDetails)).width(Length::Fill)
+    ].max_width(800)
+    .padding(20)
+    .spacing(10)).center_x(Length::Fill)
+    .into()
+    
 }
 
 fn download_extra_app_data(state: &SetupWizard) -> Element<Message> {

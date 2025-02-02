@@ -1,7 +1,6 @@
 use std::{
     path::{Path, PathBuf},
     pin::Pin,
-    process::Command,
     task::{Context, Poll},
 };
 
@@ -10,6 +9,7 @@ use iced::{
     futures::{SinkExt, Stream, StreamExt},
     stream::try_channel,
 };
+use regex::Regex;
 use tokio::{
     fs::{self, File},
     io::{AsyncBufRead, AsyncRead, AsyncReadExt, AsyncWriteExt, BufReader, BufWriter},
@@ -17,7 +17,7 @@ use tokio::{
 
 use crate::constants::APP_ID;
 
-use super::{page::SetupProgressBarValue, APP_DATA_URLS};
+use super::{constants::APP_DATA_URLS, page::SetupProgressBarValue};
 
 pub fn download_extra_files() -> impl Stream<Item = Result<SetupProgressBarValue, String>> {
     try_channel(1, move |mut output| async move {
@@ -204,13 +204,37 @@ pub fn extract_img(
     })
 }
 
-pub fn flash_img_to_sd_card(extracted_img_file_path: PathBuf) {
-    println!(
-        "{:?}",
-        Command::new("flatpak-spawn")
+pub fn flash_img_to_sd_card(
+    extracted_img_file_path: PathBuf,
+    sd_card_to_write_to: String,
+) -> impl Stream<Item = Result<SetupProgressBarValue, String>> {
+    try_channel(1, move |mut output| async move {
+        let _ = output.send(SetupProgressBarValue::FlashingSdCard).await;
+        let dd_command = tokio::process::Command::new("flatpak-spawn")
             .arg("--host")
             .arg("pkexec")
-            .arg("ls")
-            .output()
-    );
+            .arg("dd")
+            .arg(format!("if={}", extracted_img_file_path.to_string_lossy()))
+            .arg(format!("of={}", sd_card_to_write_to))
+            .arg("bs=4M")
+            .arg("conv=fsync")
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .output();
+        println!("Spawned dd command");
+        println!("dd output status: {}", dd_command.await.unwrap().status);
+
+        let _ = output.send(SetupProgressBarValue::Finished).await;
+
+        Ok(())
+    })
+}
+
+pub fn is_valid_ip(ip: &str) -> bool {
+    let re = Regex::new(r"^(\d{1,3}\.){3}\d{1,3}$").unwrap();
+    if !re.is_match(ip) {
+        return false;
+    }
+
+    ip.split('.').all(|part| part.parse::<u8>().is_ok())
 }
