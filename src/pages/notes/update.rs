@@ -89,6 +89,7 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                         crate::pages::notes::notes_utils::ListAction::AddUnorderedListItem {
                             list_char,
                             indent_amount,
+                            has_check_box,
                         } => {
                             apply_edit_to_note(state, text_editor::Edit::Enter);
                             for _ in 0..indent_amount {
@@ -96,12 +97,23 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                             }
                             apply_edit_to_note(state, text_editor::Edit::Insert(list_char));
                             apply_edit_to_note(state, text_editor::Edit::Insert(' '));
+                            if has_check_box {
+                                apply_edit_to_note(state, text_editor::Edit::Insert('['));
+                                apply_edit_to_note(state, text_editor::Edit::Insert(' '));
+                                apply_edit_to_note(state, text_editor::Edit::Insert(']'));
+                                apply_edit_to_note(state, text_editor::Edit::Insert(' '));
+                            }
                         }
                         crate::pages::notes::notes_utils::ListAction::DeleteUnorderedListItem {
                             cursor_x_pos: cursor_position_in_line,
                             indent_amount,
+                            has_check_box,
                         } => {
-                            let num_chars_to_remove = indent_amount + 2;
+                            let num_chars_to_remove = if has_check_box {
+                                indent_amount + 6
+                            } else {
+                                indent_amount + 2
+                            };
                             for _ in 0..cursor_position_in_line {
                                 apply_edit_to_note(state, text_editor::Edit::Backspace);
                             }

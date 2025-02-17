@@ -39,10 +39,12 @@ pub enum ListAction {
     AddUnorderedListItem {
         list_char: char,
         indent_amount: usize,
+        has_check_box: bool,
     },
     DeleteUnorderedListItem {
         cursor_x_pos: usize,
         indent_amount: usize,
+        has_check_box: bool,
     },
 }
 
@@ -219,56 +221,83 @@ pub fn select_specific_string_in_editor(
 
 // TODO Get this working for ordered lists
 pub fn parse_markdown_lists(state: &mut NotesPage) -> ListAction {
-    let asterisk_pattern = Regex::new(r"^([ ]*)\*[ ]").unwrap();
-    let asterisk_with_text_after_pattern = Regex::new(r"^([ ]*)\*[ ].").unwrap();
-    let dash_pattern = Regex::new(r"^([ ]*)\-[ ]").unwrap();
-    let dash_with_text_after_pattern = Regex::new(r"^([ ]*)\-[ ].").unwrap();
-    if let Some(indent_amount) = state
+    let asterisk_pattern = Regex::new(r"^([ ]*)\*\s(\[( |x)\]\s)?").unwrap();
+    let asterisk_with_text_after_pattern = Regex::new(r"^\s*\*\s(.*)").unwrap();
+    let dash_pattern = Regex::new(r"^([ ]*)-\s(\[( |x)\]\s)?").unwrap();
+    let dash_with_text_after_pattern = Regex::new(r"^\s*-\s(.*)").unwrap();
+
+    if let Some((indent_amount, has_check_box)) = state
         .editor_content
         .line(state.editor_content.cursor_position().0)
         .and_then(|current_line| {
             asterisk_pattern
                 .captures(&current_line)
-                .map(|caps| caps[1].len())
+                .map(|caps| (caps[1].len(), caps.get(2).is_some()))
         })
     {
         if state
             .editor_content
             .line(state.editor_content.cursor_position().0)
-            .is_some_and(|current_line| asterisk_with_text_after_pattern.is_match(&current_line))
+            .is_some_and(|current_line| {
+                asterisk_with_text_after_pattern
+                    .captures(&current_line)
+                    .is_some_and(|caps| match caps.get(1) {
+                        Some(captured_text) => {
+                            captured_text.as_str() != "[ ] "
+                                && captured_text.as_str() != "[x] "
+                                && !captured_text.is_empty()
+                        }
+                        None => false,
+                    })
+            })
         {
             ListAction::AddUnorderedListItem {
                 list_char: '*',
                 indent_amount,
+                has_check_box,
             }
         } else {
             ListAction::DeleteUnorderedListItem {
                 cursor_x_pos: state.editor_content.cursor_position().1,
                 indent_amount,
+                has_check_box,
             }
         }
-    } else if let Some(indent_amount) = state
+    } else if let Some((indent_amount, has_check_box)) = state
         .editor_content
         .line(state.editor_content.cursor_position().0)
         .and_then(|current_line| {
             dash_pattern
                 .captures(&current_line)
-                .map(|caps| caps[1].len())
+                .map(|caps| (caps[1].len(), caps.get(2).is_some()))
         })
     {
         if state
             .editor_content
             .line(state.editor_content.cursor_position().0)
-            .is_some_and(|current_line| dash_with_text_after_pattern.is_match(&current_line))
+            .is_some_and(|current_line| {
+                dash_with_text_after_pattern
+                    .captures(&current_line)
+                    .is_some_and(|caps| match caps.get(1) {
+                        Some(captured_text) => {
+                            captured_text.as_str() != "[ ] "
+                                && captured_text.as_str() != "[x] "
+                                && !captured_text.is_empty()
+                        }
+                        None => false,
+                    })
+            })
         {
             ListAction::AddUnorderedListItem {
                 list_char: '-',
-                indent_amount: 0,
+                indent_amount,
+                has_check_box,
             }
         } else {
             ListAction::DeleteUnorderedListItem {
                 cursor_x_pos: state.editor_content.cursor_position().1,
                 indent_amount,
+                has_check_box,
             }
         }
     } else {
