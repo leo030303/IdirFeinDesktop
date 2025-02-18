@@ -46,6 +46,17 @@ pub enum ListAction {
         indent_amount: usize,
         has_check_box: bool,
     },
+    AddOrderedListItem {
+        num_to_insert: u32,
+        indent_amount: usize,
+        has_check_box: bool,
+    },
+    DeleteOrderedListItem {
+        current_num: u32,
+        cursor_x_pos: usize,
+        indent_amount: usize,
+        has_check_box: bool,
+    },
 }
 
 pub fn apply_edit_to_note(state: &mut NotesPage, edit_action: text_editor::Edit) {
@@ -219,12 +230,15 @@ pub fn select_specific_string_in_editor(
     editor_content.perform(text_editor::Action::Select(text_editor::Motion::Right));
 }
 
-// TODO Get this working for ordered lists
 pub fn parse_markdown_lists(state: &mut NotesPage) -> ListAction {
     let asterisk_pattern = Regex::new(r"^([ ]*)\*\s(\[( |x)\]\s)?").unwrap();
     let asterisk_with_text_after_pattern = Regex::new(r"^\s*\*\s(.*)").unwrap();
+
     let dash_pattern = Regex::new(r"^([ ]*)-\s(\[( |x)\]\s)?").unwrap();
     let dash_with_text_after_pattern = Regex::new(r"^\s*-\s(.*)").unwrap();
+
+    let ordered_list_pattern = Regex::new(r"^([ ]*)(\d+)\.\s(\[( |x)\]\s)?").unwrap();
+    let ordered_list_with_text_after_pattern = Regex::new(r"^\s*\d+\.\s(.*)").unwrap();
 
     if let Some((indent_amount, has_check_box)) = state
         .editor_content
@@ -298,6 +312,48 @@ pub fn parse_markdown_lists(state: &mut NotesPage) -> ListAction {
                 cursor_x_pos: state.editor_content.cursor_position().1,
                 indent_amount,
                 has_check_box,
+            }
+        }
+    } else if let Some((indent_amount, current_num, has_check_box)) = state
+        .editor_content
+        .line(state.editor_content.cursor_position().0)
+        .and_then(|current_line| {
+            ordered_list_pattern.captures(&current_line).map(|caps| {
+                (
+                    caps[1].len(),
+                    caps[2].parse::<u32>().unwrap(),
+                    caps.get(3).is_some(),
+                )
+            })
+        })
+    {
+        if state
+            .editor_content
+            .line(state.editor_content.cursor_position().0)
+            .is_some_and(|current_line| {
+                ordered_list_with_text_after_pattern
+                    .captures(&current_line)
+                    .is_some_and(|caps| match caps.get(1) {
+                        Some(captured_text) => {
+                            captured_text.as_str() != "[ ] "
+                                && captured_text.as_str() != "[x] "
+                                && !captured_text.is_empty()
+                        }
+                        None => false,
+                    })
+            })
+        {
+            ListAction::AddOrderedListItem {
+                num_to_insert: current_num + 1,
+                indent_amount,
+                has_check_box,
+            }
+        } else {
+            ListAction::DeleteOrderedListItem {
+                cursor_x_pos: state.editor_content.cursor_position().1,
+                indent_amount,
+                has_check_box,
+                current_num,
             }
         }
     } else {

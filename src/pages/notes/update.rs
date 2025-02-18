@@ -121,6 +121,46 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                                 apply_edit_to_note(state, text_editor::Edit::Delete);
                             }
                         }
+                        crate::pages::notes::notes_utils::ListAction::AddOrderedListItem {
+                            num_to_insert,
+                            indent_amount,
+                            has_check_box,
+                        } => {
+                            apply_edit_to_note(state, text_editor::Edit::Enter);
+                            for _ in 0..indent_amount {
+                                apply_edit_to_note(state, text_editor::Edit::Insert(' '));
+                            }
+                            for digit in num_to_insert.to_string().chars() {
+                                apply_edit_to_note(state, text_editor::Edit::Insert(digit));
+                            }
+                            apply_edit_to_note(state, text_editor::Edit::Insert('.'));
+                            apply_edit_to_note(state, text_editor::Edit::Insert(' '));
+                            if has_check_box {
+                                apply_edit_to_note(state, text_editor::Edit::Insert('['));
+                                apply_edit_to_note(state, text_editor::Edit::Insert(' '));
+                                apply_edit_to_note(state, text_editor::Edit::Insert(']'));
+                                apply_edit_to_note(state, text_editor::Edit::Insert(' '));
+                            }
+                        }
+                        crate::pages::notes::notes_utils::ListAction::DeleteOrderedListItem {
+                            current_num,
+                            cursor_x_pos: cursor_position_in_line,
+                            indent_amount,
+                            has_check_box,
+                        } => {
+                            let num_digits = current_num.to_string().chars().count();
+                            let num_chars_to_remove = if has_check_box {
+                                indent_amount + 6 + num_digits
+                            } else {
+                                indent_amount + 2 + num_digits
+                            };
+                            for _ in 0..cursor_position_in_line {
+                                apply_edit_to_note(state, text_editor::Edit::Backspace);
+                            }
+                            for _ in cursor_position_in_line..num_chars_to_remove {
+                                apply_edit_to_note(state, text_editor::Edit::Delete);
+                            }
+                        }
                     }
                     is_action_performed = true;
                 }
