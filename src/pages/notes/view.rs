@@ -1,4 +1,9 @@
+use std::borrow::Cow;
+use std::collections::HashMap;
+
 use crate::pages::notes::notes_utils::get_colour_for_category;
+use crate::LOCALES;
+use fluent_templates::Loader;
 use iced::Alignment::Center;
 use iced_aw::{badge, color_picker, drop_down, DropDown};
 
@@ -50,45 +55,51 @@ pub fn main_view(state: &NotesPage) -> Element<Message> {
                 },
             ]
             .spacing(10),
-                if state.current_file.is_some(){
-                    row![
-                        if state.show_spell_check_view{
-                            if state.is_loading_note {
-                                loading_note_view(state)
-                            } else {
-                                spell_check_view(state)
-                            }
+            if state.current_file.is_some() {
+                row![
+                    if state.show_spell_check_view {
+                        if state.is_loading_note {
+                            loading_note_view(state)
                         } else {
-                            column![].into()
-                        },
-                        if state.show_editor {
-                            if state.is_loading_note {
-                                loading_note_view(state)
-                            } else {
-                                editor_view(state)
-                            }
-                        } else {
-                            column![].into()
-                        },
-                        if state.show_markdown {
-                            if state.is_loading_note {
-                                loading_preview_view(state)
-                            } else {
-                                preview_view(state)
-                            }
-                        } else {
-                            column![].into()
-                        },
-                        if !state.show_markdown && !state.show_editor {
-                            column![text("Use the buttons in the top left of the screen to open the editor or preview").size(24).width(Length::Fill).height(Length::Fill)]
-                        } else {
-                            column![]
+                            spell_check_view(state)
                         }
-                    ]
-                    .spacing(10).into()
-                } else {
-                    markdown_guide_view(state)
-                }
+                    } else {
+                        column![].into()
+                    },
+                    if state.show_editor {
+                        if state.is_loading_note {
+                            loading_note_view(state)
+                        } else {
+                            editor_view(state)
+                        }
+                    } else {
+                        column![].into()
+                    },
+                    if state.show_markdown {
+                        if state.is_loading_note {
+                            loading_preview_view(state)
+                        } else {
+                            preview_view(state)
+                        }
+                    } else {
+                        column![].into()
+                    },
+                    if !state.show_markdown && !state.show_editor {
+                        column![
+                            text(LOCALES.lookup(&state.locale, "open-editor-or-preview"))
+                                .size(24)
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                        ]
+                    } else {
+                        column![]
+                    }
+                ]
+                .spacing(10)
+                .into()
+            } else {
+                markdown_guide_view(state)
+            }
         ]
         .spacing(10)
         .width(Length::FillPortion(2))
@@ -101,11 +112,14 @@ pub fn main_view(state: &NotesPage) -> Element<Message> {
 fn new_note_button(state: &NotesPage) -> Element<Message> {
     if state.is_creating_new_note {
         row![
-            text_input("New Note Title", &state.new_note_title_entry_content)
-                .width(Length::Fill)
-                .on_input(|s| Message::Notes(NotesPageMessage::UpdateNewNoteTitleEntry(s)))
-                .on_submit(Message::Notes(NotesPageMessage::CreateNewNote))
-                .id(text_input::Id::new(NEW_NOTE_TEXT_INPUT_ID)),
+            text_input(
+                &LOCALES.lookup(&state.locale, "new-note-title"),
+                &state.new_note_title_entry_content
+            )
+            .width(Length::Fill)
+            .on_input(|s| Message::Notes(NotesPageMessage::UpdateNewNoteTitleEntry(s)))
+            .on_submit(Message::Notes(NotesPageMessage::CreateNewNote))
+            .id(text_input::Id::new(NEW_NOTE_TEXT_INPUT_ID)),
             Tooltip::new(
                 button(Svg::new(svg::Handle::from_memory(include_bytes!(
                     "../../../icons/ok.svg"
@@ -114,7 +128,7 @@ fn new_note_button(state: &NotesPage) -> Element<Message> {
                 .style(button::success)
                 .width(Length::Fixed(50.0))
                 .height(Length::Fixed(30.0)),
-                "Create",
+                text(LOCALES.lookup(&state.locale, "create")),
                 iced::widget::tooltip::Position::Bottom
             ),
             Tooltip::new(
@@ -125,7 +139,7 @@ fn new_note_button(state: &NotesPage) -> Element<Message> {
                 .style(button::danger)
                 .width(Length::Fixed(50.0))
                 .height(Length::Fixed(30.0)),
-                "Cancel",
+                text(LOCALES.lookup(&state.locale, "cancel")),
                 iced::widget::tooltip::Position::Bottom
             ),
         ]
@@ -134,9 +148,9 @@ fn new_note_button(state: &NotesPage) -> Element<Message> {
         row![
             button(
                 text(if state.show_archived_notes {
-                    "Hide Archived"
+                    LOCALES.lookup(&state.locale, "hide-archived")
                 } else {
-                    "Show Archived"
+                    LOCALES.lookup(&state.locale, "show-archived")
                 })
                 .width(Length::Fill)
                 .align_x(Center)
@@ -144,7 +158,7 @@ fn new_note_button(state: &NotesPage) -> Element<Message> {
             .width(Length::Fill)
             .on_press(Message::Notes(NotesPageMessage::ToggleShowArchivedNotes)),
             button(
-                text("New Note (Ctrl+N)")
+                text(LOCALES.lookup(&state.locale, "new-note-shortcut"))
                     .width(Length::Fill)
                     .align_x(Center)
             )
@@ -159,11 +173,14 @@ fn new_note_button(state: &NotesPage) -> Element<Message> {
 
 fn rename_note_view(state: &NotesPage) -> Element<Message> {
     row![
-        text_input("Rename Note", &state.rename_note_entry_text)
-            .width(Length::Fill)
-            .on_input(|s| Message::Notes(NotesPageMessage::SetRenameNoteText(s)))
-            .on_submit(Message::Notes(NotesPageMessage::RenameNote))
-            .id(text_input::Id::new(RENAME_NOTE_TEXT_INPUT_ID)),
+        text_input(
+            &LOCALES.lookup(&state.locale, "rename-note"),
+            &state.rename_note_entry_text
+        )
+        .width(Length::Fill)
+        .on_input(|s| Message::Notes(NotesPageMessage::SetRenameNoteText(s)))
+        .on_submit(Message::Notes(NotesPageMessage::RenameNote))
+        .id(text_input::Id::new(RENAME_NOTE_TEXT_INPUT_ID)),
         Tooltip::new(
             button(Svg::new(svg::Handle::from_memory(include_bytes!(
                 "../../../icons/ok.svg"
@@ -172,7 +189,7 @@ fn rename_note_view(state: &NotesPage) -> Element<Message> {
             .style(button::success)
             .width(Length::Fixed(50.0))
             .height(Length::Fixed(30.0)),
-            "Rename",
+            text(LOCALES.lookup(&state.locale, "rename")),
             iced::widget::tooltip::Position::Bottom
         ),
         Tooltip::new(
@@ -183,7 +200,7 @@ fn rename_note_view(state: &NotesPage) -> Element<Message> {
             .style(button::danger)
             .width(Length::Fixed(50.0))
             .height(Length::Fixed(30.0)),
-            "Cancel",
+            text(LOCALES.lookup(&state.locale, "cancel")),
             iced::widget::tooltip::Position::Bottom
         ),
     ]
@@ -191,15 +208,23 @@ fn rename_note_view(state: &NotesPage) -> Element<Message> {
     .into()
 }
 
-fn confirm_delete_note_view(_state: &NotesPage) -> Element<Message> {
+fn confirm_delete_note_view(state: &NotesPage) -> Element<Message> {
     row![
-        button(text("Delete").width(Length::Fill).align_x(Center))
-            .style(button::danger)
-            .width(Length::Fill)
-            .on_press(Message::Notes(NotesPageMessage::DeleteNote)),
-        button(text("Cancel").width(Length::Fill).align_x(Center))
-            .width(Length::Fill)
-            .on_press(Message::Notes(NotesPageMessage::ToggleDeleteNoteView)),
+        button(
+            text(LOCALES.lookup(&state.locale, "delete"))
+                .width(Length::Fill)
+                .align_x(Center)
+        )
+        .style(button::danger)
+        .width(Length::Fill)
+        .on_press(Message::Notes(NotesPageMessage::DeleteNote)),
+        button(
+            text(LOCALES.lookup(&state.locale, "cancel"))
+                .width(Length::Fill)
+                .align_x(Center)
+        )
+        .width(Length::Fill)
+        .on_press(Message::Notes(NotesPageMessage::ToggleDeleteNoteView)),
     ]
     .spacing(5)
     .into()
@@ -207,11 +232,18 @@ fn confirm_delete_note_view(_state: &NotesPage) -> Element<Message> {
 
 fn spell_check_view(state: &NotesPage) -> Element<Message> {
     column![
-        button(text("Run Spell Check").width(Length::Fill).align_x(Center)).on_press(
-            Message::Notes(NotesPageMessage::CalculateSpellingCorrectionsList)
-        ),
+        button(
+            text(LOCALES.lookup(&state.locale, "run-spell-check"))
+                .width(Length::Fill)
+                .align_x(Center)
+        )
+        .on_press(Message::Notes(
+            NotesPageMessage::CalculateSpellingCorrectionsList
+        )),
         if state.spelling_corrections_list.is_empty() {
-            column![text("No Errors").width(Length::Fill).align_x(Center)]
+            column![text(LOCALES.lookup(&state.locale, "no-errors"))
+                .width(Length::Fill)
+                .align_x(Center)]
         } else {
             column![Scrollable::new(column(
                 state
@@ -233,20 +265,32 @@ fn spell_check_view(state: &NotesPage) -> Element<Message> {
 
 fn manage_note_options_view(state: &NotesPage) -> Element<Message> {
     row![
-        button(text("Rename").width(Length::Fill).align_x(Center))
-            .width(Length::Fill)
-            .on_press(Message::Notes(NotesPageMessage::ToggleRenameNoteView)),
-        button(text("Archive").width(Length::Fill).align_x(Center))
-            .width(Length::Fill)
-            .on_press(Message::Notes(NotesPageMessage::ToggleArchiveNoteView)),
-        button(text("Delete").width(Length::Fill).align_x(Center))
-            .style(button::danger)
-            .width(Length::Fill)
-            .on_press(Message::Notes(if state.confirm_before_delete_note {
-                NotesPageMessage::ToggleDeleteNoteView
-            } else {
-                NotesPageMessage::DeleteNote
-            })),
+        button(
+            text(LOCALES.lookup(&state.locale, "rename"))
+                .width(Length::Fill)
+                .align_x(Center)
+        )
+        .width(Length::Fill)
+        .on_press(Message::Notes(NotesPageMessage::ToggleRenameNoteView)),
+        button(
+            text(LOCALES.lookup(&state.locale, "archive"))
+                .width(Length::Fill)
+                .align_x(Center)
+        )
+        .width(Length::Fill)
+        .on_press(Message::Notes(NotesPageMessage::ToggleArchiveNoteView)),
+        button(
+            text(LOCALES.lookup(&state.locale, "delete"))
+                .width(Length::Fill)
+                .align_x(Center)
+        )
+        .style(button::danger)
+        .width(Length::Fill)
+        .on_press(Message::Notes(if state.confirm_before_delete_note {
+            NotesPageMessage::ToggleDeleteNoteView
+        } else {
+            NotesPageMessage::DeleteNote
+        })),
         Tooltip::new(
             button(Svg::new(svg::Handle::from_memory(include_bytes!(
                 "../../../icons/close.svg"
@@ -254,7 +298,7 @@ fn manage_note_options_view(state: &NotesPage) -> Element<Message> {
             .on_press(Message::Notes(NotesPageMessage::ShowMenuForNote(None)))
             .width(Length::Fixed(50.0))
             .height(Length::Fixed(30.0)),
-            "Close",
+            text(LOCALES.lookup(&state.locale, "close")),
             iced::widget::tooltip::Position::Right,
         )
     ]
@@ -273,7 +317,7 @@ fn sidebar_note_button<'a>(state: &'a NotesPage, note: &'a Note) -> Element<'a, 
                         .file_stem()
                         .unwrap_or_default()
                         .to_str()
-                        .unwrap_or("Couldn't read filename")
+                        .unwrap_or(&LOCALES.lookup(&state.locale, "couldnt-read-filename"))
                         .to_lowercase()
                 ) {
                     column![
@@ -321,7 +365,7 @@ fn sidebar_note_button<'a>(state: &'a NotesPage, note: &'a Note) -> Element<'a, 
             ))))
             .height(Length::Fixed(30.0))
             .width(Length::Fixed(50.0)),
-            "Manage Details",
+            text(LOCALES.lookup(&state.locale, "manage-details")),
             iced::widget::tooltip::Position::Right,
         )
     ]
@@ -333,8 +377,11 @@ fn sidebar_with_selected_folder(state: &NotesPage) -> Element<Message> {
     column![
         new_note_button(state),
         Space::with_height(20),
-        text_input("Filter", &state.notes_list_filter)
-            .on_input(|s| { Message::Notes(NotesPageMessage::FilterNotesList(s)) }),
+        text_input(
+            &LOCALES.lookup(&state.locale, "filter"),
+            &state.notes_list_filter
+        )
+        .on_input(|s| { Message::Notes(NotesPageMessage::FilterNotesList(s)) }),
         Scrollable::new(
             column(
                 state
@@ -346,7 +393,7 @@ fn sidebar_with_selected_folder(state: &NotesPage) -> Element<Message> {
                             .file_stem()
                             .unwrap_or_default()
                             .to_str()
-                            .unwrap_or("Couldn't read filename")
+                            .unwrap_or(&LOCALES.lookup(&state.locale, "couldnt-read-filename"))
                             .to_lowercase()
                     ) ^ state.show_archived_notes)
                     .filter(|note| {
@@ -364,7 +411,9 @@ fn sidebar_with_selected_folder(state: &NotesPage) -> Element<Message> {
                                 if state.show_archived_notes {
                                     row![
                                         button(
-                                            text("Unarchive").width(Length::Fill).align_x(Center)
+                                            text(LOCALES.lookup(&state.locale, "unarchive"))
+                                                .width(Length::Fill)
+                                                .align_x(Center)
                                         )
                                         .width(Length::Fill)
                                         .on_press(Message::Notes(NotesPageMessage::UnarchiveNote)),
@@ -377,7 +426,7 @@ fn sidebar_with_selected_folder(state: &NotesPage) -> Element<Message> {
                                             ))
                                             .width(Length::Fixed(50.0))
                                             .height(Length::Fixed(30.0)),
-                                            "Close",
+                                            text(LOCALES.lookup(&state.locale, "close")),
                                             iced::widget::tooltip::Position::Right,
                                         )
                                     ]
@@ -385,17 +434,23 @@ fn sidebar_with_selected_folder(state: &NotesPage) -> Element<Message> {
                                     .into()
                                 } else if state.display_archive_view {
                                     row![
-                                        button(text("Archive").width(Length::Fill).align_x(Center))
-                                            .style(button::danger)
-                                            .width(Length::Fill)
-                                            .on_press(Message::Notes(
-                                                NotesPageMessage::ArchiveNote
-                                            )),
-                                        button(text("Cancel").width(Length::Fill).align_x(Center))
-                                            .width(Length::Fill)
-                                            .on_press(Message::Notes(
-                                                NotesPageMessage::ToggleArchiveNoteView
-                                            )),
+                                        button(
+                                            text(LOCALES.lookup(&state.locale, "archive"))
+                                                .width(Length::Fill)
+                                                .align_x(Center)
+                                        )
+                                        .style(button::danger)
+                                        .width(Length::Fill)
+                                        .on_press(Message::Notes(NotesPageMessage::ArchiveNote)),
+                                        button(
+                                            text(LOCALES.lookup(&state.locale, "cancel"))
+                                                .width(Length::Fill)
+                                                .align_x(Center)
+                                        )
+                                        .width(Length::Fill)
+                                        .on_press(
+                                            Message::Notes(NotesPageMessage::ToggleArchiveNoteView)
+                                        ),
                                     ]
                                     .spacing(5)
                                     .into()
@@ -419,9 +474,9 @@ fn sidebar_with_selected_folder(state: &NotesPage) -> Element<Message> {
     .into()
 }
 
-fn sidebar_without_selected_folder(_state: &NotesPage) -> Element<Message> {
+fn sidebar_without_selected_folder(state: &NotesPage) -> Element<Message> {
     button(
-        text("Select Notes Folder")
+        text(LOCALES.lookup(&state.locale, "select-notes-folder"))
             .width(Length::Fill)
             .align_x(Horizontal::Center),
     )
@@ -430,17 +485,19 @@ fn sidebar_without_selected_folder(_state: &NotesPage) -> Element<Message> {
     .into()
 }
 
-fn loading_note_view(_state: &NotesPage) -> Element<Message> {
-    column![text("Loading Note").size(24).width(Length::Fill),]
-        .spacing(20)
-        .height(Length::Shrink)
-        .into()
+fn loading_note_view(state: &NotesPage) -> Element<Message> {
+    column![text(LOCALES.lookup(&state.locale, "loading-note"))
+        .size(24)
+        .width(Length::Fill),]
+    .spacing(20)
+    .height(Length::Shrink)
+    .into()
 }
 
 fn editor_view(state: &NotesPage) -> Element<Message> {
     column![text_editor(&state.editor_content)
         .id(TEXT_EDITOR_ID)
-        .placeholder("Type your Markdown here...")
+        .placeholder(LOCALES.lookup(&state.locale, "type-your-markdown-here"))
         .on_action(|action| Message::Notes(NotesPageMessage::Edit(action)))
         .height(Fill)
         .padding(10)
@@ -449,11 +506,13 @@ fn editor_view(state: &NotesPage) -> Element<Message> {
     .into()
 }
 
-fn loading_preview_view(_state: &NotesPage) -> Element<Message> {
-    column![text("Loading Preview").size(24).width(Length::Fill),]
-        .spacing(20)
-        .height(Length::Shrink)
-        .into()
+fn loading_preview_view(state: &NotesPage) -> Element<Message> {
+    column![text(LOCALES.lookup(&state.locale, "loading-preview"))
+        .size(24)
+        .width(Length::Fill),]
+    .spacing(20)
+    .height(Length::Shrink)
+    .into()
 }
 
 fn preview_view(state: &NotesPage) -> Element<Message> {
@@ -473,7 +532,9 @@ fn preview_view(state: &NotesPage) -> Element<Message> {
 fn document_statistics_view(state: &NotesPage) -> Element<Message> {
     column![
         row![
-            text("Document Statistics").width(Length::Fill).size(24),
+            text(LOCALES.lookup(&state.locale, "document-statistics"))
+                .width(Length::Fill)
+                .size(24),
             Tooltip::new(
                 button(Svg::new(svg::Handle::from_memory(include_bytes!(
                     "../../../icons/close.svg"
@@ -482,21 +543,33 @@ fn document_statistics_view(state: &NotesPage) -> Element<Message> {
                     NotesPageMessage::ToggleDocumentStatisticsView
                 ))
                 .width(Length::Fixed(50.0)),
-                "Close Statistics",
+                text(LOCALES.lookup(&state.locale, "close-statistics")),
                 iced::widget::tooltip::Position::Bottom
             ),
         ],
-        text(format!(
-            "Character Count: {}",
-            state.current_note_statistics.char_count
+        text(LOCALES.lookup_with_args(
+            &state.locale,
+            "character-count-arg",
+            &HashMap::from([(
+                Cow::from("count"),
+                state.current_note_statistics.char_count.into(),
+            )]),
         )),
-        text(format!(
-            "Word Count: {}",
-            state.current_note_statistics.word_count
+        text(LOCALES.lookup_with_args(
+            &state.locale,
+            "word-count-arg",
+            &HashMap::from([(
+                Cow::from("count"),
+                state.current_note_statistics.word_count.into(),
+            )]),
         )),
-        text(format!(
-            "Reading Time: {} minutes",
-            state.current_note_statistics.reading_time_in_mins
+        text(LOCALES.lookup_with_args(
+            &state.locale,
+            "reading-time-arg",
+            &HashMap::from([(
+                Cow::from("time"),
+                state.current_note_statistics.reading_time_in_mins.into(),
+            )]),
         )),
         Tooltip::new(
             button(Svg::new(svg::Handle::from_memory(include_bytes!(
@@ -504,7 +577,7 @@ fn document_statistics_view(state: &NotesPage) -> Element<Message> {
             ))))
             .on_press(Message::Notes(NotesPageMessage::CalculateNoteStatistics))
             .width(Length::Fill),
-            "Refresh Statistics",
+            text(LOCALES.lookup(&state.locale, "refresh-statistics")),
             iced::widget::tooltip::Position::Bottom
         ),
     ]
@@ -514,36 +587,42 @@ fn document_statistics_view(state: &NotesPage) -> Element<Message> {
 fn manage_categories_view(state: &NotesPage) -> Element<Message> {
     column![
         row![
-            text("Manage Categories").width(Length::Fill).size(24),
+            text(LOCALES.lookup(&state.locale, "manage-categories"))
+                .width(Length::Fill)
+                .size(24),
             Tooltip::new(
                 button(Svg::new(svg::Handle::from_memory(include_bytes!(
                     "../../../icons/close.svg"
                 ))))
                 .on_press(Message::Notes(NotesPageMessage::ToggleManageCategoriesView))
                 .width(Length::Fixed(50.0)),
-                "Close Categories Manager",
+                text(LOCALES.lookup(&state.locale, "close-categories-manager")),
                 iced::widget::tooltip::Position::Bottom
             ),
         ],
-        text_input("Add new category", &state.new_category_entry_text)
-            .on_input(|s| Message::Notes(NotesPageMessage::SetNewCategoryText(s))),
+        text_input(
+            &LOCALES.lookup(&state.locale, "add-new-category"),
+            &state.new_category_entry_text
+        )
+        .on_input(|s| Message::Notes(NotesPageMessage::SetNewCategoryText(s))),
         row![
             color_picker(
                 state.show_colour_picker,
                 state.current_color_picker_colour,
-                button("Pick Colour")
+                button(text(LOCALES.lookup(&state.locale, "pick-colour")))
                     .on_press(Message::Notes(NotesPageMessage::ToggleColourPicker)),
                 Message::Notes(NotesPageMessage::ToggleColourPicker),
                 |colour| Message::Notes(NotesPageMessage::SetColourPickerColour(colour)),
-                String::from("Cancel"),
-                String::from("Submit")
+                LOCALES.lookup(&state.locale, "cancel"),
+                LOCALES.lookup(&state.locale, "submit")
             ),
             container(Space::with_width(20.0).height(Length::Fixed(20.0))).style(move |_| {
                 container::Style::default()
                     .background(state.current_color_picker_colour)
                     .border(iced::Border::default().rounded(5.0))
             }),
-            button("Add Category").on_press(Message::Notes(NotesPageMessage::AddCategory))
+            button(text(LOCALES.lookup(&state.locale, "add-category")))
+                .on_press(Message::Notes(NotesPageMessage::AddCategory))
         ]
         .align_y(Center)
         .spacing(20),
@@ -559,12 +638,9 @@ fn manage_categories_view(state: &NotesPage) -> Element<Message> {
     .into()
 }
 
-fn markdown_guide_view(_state: &NotesPage) -> Element<Message> {
+fn markdown_guide_view(state: &NotesPage) -> Element<Message> {
     // TODO
-    row![text(
-        "This will be a markdown guide, currently a placeholder"
-    )]
-    .into()
+    row![text(LOCALES.lookup(&state.locale, "markdown-guide"))].into()
 }
 
 pub fn tool_view(state: &NotesPage) -> Element<Message> {
@@ -573,27 +649,35 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
             "../../../icons/view-more.svg"
         ))))
         .on_press(Message::Notes(NotesPageMessage::ToggleExtraToolsMenu)),
-        "More Tools",
+        text(LOCALES.lookup(&state.locale, "more-tools")),
         iced::widget::tooltip::Position::Bottom,
     );
     let overlay = column![
         button(
-            text("Select Notes Folder")
+            text(LOCALES.lookup(&state.locale, "select-notes-folder"))
                 .width(Length::Fill)
                 .align_x(Center),
         )
         .on_press(Message::Notes(NotesPageMessage::OpenFilePicker)),
-        button(text("Export PDF").width(Length::Fill).align_x(Center))
-            .on_press(Message::Notes(NotesPageMessage::ExportPDF))
-            .width(Length::Fill),
-        button(text("Post to website").width(Length::Fill).align_x(Center))
-            .on_press(Message::Notes(NotesPageMessage::ExportToWebsite))
-            .width(Length::Fill),
+        button(
+            text(LOCALES.lookup(&state.locale, "export-pdf"))
+                .width(Length::Fill)
+                .align_x(Center)
+        )
+        .on_press(Message::Notes(NotesPageMessage::ExportPDF))
+        .width(Length::Fill),
+        button(
+            text(LOCALES.lookup(&state.locale, "post-to-website"))
+                .width(Length::Fill)
+                .align_x(Center)
+        )
+        .on_press(Message::Notes(NotesPageMessage::ExportToWebsite))
+        .width(Length::Fill),
         button(
             text(if !state.show_document_statistics_view {
-                "Show statistics"
+                LOCALES.lookup(&state.locale, "show-statistics")
             } else {
-                "Hide Statistics"
+                LOCALES.lookup(&state.locale, "hide-statistics")
             })
             .width(Length::Fill)
             .align_x(Center)
@@ -604,9 +688,9 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
         .width(Length::Fill),
         button(
             text(if !state.show_manage_categories_view {
-                "Manage Categories"
+                LOCALES.lookup(&state.locale, "manage-categories")
             } else {
-                "Hide Categories Manager"
+                LOCALES.lookup(&state.locale, "hide-categories-manager")
             })
             .width(Length::Fill)
             .align_x(Center)
@@ -631,7 +715,7 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
             } else {
                 button::primary
             }),
-            "Toggle Sidebar (Ctrl+B)",
+            text(LOCALES.lookup(&state.locale, "toggle-sidebar-shortcut")),
             iced::widget::tooltip::Position::Bottom
         ),
         Tooltip::new(
@@ -644,7 +728,7 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
             } else {
                 button::primary
             }),
-            "Toggle Markdown Preview (Ctrl+M)",
+            text(LOCALES.lookup(&state.locale, "toggle-markdown-preview-shortcut")),
             iced::widget::tooltip::Position::Bottom
         ),
         Tooltip::new(
@@ -657,7 +741,7 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
             } else {
                 button::primary
             }),
-            "Toggle Editor (Ctrl+E)",
+            text(LOCALES.lookup(&state.locale, "toggle-editor-shortcut")),
             iced::widget::tooltip::Position::Bottom
         ),
         Tooltip::new(
@@ -670,7 +754,7 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
             } else {
                 button::primary
             }),
-            "Toggle Spell Check View (Ctrl+K)",
+            text(LOCALES.lookup(&state.locale, "toggle-spell-check-view-shortcut")),
             iced::widget::tooltip::Position::Bottom
         ),
         drop_down
