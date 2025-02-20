@@ -44,6 +44,7 @@ impl Default for PasswordPageConfig {
 }
 
 pub struct PasswordsPage {
+    pub(crate) locale: fluent_templates::LanguageIdentifier,
     pub(super) is_unlocked: bool,
     pub(super) is_dirty: bool,
     pub(super) is_creating_new_keepass_file: bool,
@@ -101,7 +102,12 @@ pub enum PasswordsPageMessage {
 
 impl PasswordsPage {
     pub fn new(config: &PasswordPageConfig) -> Self {
+        let locale: fluent_templates::LanguageIdentifier = current_locale::current_locale()
+            .expect("Can't get locale")
+            .parse()
+            .expect("Failed to parse locale");
         Self {
+            locale,
             passwords_list: vec![],
             selected_keepass_file: config.default_database.clone(),
             is_unlocked: false,

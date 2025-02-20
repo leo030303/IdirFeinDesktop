@@ -10,6 +10,13 @@ pub mod config;
 pub mod pages;
 pub mod utils;
 
+fluent_templates::static_loader! {
+    pub static LOCALES = {
+        locales: "./locales",
+        fallback_language: "en-GB",
+    };
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum Page {
     Settings,

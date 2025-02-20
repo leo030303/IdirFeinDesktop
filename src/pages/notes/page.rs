@@ -92,6 +92,7 @@ impl Default for NotesPageConfig {
 }
 
 pub struct NotesPage {
+    pub(crate) locale: fluent_templates::LanguageIdentifier,
     pub(crate) editor_content: text_editor::Content,
     pub(crate) note_crdt: LoroDoc,
     pub(crate) undo_manager: UndoManager,
@@ -193,6 +194,10 @@ pub enum NotesPageMessage {
 
 impl NotesPage {
     pub fn new(config: &NotesPageConfig) -> Self {
+        let locale: fluent_templates::LanguageIdentifier = current_locale::current_locale()
+            .expect("Can't get locale")
+            .parse()
+            .expect("Failed to parse locale");
         let theme = Theme::TokyoNight;
 
         let loro_doc = LoroDoc::new();
@@ -204,11 +209,11 @@ impl NotesPage {
             .expect("Can't find data dir")
             .as_path()
             .join(APP_ID);
-        let locale = current_locale::current_locale().expect("Can't get locale");
+        let locale_str = current_locale::current_locale().expect("Can't get locale");
         let aff_content = fs::read_to_string(
             idirfein_data_dir
                 .join("dictionaries")
-                .join(locale.to_uppercase())
+                .join(locale_str.to_uppercase())
                 .join("index.aff"),
         )
         .unwrap_or_default();
@@ -216,7 +221,7 @@ impl NotesPage {
         let dic_content = fs::read_to_string(
             idirfein_data_dir
                 .join("dictionaries")
-                .join(locale.to_uppercase())
+                .join(locale_str.to_uppercase())
                 .join("index.dic"),
         )
         .unwrap_or_default();
@@ -228,6 +233,7 @@ impl NotesPage {
             .expect("failed to build dictionary!");
 
         Self {
+            locale,
             editor_content: text_editor::Content::with_text(""),
             undo_manager,
             note_crdt: loro_doc,

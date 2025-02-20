@@ -45,6 +45,7 @@ pub struct GalleryPageConfig {
 }
 
 pub struct GalleryPage {
+    pub(crate) locale: fluent_templates::LanguageIdentifier,
     pub(crate) selected_folder: Option<PathBuf>,
     pub(crate) selected_image: Option<(PathBuf, Vec<FaceData>)>,
     pub(crate) first_loaded_row_index: usize,
@@ -127,7 +128,12 @@ pub enum GalleryPageMessage {
 
 impl GalleryPage {
     pub fn new(config: &GalleryPageConfig) -> Self {
+        let locale: fluent_templates::LanguageIdentifier = current_locale::current_locale()
+            .expect("Can't get locale")
+            .parse()
+            .expect("Failed to parse locale");
         Self {
+            locale,
             selected_folder: config.default_folder.clone(),
             gallery_row_list: vec![],
             first_loaded_row_index: 0,

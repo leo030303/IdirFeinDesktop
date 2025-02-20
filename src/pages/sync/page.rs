@@ -50,6 +50,7 @@ impl Default for SyncPageConfig {
 }
 
 pub struct SyncPage {
+    pub locale: fluent_templates::LanguageIdentifier,
     pub ignore_list_editor_text: String,
     pub is_connected_to_server: bool,
     pub ignore_string_list: Vec<String>,
@@ -68,6 +69,10 @@ pub enum SyncPageMessage {
 
 impl SyncPage {
     pub fn new(_config: &SyncPageConfig) -> Self {
+        let locale: fluent_templates::LanguageIdentifier = current_locale::current_locale()
+            .expect("Can't get locale")
+            .parse()
+            .expect("Failed to parse locale");
         let ignore_string_list: Vec<String> = serde_json::from_str(
             &fs::read_to_string(
                 dirs::config_dir()
@@ -89,6 +94,7 @@ impl SyncPage {
         )
         .unwrap_or_default();
         Self {
+            locale,
             is_connected_to_server: false,
             ignore_list_editor_text: String::new(),
             ignore_string_list,

@@ -43,6 +43,7 @@ impl SettingsTab {
 
 #[derive(Debug, Clone)]
 pub struct SettingsPage {
+    pub(crate) locale: fluent_templates::LanguageIdentifier,
     pub(crate) is_saving: bool,
     pub(crate) save_was_successful: bool,
     pub(crate) save_message: String,
@@ -93,7 +94,12 @@ pub enum SettingsPageMessage {
 
 impl SettingsPage {
     pub fn new(app_config: &AppConfig) -> Self {
+        let locale: fluent_templates::LanguageIdentifier = current_locale::current_locale()
+            .expect("Can't get locale")
+            .parse()
+            .expect("Failed to parse locale");
         Self {
+            locale,
             is_saving: false,
             save_was_successful: true,
             current_tab: SettingsTab::General,

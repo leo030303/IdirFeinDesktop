@@ -81,6 +81,7 @@ impl Default for TaskPageConfig {
 }
 
 pub struct TasksPage {
+    pub(crate) locale: fluent_templates::LanguageIdentifier,
     pub(crate) selected_folder: Option<PathBuf>,
     pub(crate) current_project_file: Option<PathBuf>,
     pub(crate) task_view_type: TaskViewType,
@@ -160,7 +161,12 @@ pub enum TasksPageMessage {
 
 impl TasksPage {
     pub fn new(config: &TaskPageConfig) -> Self {
+        let locale: fluent_templates::LanguageIdentifier = current_locale::current_locale()
+            .expect("Can't get locale")
+            .parse()
+            .expect("Failed to parse locale");
         Self {
+            locale,
             selected_folder: config.default_folder.clone(),
             current_project_file: config.default_project_file.clone(),
             task_view_type: if config.kanban_task_view_is_default {

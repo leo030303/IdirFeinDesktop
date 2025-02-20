@@ -1,3 +1,7 @@
+use std::borrow::Cow;
+use std::collections::HashMap;
+
+use fluent_templates::Loader;
 use iced::Alignment::Center;
 
 use iced::alignment::{Horizontal, Vertical};
@@ -9,6 +13,7 @@ use iced::Element;
 use iced::{Font, Length};
 
 use crate::app::Message;
+use crate::LOCALES;
 
 use super::page::{PasswordsPage, PasswordsPageMessage};
 
@@ -43,16 +48,16 @@ pub fn main_view(state: &PasswordsPage) -> Element<Message> {
 
 fn new_database_set_password_view(state: &PasswordsPage) -> Element<Message> {
     column![
-        text("Set Password And/Or Keyfile")
+        text(LOCALES.lookup(&state.locale, "set-password-and-or-keyfile"))
             .size(24)
             .width(Length::Fill)
             .align_x(Horizontal::Center),
-        text("Enter the master password:")
+        text(LOCALES.lookup(&state.locale, "enter-the-master-password"))
             .width(Length::Fill)
             .align_x(Horizontal::Center),
         row![
             text_input(
-                "Enter the master password",
+                &LOCALES.lookup(&state.locale, "master-password"),
                 &state.master_password_field_text
             )
             .secure(state.hide_master_password_entry)
@@ -81,20 +86,20 @@ fn new_database_set_password_view(state: &PasswordsPage) -> Element<Message> {
                     button::secondary
                 }),
                 if state.hide_master_password_entry {
-                    "Show Password"
+                    text(LOCALES.lookup(&state.locale, "show-password"))
                 } else {
-                    "Hide Password"
+                    text(LOCALES.lookup(&state.locale, "hide-password"))
                 },
                 iced::widget::tooltip::Position::Bottom,
             )
         ]
         .height(Length::Shrink),
-        text("Re-enter the master password:")
+        text(LOCALES.lookup(&state.locale, "re-enter-the-master-password"))
             .width(Length::Fill)
             .align_x(Horizontal::Center),
         row![
             text_input(
-                "Re-enter the master password",
+                &LOCALES.lookup(&state.locale, "re-enter-the-master-password"),
                 &state.master_password_reentry_field_text
             )
             .secure(state.hide_master_password_reentry_entry)
@@ -125,26 +130,33 @@ fn new_database_set_password_view(state: &PasswordsPage) -> Element<Message> {
                     button::secondary
                 }),
                 if state.hide_master_password_reentry_entry {
-                    "Show Password"
+                    text(LOCALES.lookup(&state.locale, "show-password"))
                 } else {
-                    "Hide Password"
+                    text(LOCALES.lookup(&state.locale, "hide-password"))
                 },
                 iced::widget::tooltip::Position::Bottom,
             )
         ]
         .height(Length::Shrink),
         text(if state.passwords_dont_match {
-            "Passwords don't match"
+            LOCALES.lookup(&state.locale, "passwords-dont-match")
         } else {
-            ""
+            String::new()
         })
         .width(Length::Fill)
         .align_x(Horizontal::Center),
         container(
             button(text(if let Some(keyfile) = &state.selected_key_file {
-                format!("Selected keyfile: {}", keyfile.as_path().to_str().unwrap())
+                LOCALES.lookup_with_args(
+                    &state.locale,
+                    "selected-keyfile",
+                    &HashMap::from([(
+                        Cow::from("keyfile_path"),
+                        keyfile.as_path().to_string_lossy().into(),
+                    )]),
+                )
             } else {
-                String::from("Select Keyfile")
+                LOCALES.lookup(&state.locale, "select-keyfile")
             }))
             .on_press(Message::Passwords(PasswordsPageMessage::PickKeyFile))
         )
@@ -152,7 +164,7 @@ fn new_database_set_password_view(state: &PasswordsPage) -> Element<Message> {
         .align_x(Horizontal::Center),
         Space::with_height(20),
         container(
-            button(text("Create Database"))
+            button(text(LOCALES.lookup(&state.locale, "create-database")))
                 .on_press(Message::Passwords(PasswordsPageMessage::CreateDatabase))
                 .style(button::success)
         )
@@ -164,16 +176,16 @@ fn new_database_set_password_view(state: &PasswordsPage) -> Element<Message> {
     .into()
 }
 
-fn creating_new_database_choose_path_view(_state: &PasswordsPage) -> Element<Message> {
+fn creating_new_database_choose_path_view(state: &PasswordsPage) -> Element<Message> {
     column![
-        text("Choose File Path")
+        text(LOCALES.lookup(&state.locale, "choose-file-path"))
             .size(24)
             .width(Length::Fill)
             .align_x(Horizontal::Center),
         container(
-            button(text("Select file path")).on_press(Message::Passwords(
-                PasswordsPageMessage::PickNewDatabasePath
-            ))
+            button(text(LOCALES.lookup(&state.locale, "select-file-path"))).on_press(
+                Message::Passwords(PasswordsPageMessage::PickNewDatabasePath)
+            )
         )
         .width(Length::Fill)
         .align_x(Horizontal::Center),
@@ -185,8 +197,11 @@ fn creating_new_database_choose_path_view(_state: &PasswordsPage) -> Element<Mes
 
 fn sidebar_view(state: &PasswordsPage) -> Element<Message> {
     column![
-        text_input("Filter", &state.current_passwords_list_filter)
-            .on_input(|s| { Message::Passwords(PasswordsPageMessage::UpdatePasswordsFilter(s)) }),
+        text_input(
+            &LOCALES.lookup(&state.locale, "filter"),
+            &state.current_passwords_list_filter
+        )
+        .on_input(|s| { Message::Passwords(PasswordsPageMessage::UpdatePasswordsFilter(s)) }),
         Scrollable::new(
             column(
                 state
@@ -199,9 +214,9 @@ fn sidebar_view(state: &PasswordsPage) -> Element<Message> {
                     .map(|password| {
                         button(
                             text(if !password.title.is_empty() {
-                                &password.title
+                                password.title.clone()
                             } else {
-                                "<No Title>"
+                                LOCALES.lookup(&state.locale, "no-title")
                             })
                             .font(Font {
                                 weight: iced::font::Weight::Semibold,
@@ -241,13 +256,13 @@ fn sidebar_view(state: &PasswordsPage) -> Element<Message> {
 fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
     column![
         if state.selected_password_entry.is_none() {
-            row![text("New Entry")
+            row![text(LOCALES.lookup(&state.locale, "new-entry"))
                 .size(24)
                 .align_x(Horizontal::Center)
                 .width(Length::Fill),]
         } else {
             row![
-                text("Edit Entry")
+                text(LOCALES.lookup(&state.locale, "edit-entry"))
                     .size(24)
                     .align_x(Horizontal::Center)
                     .width(Length::FillPortion(9)),
@@ -268,13 +283,14 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
             ]
             .height(Length::Shrink)
         },
-        text("Title: "),
+        text(LOCALES.lookup(&state.locale, "title")),
         row![
-            text_input("Title", &state.current_title_text)
-                .on_input(|s| {
-                    Message::Passwords(PasswordsPageMessage::UpdateCurrentTitleText(s))
-                })
-                .width(Length::FillPortion(9)),
+            text_input(
+                &LOCALES.lookup(&state.locale, "edit-entry"),
+                &state.current_title_text
+            )
+            .on_input(|s| { Message::Passwords(PasswordsPageMessage::UpdateCurrentTitleText(s)) })
+            .width(Length::FillPortion(9)),
             Tooltip::new(
                 button(
                     Svg::new(svg::Handle::from_memory(include_bytes!(
@@ -286,16 +302,19 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                     PasswordsPageMessage::CopyValueToClipboard(state.current_title_text.clone())
                 ))
                 .width(Length::FillPortion(1)),
-                "Copy",
+                text(LOCALES.lookup(&state.locale, "copy")),
                 iced::widget::tooltip::Position::Bottom,
             )
         ]
         .height(Length::Shrink),
-        text("Url: "),
+        text(LOCALES.lookup(&state.locale, "url")),
         row![
-            text_input("Url", &state.current_url_text)
-                .on_input(|s| { Message::Passwords(PasswordsPageMessage::UpdateCurrentUrlText(s)) })
-                .width(Length::FillPortion(9)),
+            text_input(
+                &LOCALES.lookup(&state.locale, "url"),
+                &state.current_url_text
+            )
+            .on_input(|s| { Message::Passwords(PasswordsPageMessage::UpdateCurrentUrlText(s)) })
+            .width(Length::FillPortion(9)),
             Tooltip::new(
                 button(
                     Svg::new(svg::Handle::from_memory(include_bytes!(
@@ -307,18 +326,21 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                     PasswordsPageMessage::CopyValueToClipboard(state.current_url_text.clone())
                 ))
                 .width(Length::FillPortion(1)),
-                "Copy",
+                text(LOCALES.lookup(&state.locale, "copy")),
                 iced::widget::tooltip::Position::Bottom,
             )
         ]
         .height(Length::Shrink),
-        text("Username: "),
+        text(LOCALES.lookup(&state.locale, "username")),
         row![
-            text_input("Username", &state.current_username_text)
-                .on_input(|s| {
-                    Message::Passwords(PasswordsPageMessage::UpdateCurrentUsernameText(s))
-                })
-                .width(Length::FillPortion(9)),
+            text_input(
+                &LOCALES.lookup(&state.locale, "username"),
+                &state.current_username_text
+            )
+            .on_input(|s| {
+                Message::Passwords(PasswordsPageMessage::UpdateCurrentUsernameText(s))
+            })
+            .width(Length::FillPortion(9)),
             Tooltip::new(
                 button(
                     Svg::new(svg::Handle::from_memory(include_bytes!(
@@ -330,19 +352,22 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                     PasswordsPageMessage::CopyValueToClipboard(state.current_username_text.clone())
                 ))
                 .width(Length::FillPortion(1)),
-                "Copy",
+                text(LOCALES.lookup(&state.locale, "copy")),
                 iced::widget::tooltip::Position::Bottom,
             )
         ]
         .height(Length::Shrink),
-        text("Password: "),
+        text(LOCALES.lookup(&state.locale, "password")),
         row![
-            text_input("Password", &state.current_password_text)
-                .on_input(|s| {
-                    Message::Passwords(PasswordsPageMessage::UpdateCurrentPasswordText(s))
-                })
-                .secure(state.hide_current_password_entry)
-                .width(Length::FillPortion(8)),
+            text_input(
+                &LOCALES.lookup(&state.locale, "password"),
+                &state.current_password_text
+            )
+            .on_input(|s| {
+                Message::Passwords(PasswordsPageMessage::UpdateCurrentPasswordText(s))
+            })
+            .secure(state.hide_current_password_entry)
+            .width(Length::FillPortion(8)),
             Tooltip::new(
                 button(if state.hide_current_password_entry {
                     Svg::new(svg::Handle::from_memory(include_bytes!(
@@ -366,9 +391,9 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                     button::secondary
                 }),
                 if state.hide_current_password_entry {
-                    "Show Password"
+                    text(LOCALES.lookup(&state.locale, "show-password"))
                 } else {
-                    "Hide Password"
+                    text(LOCALES.lookup(&state.locale, "hide-password"))
                 },
                 iced::widget::tooltip::Position::Bottom,
             ),
@@ -382,7 +407,7 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                     )
                     .on_press(Message::Passwords(PasswordsPageMessage::GeneratePassword))
                     .width(Length::FillPortion(1)),
-                    "Generate Password",
+                    text(LOCALES.lookup(&state.locale, "generate-password")),
                     iced::widget::tooltip::Position::Bottom,
                 ),]
             } else {
@@ -399,16 +424,16 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                     PasswordsPageMessage::CopyValueToClipboard(state.current_password_text.clone())
                 ))
                 .width(Length::FillPortion(1)),
-                "Copy",
+                text(LOCALES.lookup(&state.locale, "copy")),
                 iced::widget::tooltip::Position::Bottom,
             )
         ]
         .height(Length::Shrink),
-        button(if state.selected_password_entry.is_none() {
-            "Add Entry"
+        button(text(if state.selected_password_entry.is_none() {
+            LOCALES.lookup(&state.locale, "add-entry")
         } else {
-            "Update Entry"
-        })
+            LOCALES.lookup(&state.locale, "update-entry")
+        }))
         .on_press(Message::Passwords(
             PasswordsPageMessage::UpdatePasswordEntry
         ))
@@ -422,26 +447,43 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
 
 fn existing_database_selected_and_locked_view(state: &PasswordsPage) -> Element<Message> {
     column![
-        text("Password Vault is Locked: Enter Password And/Or Keyfile")
-            .size(24)
-            .width(Length::Fill)
-            .align_x(Horizontal::Center),
+        text(LOCALES.lookup(
+            &state.locale,
+            "password-vault-locked-enter-password-or-keyfile"
+        ))
+        .size(24)
+        .width(Length::Fill)
+        .align_x(Horizontal::Center),
         container(
             row![
-                button(text(format!(
-                    "Selected file: {}",
-                    state
-                        .selected_keepass_file
-                        .clone()
-                        .unwrap_or_default()
-                        .to_str()
-                        .unwrap_or_default()
-                )))
+                button(text(
+                    LOCALES.lookup_with_args(
+                        &state.locale,
+                        "selected-file",
+                        &HashMap::from([(
+                            Cow::from("file_path"),
+                            state
+                                .selected_keepass_file
+                                .clone()
+                                .unwrap_or_default()
+                                .to_str()
+                                .unwrap_or_default()
+                                .into()
+                        )]),
+                    )
+                ))
                 .on_press(Message::Passwords(PasswordsPageMessage::PickDatabaseFile)),
                 button(text(if let Some(keyfile) = &state.selected_key_file {
-                    format!("Selected keyfile: {}", keyfile.as_path().to_str().unwrap())
+                    LOCALES.lookup_with_args(
+                        &state.locale,
+                        "selected-keyfile",
+                        &HashMap::from([(
+                            Cow::from("keyfile_path"),
+                            keyfile.as_path().to_string_lossy().into(),
+                        )]),
+                    )
                 } else {
-                    String::from("Select Keyfile")
+                    LOCALES.lookup(&state.locale, "select-keyfile")
                 }))
                 .on_press(Message::Passwords(PasswordsPageMessage::PickKeyFile))
             ]
@@ -451,17 +493,20 @@ fn existing_database_selected_and_locked_view(state: &PasswordsPage) -> Element<
         .align_x(Horizontal::Center),
         container(
             column![
-                text("Enter the master password:")
+                text(LOCALES.lookup(&state.locale, "enter-the-master-password"))
                     .width(Length::Fill)
                     .align_x(Horizontal::Left),
                 row![
-                    text_input("Master Password", &state.master_password_field_text)
-                        .secure(state.hide_master_password_entry)
-                        .on_input(|s| Message::Passwords(
-                            PasswordsPageMessage::UpdateMasterPasswordField(s)
-                        ))
-                        .on_submit(Message::Passwords(PasswordsPageMessage::TryUnlock))
-                        .width(Length::FillPortion(9)),
+                    text_input(
+                        &LOCALES.lookup(&state.locale, "master-password"),
+                        &state.master_password_field_text
+                    )
+                    .secure(state.hide_master_password_entry)
+                    .on_input(|s| Message::Passwords(
+                        PasswordsPageMessage::UpdateMasterPasswordField(s)
+                    ))
+                    .on_submit(Message::Passwords(PasswordsPageMessage::TryUnlock))
+                    .width(Length::FillPortion(9)),
                     Tooltip::new(
                         button(if state.hide_master_password_entry {
                             Svg::new(svg::Handle::from_memory(include_bytes!(
@@ -485,18 +530,18 @@ fn existing_database_selected_and_locked_view(state: &PasswordsPage) -> Element<
                             button::secondary
                         }),
                         if state.hide_master_password_entry {
-                            "Show Password"
+                            text(LOCALES.lookup(&state.locale, "show-password"))
                         } else {
-                            "Hide Password"
+                            text(LOCALES.lookup(&state.locale, "hide-password"))
                         },
                         iced::widget::tooltip::Position::Bottom,
                     )
                 ]
                 .height(Length::Shrink),
                 text(if state.incorrect_password_entered {
-                    "Incorrect master password/keyfile, try again."
+                    LOCALES.lookup(&state.locale, "incorrect-master-password-try-again")
                 } else {
-                    ""
+                    String::new()
                 })
                 .width(Length::Fill)
                 .align_x(Horizontal::Center)
@@ -507,10 +552,10 @@ fn existing_database_selected_and_locked_view(state: &PasswordsPage) -> Element<
         .align_x(Center),
         container(
             row![
-                button(text("Close Database"))
+                button(text(LOCALES.lookup(&state.locale, "close-database")))
                     .on_press(Message::Passwords(PasswordsPageMessage::CloseDatabase))
                     .style(button::danger),
-                button(text("Open Database"))
+                button(text(LOCALES.lookup(&state.locale, "open-database")))
                     .on_press(Message::Passwords(PasswordsPageMessage::TryUnlock))
                     .style(button::success)
             ]
@@ -524,18 +569,18 @@ fn existing_database_selected_and_locked_view(state: &PasswordsPage) -> Element<
     .into()
 }
 
-fn no_database_selected_view(_state: &PasswordsPage) -> Element<Message> {
+fn no_database_selected_view(state: &PasswordsPage) -> Element<Message> {
     column![container(
         column![
             button(
-                text("Select Keepass File")
+                text(LOCALES.lookup(&state.locale, "select-keepass-file"))
                     .width(Length::Fill)
                     .align_x(Center)
             )
             .on_press(Message::Passwords(PasswordsPageMessage::PickDatabaseFile))
             .width(Length::Fill),
             button(
-                text("Create New Keepass File")
+                text(LOCALES.lookup(&state.locale, "create-new-keepass-file"))
                     .width(Length::Fill)
                     .align_x(Center)
             )
@@ -569,7 +614,7 @@ pub fn tool_view(state: &PasswordsPage) -> Element<Message> {
                 } else {
                     button::primary
                 }),
-                "Toggle Sidebar (Ctrl+B)",
+                text(LOCALES.lookup(&state.locale, "toggle-sidebar-shortcut")),
                 iced::widget::tooltip::Position::Bottom
             ),
             Tooltip::new(
@@ -579,7 +624,7 @@ pub fn tool_view(state: &PasswordsPage) -> Element<Message> {
                 .on_press(Message::Passwords(
                     PasswordsPageMessage::SelectPassword(None)
                 )),
-                "Add Entry (Ctrl+N)",
+                text(LOCALES.lookup(&state.locale, "add-entry-shortcut")),
                 iced::widget::tooltip::Position::Bottom
             ),
             Tooltip::new(
@@ -587,7 +632,7 @@ pub fn tool_view(state: &PasswordsPage) -> Element<Message> {
                     "../../../icons/lock.svg"
                 ))))
                 .on_press(Message::Passwords(PasswordsPageMessage::Lock)),
-                "Lock (Ctrl+L)",
+                text(LOCALES.lookup(&state.locale, "lock-shortcut")),
                 iced::widget::tooltip::Position::Bottom
             ),
             Tooltip::new(
@@ -600,7 +645,7 @@ pub fn tool_view(state: &PasswordsPage) -> Element<Message> {
                 } else {
                     button::secondary
                 }),
-                "Save Changes",
+                text(LOCALES.lookup(&state.locale, "save-changes")),
                 iced::widget::tooltip::Position::Bottom,
             )
         ]
@@ -614,7 +659,7 @@ pub fn tool_view(state: &PasswordsPage) -> Element<Message> {
             .on_press(Message::Passwords(
                 PasswordsPageMessage::LockAndDeselectDatabase
             )),
-            "Back",
+            text(LOCALES.lookup(&state.locale, "back")),
             iced::widget::tooltip::Position::Bottom,
         )]
         .width(Length::FillPortion(1))

@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use fluent_templates::Loader;
 use iced::{
     alignment::Horizontal,
     event,
@@ -23,7 +24,7 @@ use crate::{
         tasks::page::{TasksPage, TasksPageMessage},
     },
     utils::socket_utils::{self, ServerMessage},
-    Page,
+    Page, LOCALES,
 };
 
 #[derive(Debug, Clone)]
@@ -47,6 +48,7 @@ pub enum Message {
 }
 
 pub struct AppState {
+    locale: fluent_templates::LanguageIdentifier,
     config: AppConfig,
     is_setting_up_server: bool,
     is_closing: bool,
@@ -66,11 +68,16 @@ pub struct AppState {
 
 impl AppState {
     pub fn new() -> (Self, Task<Message>) {
+        let locale: fluent_templates::LanguageIdentifier = current_locale::current_locale()
+            .expect("Can't get locale")
+            .parse()
+            .expect("Failed to parse locale");
         let config_option = load_settings_from_file();
         let is_setting_up_server = config_option.is_none();
         let config = config_option.unwrap_or_default();
         (
             Self {
+                locale,
                 config: config.clone(),
                 current_page: config.default_page_on_open.clone(),
                 is_closing: false,
@@ -290,7 +297,7 @@ impl AppState {
                 column![
                     row![
                         tool_view,
-                        text(self.current_page.name())
+                        text(LOCALES.lookup(&self.locale, self.current_page.name()))
                             .size(24)
                             .width(Length::FillPortion(1))
                             .align_x(Horizontal::Center),
