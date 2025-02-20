@@ -1,6 +1,7 @@
-use crate::pages::gallery::page::RENAME_PERSON_INPUT_ID;
-use std::path::Path;
+use crate::{pages::gallery::page::RENAME_PERSON_INPUT_ID, LOCALES};
+use std::{borrow::Cow, collections::HashMap, path::Path};
 
+use fluent_templates::Loader;
 use iced::{
     alignment::{Horizontal, Vertical},
     widget::{
@@ -47,7 +48,7 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
                     None
                 )))
                 .width(Length::Fixed(50.0)),
-                "Close Image View (Esc)",
+                text(LOCALES.lookup(&state.locale, "close-image-view-shortcut")),
                 iced::widget::tooltip::Position::Bottom
             ),
         ],
@@ -66,7 +67,7 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
                     .on_press(Message::Gallery(GalleryPageMessage::SelectPreviousImage))
                     .height(Length::Fixed(40.0))
                     .width(Length::Fixed(50.0)),
-                    "Previous Image (Left Arrow)",
+                    text(LOCALES.lookup(&state.locale, "previous-image-shortcut")),
                     iced::widget::tooltip::Position::Bottom
                 ),
                 Space::with_height(Length::Fill),
@@ -90,7 +91,7 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
                     .on_press(Message::Gallery(GalleryPageMessage::SelectNextImage))
                     .height(Length::Fixed(40.0))
                     .width(Length::Fixed(50.0)),
-                    "Next Image (Right Arrow)",
+                    text(LOCALES.lookup(&state.locale, "next-image-shortcut")),
                     iced::widget::tooltip::Position::Bottom
                 ),
                 Space::with_height(Length::Fill),
@@ -104,7 +105,7 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
                                 "../../../icons/copy.svg"
                             ))))
                             .on_press(Message::Gallery(GalleryPageMessage::CopyOcrText)),
-                            "Copy detected text",
+                            text(LOCALES.lookup(&state.locale, "copy-detected-text")),
                             iced::widget::tooltip::Position::Bottom
                         ),
                     ]
@@ -123,7 +124,10 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
 
 fn people_sidebar(state: &GalleryPage) -> Element<Message> {
     column![
-        text("People").size(18).width(Length::Fill).center(),
+        text(LOCALES.lookup(&state.locale, "people"))
+            .size(18)
+            .width(Length::Fill)
+            .center(),
         if state
             .selected_image
             .as_ref()
@@ -176,7 +180,9 @@ fn people_sidebar(state: &GalleryPage) -> Element<Message> {
                 .spacing(10),
             )
         } else {
-            scrollable(column![text("None found").width(Length::Fill).center()])
+            scrollable(column![text(LOCALES.lookup(&state.locale, "none-found"))
+                .width(Length::Fill)
+                .center()])
         },
     ]
     .width(Length::Fixed(100.0))
@@ -192,10 +198,14 @@ fn gallery_grid(state: &GalleryPage) -> Element<Message> {
     column![
         photo_processing_progress_bar(state),
         if let Some(person_to_view) = state.person_to_view.as_ref() {
-            column![text(format!("Photos of {}", &person_to_view.name))
-                .width(Length::Fill)
-                .center()
-                .size(24)]
+            column![text(LOCALES.lookup_with_args(
+                &state.locale,
+                "photos-of-arg",
+                &HashMap::from([(Cow::from("person-name"), person_to_view.name.clone().into(),)]),
+            ))
+            .width(Length::Fill)
+            .center()
+            .size(24)]
         } else {
             column![]
         },
@@ -229,9 +239,11 @@ fn gallery_grid(state: &GalleryPage) -> Element<Message> {
                 .height(Length::Fixed(IMAGE_HEIGHT))
                 .into()
             } else {
-                row![text("LOADING").center().width(Length::Fill)]
-                    .height(Length::Fixed(IMAGE_HEIGHT))
-                    .into()
+                row![text(LOCALES.lookup(&state.locale, "loading-all-caps"))
+                    .center()
+                    .width(Length::Fill)]
+                .height(Length::Fixed(IMAGE_HEIGHT))
+                .into()
             }
         })))
         .id(GALLERY_SCROLLABLE_ID.clone())
@@ -246,7 +258,8 @@ fn photo_processing_progress_bar(state: &GalleryPage) -> Element<Message> {
     match state.photo_process_progress {
         PhotoProcessingProgress::ThumbnailGeneration(progress) => container(
             row![
-                text("Generating Thumbnails").height(Length::Fixed(20.0)),
+                text(LOCALES.lookup(&state.locale, "generating-thumbnails"))
+                    .height(Length::Fixed(20.0)),
                 Space::with_width(Length::Fixed(20.0)),
                 container(
                     progress_bar(0.0..=100.0, progress)
@@ -267,7 +280,7 @@ fn photo_processing_progress_bar(state: &GalleryPage) -> Element<Message> {
                     ))))
                     .on_press(Message::Gallery(GalleryPageMessage::AbortProcess))
                     .width(Length::Fixed(40.0)),
-                    "Cancel Process",
+                    text(LOCALES.lookup(&state.locale, "cancel-process")),
                     iced::widget::tooltip::Position::Bottom
                 ),
             ]
@@ -276,7 +289,7 @@ fn photo_processing_progress_bar(state: &GalleryPage) -> Element<Message> {
         .style(container::bordered_box),
         PhotoProcessingProgress::FaceExtraction(progress) => container(
             row![
-                text("Extracting Faces").height(Length::Fixed(20.0)),
+                text(LOCALES.lookup(&state.locale, "extracting-faces")).height(Length::Fixed(20.0)),
                 Space::with_width(Length::Fixed(20.0)),
                 container(
                     progress_bar(0.0..=100.0, progress)
@@ -295,7 +308,7 @@ fn photo_processing_progress_bar(state: &GalleryPage) -> Element<Message> {
                     ))))
                     .on_press(Message::Gallery(GalleryPageMessage::AbortProcess))
                     .width(Length::Fixed(40.0)),
-                    "Cancel Process",
+                    text(LOCALES.lookup(&state.locale, "cancel-process")),
                     iced::widget::tooltip::Position::Bottom
                 ),
             ]
@@ -304,7 +317,8 @@ fn photo_processing_progress_bar(state: &GalleryPage) -> Element<Message> {
         .style(container::bordered_box),
         PhotoProcessingProgress::FaceRecognition(progress) => container(
             row![
-                text("Recognising Faces").height(Length::Fixed(20.0)),
+                text(LOCALES.lookup(&state.locale, "recognising-faces"))
+                    .height(Length::Fixed(20.0)),
                 Space::with_width(Length::Fixed(20.0)),
                 container(
                     progress_bar(0.0..=100.0, progress)
@@ -323,7 +337,7 @@ fn photo_processing_progress_bar(state: &GalleryPage) -> Element<Message> {
                     ))))
                     .on_press(Message::Gallery(GalleryPageMessage::AbortProcess))
                     .width(Length::Fixed(40.0)),
-                    "Cancel Process",
+                    text(LOCALES.lookup(&state.locale, "cancel-process")),
                     iced::widget::tooltip::Position::Bottom
                 ),
             ]
@@ -335,10 +349,10 @@ fn photo_processing_progress_bar(state: &GalleryPage) -> Element<Message> {
     .into()
 }
 
-fn no_gallery_folder_selected_view(_state: &GalleryPage) -> Element<Message> {
+fn no_gallery_folder_selected_view(state: &GalleryPage) -> Element<Message> {
     container(
         button(
-            text("Select Gallery Folder")
+            text(LOCALES.lookup(&state.locale, "select-gallery-folder"))
                 .size(20)
                 .height(Length::Fixed(40.0))
                 .align_y(Center)
@@ -367,7 +381,7 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
                     ))))
                     .on_press(Message::Gallery(GalleryPageMessage::CloseManagePersonView))
                     .width(Length::Fixed(50.0)),
-                    "Close Person Manager",
+                    text(LOCALES.lookup(&state.locale, "close-person-manager")),
                     iced::widget::tooltip::Position::Bottom
                 ),
             ],
@@ -380,22 +394,37 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
             ))
             .content_fit(iced::ContentFit::ScaleDown)
             .filter_method(image::FilterMethod::Nearest),
-            text(format!(
-                "Ignore {}?",
-                face_data
-                    .name_of_person
-                    .as_ref()
-                    .unwrap_or(&String::from(UNNAMED_STRING)),
-            ))
+            text(
+                LOCALES.lookup_with_args(
+                    &state.locale,
+                    "ignore-arg",
+                    &HashMap::from([(
+                        Cow::from("person-name"),
+                        face_data
+                            .name_of_person
+                            .as_ref()
+                            .unwrap_or(&String::from(UNNAMED_STRING))
+                            .into(),
+                    )]),
+                )
+            )
             .width(Length::Fill)
             .center(),
-            button(text("Confirm").width(Length::Fill).center())
-                .on_press(Message::Gallery(GalleryPageMessage::ConfirmIgnorePerson))
-                .width(Length::Fill)
-                .style(button::danger),
-            button(text("Cancel").width(Length::Fill).center())
-                .on_press(Message::Gallery(GalleryPageMessage::CancelIgnorePerson))
-                .width(Length::Fill),
+            button(
+                text(LOCALES.lookup(&state.locale, "confirm"))
+                    .width(Length::Fill)
+                    .center()
+            )
+            .on_press(Message::Gallery(GalleryPageMessage::ConfirmIgnorePerson))
+            .width(Length::Fill)
+            .style(button::danger),
+            button(
+                text(LOCALES.lookup(&state.locale, "cancel"))
+                    .width(Length::Fill)
+                    .center()
+            )
+            .on_press(Message::Gallery(GalleryPageMessage::CancelIgnorePerson))
+            .width(Length::Fill),
         ]
         .width(Length::Fixed(200.0))
         .padding(10)
@@ -410,7 +439,7 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
                     ))))
                     .on_press(Message::Gallery(GalleryPageMessage::CloseManagePersonView))
                     .width(Length::Fixed(50.0)),
-                    "Close Person Manager",
+                    text(LOCALES.lookup(&state.locale, "close-person-manager")),
                     iced::widget::tooltip::Position::Bottom
                 ),
             ],
@@ -424,23 +453,43 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
             .content_fit(iced::ContentFit::ScaleDown)
             .filter_method(image::FilterMethod::Nearest)
             .width(Length::Fill),
-            text(format!(
-                "Rename face from {} to {}?",
-                face_data
-                    .name_of_person
-                    .as_ref()
-                    .unwrap_or(&String::from(UNNAMED_STRING)),
-                state.rename_person_editor_text
-            ))
+            text(
+                LOCALES.lookup_with_args(
+                    &state.locale,
+                    "rename-face-from-arg-to-arg",
+                    &HashMap::from([
+                        (
+                            Cow::from("name-1"),
+                            face_data
+                                .name_of_person
+                                .as_ref()
+                                .unwrap_or(&String::from(UNNAMED_STRING))
+                                .into(),
+                        ),
+                        (
+                            Cow::from("name-2"),
+                            state.rename_person_editor_text.clone().into(),
+                        )
+                    ]),
+                )
+            )
             .width(Length::Fill)
             .center(),
-            button(text("Confirm").width(Length::Fill).center())
-                .on_press(Message::Gallery(GalleryPageMessage::ConfirmRenamePerson))
-                .width(Length::Fill)
-                .style(button::danger),
-            button(text("Cancel").width(Length::Fill).center())
-                .on_press(Message::Gallery(GalleryPageMessage::CancelRenamePerson))
-                .width(Length::Fill),
+            button(
+                text(LOCALES.lookup(&state.locale, "confirm"))
+                    .width(Length::Fill)
+                    .center()
+            )
+            .on_press(Message::Gallery(GalleryPageMessage::ConfirmRenamePerson))
+            .width(Length::Fill)
+            .style(button::danger),
+            button(
+                text(LOCALES.lookup(&state.locale, "cancel"))
+                    .width(Length::Fill)
+                    .center()
+            )
+            .on_press(Message::Gallery(GalleryPageMessage::CancelRenamePerson))
+            .width(Length::Fill),
         ]
         .width(Length::Fixed(200.0))
         .padding(10)
@@ -456,7 +505,7 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
                         ))))
                         .on_press(Message::Gallery(GalleryPageMessage::CloseManagePersonView))
                         .width(Length::Fixed(50.0)),
-                        "Close Person Manager",
+                        text(LOCALES.lookup(&state.locale, "close-person-manager")),
                         iced::widget::tooltip::Position::Bottom
                     ),
                 ],
@@ -477,21 +526,32 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
                 )
                 .width(Length::Fill)
                 .center(),
-                button(text("Ignore").width(Length::Fill).center())
-                    .on_press(Message::Gallery(GalleryPageMessage::MaybeIgnorePerson))
-                    .width(Length::Fill),
-                text_input("Rename person", &state.rename_person_editor_text)
-                    .on_input(|s| Message::Gallery(GalleryPageMessage::UpdateRenamePersonEditor(s)))
-                    .on_submit(Message::Gallery(GalleryPageMessage::MaybeRenamePerson(
-                        None
-                    )))
-                    .id(RENAME_PERSON_INPUT_ID)
-                    .width(Length::Fill),
-                button(text("Rename").width(Length::Fill).center())
-                    .on_press(Message::Gallery(GalleryPageMessage::MaybeRenamePerson(
-                        None
-                    )))
-                    .width(Length::Fill),
+                button(
+                    text(LOCALES.lookup(&state.locale, "ignore"))
+                        .width(Length::Fill)
+                        .center()
+                )
+                .on_press(Message::Gallery(GalleryPageMessage::MaybeIgnorePerson))
+                .width(Length::Fill),
+                text_input(
+                    &LOCALES.lookup(&state.locale, "rename-person"),
+                    &state.rename_person_editor_text
+                )
+                .on_input(|s| Message::Gallery(GalleryPageMessage::UpdateRenamePersonEditor(s)))
+                .on_submit(Message::Gallery(GalleryPageMessage::MaybeRenamePerson(
+                    None
+                )))
+                .id(RENAME_PERSON_INPUT_ID)
+                .width(Length::Fill),
+                button(
+                    text(LOCALES.lookup(&state.locale, "rename"))
+                        .width(Length::Fill)
+                        .center()
+                )
+                .on_press(Message::Gallery(GalleryPageMessage::MaybeRenamePerson(
+                    None
+                )))
+                .width(Length::Fill),
             ]
             .width(Length::Fixed(200.0))
             .padding(10)
@@ -506,9 +566,13 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
                     .filter(|(name_of_person, _thumbnail_path)| name_of_person != UNNAMED_STRING)
                     .map(|(name_of_person, _thumbnail_path)| {
                         button(
-                            text(format!("Rename to {name_of_person}"))
-                                .width(Length::Fill)
-                                .center(),
+                            text(LOCALES.lookup_with_args(
+                                &state.locale,
+                                "rename-to-arg",
+                                &HashMap::from([(Cow::from("person-name"), name_of_person.into())]),
+                            ))
+                            .width(Length::Fill)
+                            .center(),
                         )
                         .on_press(Message::Gallery(GalleryPageMessage::MaybeRenamePerson(
                             Some(name_of_person.clone()),
@@ -563,7 +627,7 @@ pub fn tool_view(state: &GalleryPage) -> Element<Message> {
                     "../../../icons/copy.svg"
                 ))))
                 .on_press(Message::Gallery(GalleryPageMessage::CopySelectedImagePath)),
-                "Copy image path",
+                text(LOCALES.lookup(&state.locale, "copy-image-path-shortcut")),
                 iced::widget::tooltip::Position::Bottom
             ),
             Tooltip::new(
@@ -571,7 +635,7 @@ pub fn tool_view(state: &GalleryPage) -> Element<Message> {
                     "../../../icons/scanner.svg"
                 ))))
                 .on_press(Message::Gallery(GalleryPageMessage::RunOcrOnSelectedImage)),
-                "Detect text in image",
+                text(LOCALES.lookup(&state.locale, "detect-text-in-image-shortcut")),
                 iced::widget::tooltip::Position::Bottom
             ),
         ]
@@ -586,11 +650,11 @@ pub fn tool_view(state: &GalleryPage) -> Element<Message> {
             }))
             .on_press(Message::Gallery(GalleryPageMessage::TogglePeopleView)),
             if state.show_people_view {
-                "Back to main gallery (Esc)"
+                text(LOCALES.lookup(&state.locale, "back-to-main-gallery-shortcut"))
             } else if state.person_to_view.is_some() {
-                "Back to people view (Esc)"
+                text(LOCALES.lookup(&state.locale, "back-to-people-view-shortcut"))
             } else {
-                "View recognised people"
+                text(LOCALES.lookup(&state.locale, "view-recognised-people-shortcut"))
             },
             iced::widget::tooltip::Position::Bottom
         ),]
