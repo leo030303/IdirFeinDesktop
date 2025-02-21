@@ -1,5 +1,3 @@
-use std::{borrow::Cow, collections::HashMap};
-
 use fluent_templates::Loader;
 use iced::{
     border,
@@ -27,10 +25,10 @@ pub fn main_view<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Elem
         } else {
             row![text(&state.save_message).style(text::danger)]
         },
-        text(LOCALES.lookup_with_args(
-            &state.locale,
-            "arg-settings",
-            &HashMap::from([(Cow::from("current-tab"), state.current_tab.name().into())]),
+        text(format!(
+            "{} {}",
+            state.current_tab.name(),
+            LOCALES.lookup(&state.locale, "settings")
         ))
         .size(24),
         row(SettingsTab::get_all()
