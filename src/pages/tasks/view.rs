@@ -1,4 +1,10 @@
-use crate::pages::tasks::page::{TaskViewType, NEW_PROJECT_TEXT_INPUT_ID};
+use std::{borrow::Cow, collections::HashMap};
+
+use crate::{
+    pages::tasks::page::{TaskViewType, NEW_PROJECT_TEXT_INPUT_ID},
+    LOCALES,
+};
+use fluent_templates::Loader;
 use iced::{
     alignment::{Horizontal, Vertical},
     widget::{
@@ -38,15 +44,18 @@ pub fn main_view(state: &TasksPage) -> Element<Message> {
                                 .file_stem()
                                 .unwrap_or_default()
                                 .to_str()
-                                .unwrap_or("Couldn't read filename")
+                                .unwrap_or(&LOCALES.lookup(&state.locale, "couldnt-read-filename"))
                                 .to_string(),
                         )
                         .size(28)
                         .width(Length::FillPortion(1))
                         .align_x(Center),
-                        text_input("Filter", &state.filter_tasks_text)
-                            .on_input(|s| Message::Tasks(TasksPageMessage::UpdateTasksFilter(s)))
-                            .width(Length::FillPortion(1))
+                        text_input(
+                            &LOCALES.lookup(&state.locale, "filter"),
+                            &state.filter_tasks_text
+                        )
+                        .on_input(|s| Message::Tasks(TasksPageMessage::UpdateTasksFilter(s)))
+                        .width(Length::FillPortion(1))
                     ],
                     if state.show_confirm_before_delete_dialog {
                         confirm_delete_view(state)
@@ -66,7 +75,7 @@ pub fn main_view(state: &TasksPage) -> Element<Message> {
                 .width(Length::FillPortion(2))
                 .padding(20)
             } else {
-                column![text("No Project Selected")
+                column![text(LOCALES.lookup(&state.locale, "no-project-selected"))
                     .width(Length::Fill)
                     .height(100)
                     .align_x(Center)
@@ -112,7 +121,7 @@ fn kanban_view_item<'a>(state: &'a TasksPage, task: &'a TaskData) -> Element<'a,
                                 TaskCompletionState::Backlog,
                             )))
                             .width(Length::Fill),
-                            "Backlog",
+                            text(LOCALES.lookup(&state.locale, "backlog")),
                             iced::widget::tooltip::Position::Bottom,
                         ));
                     }
@@ -126,7 +135,7 @@ fn kanban_view_item<'a>(state: &'a TasksPage, task: &'a TaskData) -> Element<'a,
                                 TaskCompletionState::ToDo,
                             )))
                             .width(Length::Fill),
-                            "To Do",
+                            text(LOCALES.lookup(&state.locale, "todo")),
                             iced::widget::tooltip::Position::Bottom,
                         ));
                     }
@@ -140,7 +149,7 @@ fn kanban_view_item<'a>(state: &'a TasksPage, task: &'a TaskData) -> Element<'a,
                                 TaskCompletionState::Doing,
                             )))
                             .width(Length::Fill),
-                            "Doing",
+                            text(LOCALES.lookup(&state.locale, "doing")),
                             iced::widget::tooltip::Position::Bottom,
                         ));
                     }
@@ -155,7 +164,7 @@ fn kanban_view_item<'a>(state: &'a TasksPage, task: &'a TaskData) -> Element<'a,
                             )))
                             .width(Length::Fill)
                             .style(button::success),
-                            "Done",
+                            text(LOCALES.lookup(&state.locale, "done")),
                             iced::widget::tooltip::Position::Bottom,
                         ));
                     }
@@ -199,9 +208,9 @@ fn task_edit_dialog(state: &TasksPage) -> Element<Message> {
     column![
         row![
             text(if state.current_task_id.is_none() {
-                "New Task"
+                LOCALES.lookup(&state.locale, "new-task")
             } else {
-                "Edit Task"
+                LOCALES.lookup(&state.locale, "edit-task")
             })
             .width(Length::Fill)
             .size(24),
@@ -211,26 +220,33 @@ fn task_edit_dialog(state: &TasksPage) -> Element<Message> {
                 ))))
                 .on_press(Message::Tasks(TasksPageMessage::ToggleShowTaskEditDialog))
                 .width(Length::Fixed(50.0)),
-                "Close Edit Dialog (Esc)",
+                text(LOCALES.lookup(&state.locale, "close-edit-dialog-shortcut")),
                 iced::widget::tooltip::Position::Bottom
             ),
         ],
-        text_input("Task Title", &state.current_task_title_text)
-            .on_input(|s| Message::Tasks(TasksPageMessage::UpdateTaskTitle(s)))
-            .on_submit(Message::Tasks(TasksPageMessage::UpdateCurrentTask))
-            .id(text_input::Id::new(TASK_TITLE_TEXT_INPUT_ID)),
+        text_input(
+            &LOCALES.lookup(&state.locale, "task-title"),
+            &state.current_task_title_text
+        )
+        .on_input(|s| Message::Tasks(TasksPageMessage::UpdateTaskTitle(s)))
+        .on_submit(Message::Tasks(TasksPageMessage::UpdateCurrentTask))
+        .id(text_input::Id::new(TASK_TITLE_TEXT_INPUT_ID)),
         text_editor(&state.current_task_description_content)
-            .placeholder("Task Description")
+            .placeholder(LOCALES.lookup(&state.locale, "task-description"))
             .on_action(|action| Message::Tasks(TasksPageMessage::UpdateTaskDescription(action)))
             .height(Length::Fixed(300.0))
             .padding(10)
             .font(Font::MONOSPACE),
         row![
-            button(text("Cancel (Esc)").align_x(Center).width(Length::Fill))
-                .width(Length::Fill)
-                .on_press(Message::Tasks(TasksPageMessage::ToggleShowTaskEditDialog)),
             button(
-                text("Save Task (Ctrl+S)")
+                text(LOCALES.lookup(&state.locale, "cancel-shortcut"))
+                    .align_x(Center)
+                    .width(Length::Fill)
+            )
+            .width(Length::Fill)
+            .on_press(Message::Tasks(TasksPageMessage::ToggleShowTaskEditDialog)),
+            button(
+                text(LOCALES.lookup(&state.locale, "save-task-shortcut"))
                     .align_x(Center)
                     .width(Length::Fill)
             )
@@ -249,7 +265,7 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
         column![
             row![
                 Space::with_width(Length::Fill),
-                text("Backlog").size(24),
+                text(LOCALES.lookup(&state.locale, "backlog")).size(24),
                 Svg::new(svg::Handle::from_memory(include_bytes!(
                     "../../../icons/1.svg"
                 )))
@@ -260,14 +276,24 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
-            text(format!(
-                "Tasks: {}",
-                state
-                    .tasks_list
-                    .iter()
-                    .filter(|task| matches!(task.completion_state, TaskCompletionState::Backlog))
-                    .count()
-            ))
+            text(
+                LOCALES.lookup_with_args(
+                    &state.locale,
+                    "tasks-count-arg",
+                    &HashMap::from([(
+                        Cow::from("count"),
+                        state
+                            .tasks_list
+                            .iter()
+                            .filter(|task| matches!(
+                                task.completion_state,
+                                TaskCompletionState::Backlog
+                            ))
+                            .count()
+                            .into(),
+                    )]),
+                )
+            )
             .font(Font {
                 style: iced::font::Style::Italic,
                 ..Default::default()
@@ -306,7 +332,7 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
         column![
             row![
                 Space::with_width(Length::Fill),
-                text("To Do").size(24),
+                text(LOCALES.lookup(&state.locale, "todo")).size(24),
                 Svg::new(svg::Handle::from_memory(include_bytes!(
                     "../../../icons/2.svg"
                 )))
@@ -317,14 +343,24 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
-            text(format!(
-                "Tasks: {}",
-                state
-                    .tasks_list
-                    .iter()
-                    .filter(|task| matches!(task.completion_state, TaskCompletionState::ToDo))
-                    .count()
-            ))
+            text(
+                LOCALES.lookup_with_args(
+                    &state.locale,
+                    "tasks-count-arg",
+                    &HashMap::from([(
+                        Cow::from("count"),
+                        state
+                            .tasks_list
+                            .iter()
+                            .filter(|task| matches!(
+                                task.completion_state,
+                                TaskCompletionState::ToDo
+                            ))
+                            .count()
+                            .into(),
+                    )]),
+                )
+            )
             .font(Font {
                 style: iced::font::Style::Italic,
                 ..Default::default()
@@ -360,7 +396,7 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
         column![
             row![
                 Space::with_width(Length::Fill),
-                text("Doing").size(24),
+                text(LOCALES.lookup(&state.locale, "doing")).size(24),
                 Svg::new(svg::Handle::from_memory(include_bytes!(
                     "../../../icons/3.svg"
                 )))
@@ -371,14 +407,24 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
-            text(format!(
-                "Tasks: {}",
-                state
-                    .tasks_list
-                    .iter()
-                    .filter(|task| matches!(task.completion_state, TaskCompletionState::Doing))
-                    .count()
-            ))
+            text(
+                LOCALES.lookup_with_args(
+                    &state.locale,
+                    "tasks-count-arg",
+                    &HashMap::from([(
+                        Cow::from("count"),
+                        state
+                            .tasks_list
+                            .iter()
+                            .filter(|task| matches!(
+                                task.completion_state,
+                                TaskCompletionState::Doing
+                            ))
+                            .count()
+                            .into(),
+                    )]),
+                )
+            )
             .font(Font {
                 style: iced::font::Style::Italic,
                 ..Default::default()
@@ -414,7 +460,7 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
         column![
             row![
                 Space::with_width(Length::Fill),
-                text("Done").size(24),
+                text(LOCALES.lookup(&state.locale, "done")).size(24),
                 Svg::new(svg::Handle::from_memory(include_bytes!(
                     "../../../icons/4.svg"
                 )))
@@ -425,14 +471,24 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
-            text(format!(
-                "Tasks: {}",
-                state
-                    .tasks_list
-                    .iter()
-                    .filter(|task| matches!(task.completion_state, TaskCompletionState::Done))
-                    .count()
-            ))
+            text(
+                LOCALES.lookup_with_args(
+                    &state.locale,
+                    "tasks-count-arg",
+                    &HashMap::from([(
+                        Cow::from("count"),
+                        state
+                            .tasks_list
+                            .iter()
+                            .filter(|task| matches!(
+                                task.completion_state,
+                                TaskCompletionState::Done
+                            ))
+                            .count()
+                            .into(),
+                    )]),
+                )
+            )
             .font(Font {
                 style: iced::font::Style::Italic,
                 ..Default::default()
@@ -472,7 +528,10 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
 fn list_view(state: &TasksPage) -> Element<Message> {
     scrollable(column![
         column![
-            text("Backlog").width(Length::Fill).align_x(Center).size(20),
+            text(LOCALES.lookup(&state.locale, "backlog"))
+                .width(Length::Fill)
+                .align_x(Center)
+                .size(20),
             scrollable(
                 column(
                     state
@@ -497,7 +556,10 @@ fn list_view(state: &TasksPage) -> Element<Message> {
             )
         ],
         column![
-            text("To Do").width(Length::Fill).align_x(Center).size(20),
+            text(LOCALES.lookup(&state.locale, "todo"))
+                .width(Length::Fill)
+                .align_x(Center)
+                .size(20),
             scrollable(
                 column(
                     state
@@ -519,7 +581,10 @@ fn list_view(state: &TasksPage) -> Element<Message> {
             )
         ],
         column![
-            text("Doing").width(Length::Fill).align_x(Center).size(20),
+            text(LOCALES.lookup(&state.locale, "doing"))
+                .width(Length::Fill)
+                .align_x(Center)
+                .size(20),
             scrollable(
                 column(
                     state
@@ -541,7 +606,10 @@ fn list_view(state: &TasksPage) -> Element<Message> {
             )
         ],
         column![
-            text("Done").width(Length::Fill).align_x(Center).size(20),
+            text(LOCALES.lookup(&state.locale, "done"))
+                .width(Length::Fill)
+                .align_x(Center)
+                .size(20),
             scrollable(
                 column(
                     state
@@ -569,32 +637,42 @@ fn list_view(state: &TasksPage) -> Element<Message> {
 fn confirm_delete_view(state: &TasksPage) -> Element<Message> {
     if state.current_task_id.is_some() {
         column![
-            text("Delete This Task").width(Length::Fill).size(24),
+            text(LOCALES.lookup(&state.locale, "delete-this-task"))
+                .width(Length::Fill)
+                .size(24),
             row![
-                button(text("Cancel (Esc)").align_x(Center).width(Length::Fill))
-                    .width(Length::Fill)
-                    .on_press(Message::Tasks(
-                        TasksPageMessage::ToggleConfirmBeforeDeleteDialog
-                    )),
-                button(text("Delete").align_x(Center).width(Length::Fill))
-                    .width(Length::Fill)
-                    .style(button::danger)
-                    .on_press(Message::Tasks(TasksPageMessage::DeleteTask(
-                        state.current_task_id.expect("Checked this was some")
-                    )))
+                button(
+                    text(LOCALES.lookup(&state.locale, "cancel-shortcut"))
+                        .align_x(Center)
+                        .width(Length::Fill)
+                )
+                .width(Length::Fill)
+                .on_press(Message::Tasks(
+                    TasksPageMessage::ToggleConfirmBeforeDeleteDialog
+                )),
+                button(
+                    text(LOCALES.lookup(&state.locale, "delete"))
+                        .align_x(Center)
+                        .width(Length::Fill)
+                )
+                .width(Length::Fill)
+                .style(button::danger)
+                .on_press(Message::Tasks(TasksPageMessage::DeleteTask(
+                    state.current_task_id.expect("Checked this was some")
+                )))
             ]
             .spacing(20)
         ]
     } else {
-        column![text("no task")]
+        column![text(LOCALES.lookup(&state.locale, "no-task-selected"))]
     }
     .into()
 }
 
-fn no_project_folder_selected_view(_state: &TasksPage) -> Element<Message> {
+fn no_project_folder_selected_view(state: &TasksPage) -> Element<Message> {
     container(
         button(
-            text("Select Projects Folder")
+            text(LOCALES.lookup(&state.locale, "select-projects-folder"))
                 .size(20)
                 .height(Length::Fixed(40.0))
                 .align_y(Center)
@@ -616,11 +694,14 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
         Space::with_height(10),
         if state.is_creating_new_project {
             row![
-                text_input("New Project Name", &state.new_project_name_entry_content)
-                    .width(Length::Fill)
-                    .on_input(|s| Message::Tasks(TasksPageMessage::UpdateNewProjectNameEntry(s)))
-                    .on_submit(Message::Tasks(TasksPageMessage::CreateNewProject))
-                    .id(text_input::Id::new(NEW_PROJECT_TEXT_INPUT_ID)),
+                text_input(
+                    &LOCALES.lookup(&state.locale, "new-project-name"),
+                    &state.new_project_name_entry_content
+                )
+                .width(Length::Fill)
+                .on_input(|s| Message::Tasks(TasksPageMessage::UpdateNewProjectNameEntry(s)))
+                .on_submit(Message::Tasks(TasksPageMessage::CreateNewProject))
+                .id(text_input::Id::new(NEW_PROJECT_TEXT_INPUT_ID)),
                 Tooltip::new(
                     button(Svg::new(svg::Handle::from_memory(include_bytes!(
                         "../../../icons/ok.svg"
@@ -629,7 +710,7 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                     .style(button::success)
                     .width(Length::Fixed(50.0))
                     .height(Length::Fixed(30.0)),
-                    "Create",
+                    text(LOCALES.lookup(&state.locale, "create")),
                     iced::widget::tooltip::Position::Bottom
                 ),
                 Tooltip::new(
@@ -640,7 +721,7 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                     .style(button::danger)
                     .width(Length::Fixed(50.0))
                     .height(Length::Fixed(30.0)),
-                    "Cancel",
+                    text(LOCALES.lookup(&state.locale, "cancel")),
                     iced::widget::tooltip::Position::Bottom
                 ),
             ]
@@ -648,25 +729,32 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
             row![
                 button(
                     text(if state.show_archived_projects {
-                        "Hide Archived"
+                        LOCALES.lookup(&state.locale, "hide-archived")
                     } else {
-                        "Show Archived"
+                        LOCALES.lookup(&state.locale, "show-archived")
                     })
                     .width(Length::Fill)
                     .align_x(Center)
                 )
                 .width(Length::Fill)
                 .on_press(Message::Tasks(TasksPageMessage::ToggleShowArchivedProjects)),
-                button(text("New Project").width(Length::Fill).align_x(Center))
-                    .width(Length::Fill)
-                    .style(button::success)
-                    .on_press(Message::Tasks(TasksPageMessage::StartCreatingNewProject))
+                button(
+                    text(LOCALES.lookup(&state.locale, "new-project"))
+                        .width(Length::Fill)
+                        .align_x(Center)
+                )
+                .width(Length::Fill)
+                .style(button::success)
+                .on_press(Message::Tasks(TasksPageMessage::StartCreatingNewProject))
             ]
             .spacing(5)
         },
         Space::with_height(20),
-        text_input("Filter", &state.filter_projects_text)
-            .on_input(|s| { Message::Tasks(TasksPageMessage::UpdateProjectsFilter(s)) }),
+        text_input(
+            &LOCALES.lookup(&state.locale, "filter"),
+            &state.filter_projects_text
+        )
+        .on_input(|s| { Message::Tasks(TasksPageMessage::UpdateProjectsFilter(s)) }),
         scrollable(
             column(
                 state
@@ -677,14 +765,14 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                             .file_stem()
                             .unwrap_or_default()
                             .to_str()
-                            .unwrap_or("Couldn't read filename")
+                            .unwrap_or(&LOCALES.lookup(&state.locale, "couldnt-read-filename"))
                             .to_lowercase()
                     ) ^ state.show_archived_projects)
                     .filter(|project| project
                         .file_stem()
                         .unwrap_or_default()
                         .to_str()
-                        .unwrap_or("Couldn't read filename")
+                        .unwrap_or(&LOCALES.lookup(&state.locale, "couldnt-read-filename"))
                         .to_lowercase()
                         .contains(&state.filter_projects_text.to_lowercase()))
                     .map(|project| {
@@ -695,11 +783,13 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                         {
                             if state.show_archived_projects {
                                 row![
-                                    button(text("Unarchive").width(Length::Fill).align_x(Center))
-                                        .width(Length::Fill)
-                                        .on_press(Message::Tasks(
-                                            TasksPageMessage::UnarchiveProject
-                                        )),
+                                    button(
+                                        text(LOCALES.lookup(&state.locale, "unarchive"))
+                                            .width(Length::Fill)
+                                            .align_x(Center)
+                                    )
+                                    .width(Length::Fill)
+                                    .on_press(Message::Tasks(TasksPageMessage::UnarchiveProject)),
                                     Tooltip::new(
                                         button(Svg::new(svg::Handle::from_memory(include_bytes!(
                                             "../../../icons/close.svg"
@@ -709,7 +799,7 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                                         ))
                                         .width(Length::Fixed(50.0))
                                         .height(Length::Fixed(30.0)),
-                                        "Close",
+                                        text(LOCALES.lookup(&state.locale, "close")),
                                         iced::widget::tooltip::Position::Right,
                                     )
                                 ]
@@ -717,13 +807,16 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                                 .into()
                             } else if state.display_rename_view {
                                 row![
-                                    text_input("Rename Project", &state.rename_project_entry_text)
-                                        .width(Length::Fill)
-                                        .on_input(|s| Message::Tasks(
-                                            TasksPageMessage::SetRenameProjectEntryText(s)
-                                        ))
-                                        .on_submit(Message::Tasks(TasksPageMessage::RenameProject))
-                                        .id(text_input::Id::new(RENAME_PROJECT_TEXT_INPUT_ID)),
+                                    text_input(
+                                        &LOCALES.lookup(&state.locale, "rename-project"),
+                                        &state.rename_project_entry_text
+                                    )
+                                    .width(Length::Fill)
+                                    .on_input(|s| Message::Tasks(
+                                        TasksPageMessage::SetRenameProjectEntryText(s)
+                                    ))
+                                    .on_submit(Message::Tasks(TasksPageMessage::RenameProject))
+                                    .id(text_input::Id::new(RENAME_PROJECT_TEXT_INPUT_ID)),
                                     Tooltip::new(
                                         button(Svg::new(svg::Handle::from_memory(include_bytes!(
                                             "../../../icons/ok.svg"
@@ -732,7 +825,7 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                                         .style(button::success)
                                         .width(Length::Fixed(50.0))
                                         .height(Length::Fixed(30.0)),
-                                        "Rename",
+                                        text(LOCALES.lookup(&state.locale, "rename")),
                                         iced::widget::tooltip::Position::Bottom
                                     ),
                                     Tooltip::new(
@@ -745,7 +838,7 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                                         .style(button::danger)
                                         .width(Length::Fixed(50.0))
                                         .height(Length::Fixed(30.0)),
-                                        "Cancel",
+                                        text(LOCALES.lookup(&state.locale, "cancel")),
                                         iced::widget::tooltip::Position::Bottom
                                     ),
                                 ]
@@ -753,50 +846,78 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                                 .into()
                             } else if state.display_delete_view {
                                 row![
-                                    button(text("Delete").width(Length::Fill).align_x(Center))
-                                        .style(button::danger)
-                                        .width(Length::Fill)
-                                        .on_press(Message::Tasks(TasksPageMessage::DeleteProject)),
-                                    button(text("Cancel").width(Length::Fill).align_x(Center))
-                                        .width(Length::Fill)
-                                        .on_press(Message::Tasks(
-                                            TasksPageMessage::ToggleDeleteProjectView
-                                        )),
+                                    button(
+                                        text(LOCALES.lookup(&state.locale, "delete"))
+                                            .width(Length::Fill)
+                                            .align_x(Center)
+                                    )
+                                    .style(button::danger)
+                                    .width(Length::Fill)
+                                    .on_press(Message::Tasks(TasksPageMessage::DeleteProject)),
+                                    button(
+                                        text(LOCALES.lookup(&state.locale, "cancel"))
+                                            .width(Length::Fill)
+                                            .align_x(Center)
+                                    )
+                                    .width(Length::Fill)
+                                    .on_press(Message::Tasks(
+                                        TasksPageMessage::ToggleDeleteProjectView
+                                    )),
                                 ]
                                 .spacing(5)
                                 .into()
                             } else if state.display_archive_view {
                                 row![
-                                    button(text("Archive").width(Length::Fill).align_x(Center))
-                                        .style(button::danger)
-                                        .width(Length::Fill)
-                                        .on_press(Message::Tasks(TasksPageMessage::ArchiveProject)),
-                                    button(text("Cancel").width(Length::Fill).align_x(Center))
-                                        .width(Length::Fill)
-                                        .on_press(Message::Tasks(
-                                            TasksPageMessage::ToggleArchiveProjectView
-                                        )),
+                                    button(
+                                        text(LOCALES.lookup(&state.locale, "archive"))
+                                            .width(Length::Fill)
+                                            .align_x(Center)
+                                    )
+                                    .style(button::danger)
+                                    .width(Length::Fill)
+                                    .on_press(Message::Tasks(TasksPageMessage::ArchiveProject)),
+                                    button(
+                                        text(LOCALES.lookup(&state.locale, "cancel"))
+                                            .width(Length::Fill)
+                                            .align_x(Center)
+                                    )
+                                    .width(Length::Fill)
+                                    .on_press(Message::Tasks(
+                                        TasksPageMessage::ToggleArchiveProjectView
+                                    )),
                                 ]
                                 .spacing(5)
                                 .into()
                             } else {
                                 row![
-                                    button(text("Rename").width(Length::Fill).align_x(Center))
-                                        .width(Length::Fill)
-                                        .on_press(Message::Tasks(
-                                            TasksPageMessage::ToggleRenameProjectView
-                                        )),
-                                    button(text("Archive").width(Length::Fill).align_x(Center))
-                                        .width(Length::Fill)
-                                        .on_press(Message::Tasks(
-                                            TasksPageMessage::ToggleArchiveProjectView
-                                        )),
-                                    button(text("Delete").width(Length::Fill).align_x(Center))
-                                        .style(button::danger)
-                                        .width(Length::Fill)
-                                        .on_press(Message::Tasks(
-                                            TasksPageMessage::ToggleDeleteProjectView
-                                        )),
+                                    button(
+                                        text(LOCALES.lookup(&state.locale, "rename"))
+                                            .width(Length::Fill)
+                                            .align_x(Center)
+                                    )
+                                    .width(Length::Fill)
+                                    .on_press(Message::Tasks(
+                                        TasksPageMessage::ToggleRenameProjectView
+                                    )),
+                                    button(
+                                        text(LOCALES.lookup(&state.locale, "archive"))
+                                            .width(Length::Fill)
+                                            .align_x(Center)
+                                    )
+                                    .width(Length::Fill)
+                                    .on_press(Message::Tasks(
+                                        TasksPageMessage::ToggleArchiveProjectView
+                                    )),
+                                    button(
+                                        text(LOCALES.lookup(&state.locale, "delete"))
+                                            .width(Length::Fill)
+                                            .align_x(Center)
+                                    )
+                                    .style(button::danger)
+                                    .width(Length::Fill)
+                                    .on_press(Message::Tasks(
+                                        TasksPageMessage::ToggleDeleteProjectView
+                                    )),
                                     Tooltip::new(
                                         button(Svg::new(svg::Handle::from_memory(include_bytes!(
                                             "../../../icons/close.svg"
@@ -806,7 +927,7 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                                         ))
                                         .width(Length::Fixed(50.0))
                                         .height(Length::Fixed(30.0)),
-                                        "Close",
+                                        text(LOCALES.lookup(&state.locale, "close")),
                                         iced::widget::tooltip::Position::Right,
                                     )
                                 ]
@@ -816,19 +937,13 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                         } else {
                             row![
                                 button(
-                                    text(
-                                        project
-                                            .file_stem()
-                                            .unwrap_or_default()
-                                            .to_str()
-                                            .unwrap_or("Couldn't read filename"),
-                                    )
-                                    .font(Font {
-                                        weight: iced::font::Weight::Semibold,
-                                        ..Default::default()
-                                    })
-                                    .width(Length::Fill)
-                                    .align_x(Center),
+                                    text(project.file_stem().unwrap_or_default().to_string_lossy())
+                                        .font(Font {
+                                            weight: iced::font::Weight::Semibold,
+                                            ..Default::default()
+                                        })
+                                        .width(Length::Fill)
+                                        .align_x(Center),
                                 )
                                 .style(
                                     if state
@@ -854,7 +969,7 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                                     )))
                                     .height(Length::Fixed(30.0))
                                     .width(Length::Fixed(50.0)),
-                                    "Manage Details",
+                                    text(LOCALES.lookup(&state.locale, "manage-details")),
                                     iced::widget::tooltip::Position::Right,
                                 )
                             ]
@@ -877,11 +992,11 @@ pub fn tool_view(state: &TasksPage) -> Element<Message> {
             "../../../icons/view-more.svg"
         ))))
         .on_press(Message::Tasks(TasksPageMessage::ToggleExtraToolsMenu)),
-        "More Tools",
+        text(LOCALES.lookup(&state.locale, "more-tools")),
         iced::widget::tooltip::Position::Bottom,
     );
     let overlay = column![button(
-        text("Select Projects Folder")
+        text(LOCALES.lookup(&state.locale, "select-projects-folder"))
             .width(Length::Fill)
             .align_x(Center),
     )
@@ -904,7 +1019,7 @@ pub fn tool_view(state: &TasksPage) -> Element<Message> {
                 } else {
                     button::primary
                 }),
-                "Toggle Sidebar (Ctrl+B)",
+                text(LOCALES.lookup(&state.locale, "toggle-sidebar-shortcut")),
                 iced::widget::tooltip::Position::Bottom
             ),
             Tooltip::new(
@@ -918,8 +1033,10 @@ pub fn tool_view(state: &TasksPage) -> Element<Message> {
                 })
                 .on_press(Message::Tasks(TasksPageMessage::ToggleTaskViewType)),
                 match state.task_view_type {
-                    TaskViewType::Kanban => "Use List View (Ctrl+L)",
-                    TaskViewType::List => "Use Kanban View (Ctrl+L)",
+                    TaskViewType::Kanban =>
+                        text(LOCALES.lookup(&state.locale, "use-list-view-shortcut")),
+                    TaskViewType::List =>
+                        text(LOCALES.lookup(&state.locale, "use-kanban-view-shortcut")),
                 },
                 iced::widget::tooltip::Position::Bottom
             ),
@@ -928,7 +1045,7 @@ pub fn tool_view(state: &TasksPage) -> Element<Message> {
                     "../../../icons/add.svg"
                 ))))
                 .on_press(Message::Tasks(TasksPageMessage::StartCreatingNewTask)),
-                "New Task (Ctrl+N)",
+                text(LOCALES.lookup(&state.locale, "new-task-shortcut")),
                 iced::widget::tooltip::Position::Bottom
             ),
             drop_down
