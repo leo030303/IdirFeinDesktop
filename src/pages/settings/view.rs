@@ -1,3 +1,6 @@
+use std::{borrow::Cow, collections::HashMap};
+
+use fluent_templates::Loader;
 use iced::{
     border,
     widget::{
@@ -7,21 +10,29 @@ use iced::{
 };
 use iced_aw::Spinner;
 
-use crate::config::AppConfig;
 use crate::{app::Message, Page};
+use crate::{config::AppConfig, LOCALES};
 
 use super::page::{SettingsPage, SettingsPageMessage, SettingsTab};
 
 pub fn main_view<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
     column![
         if state.is_saving {
-            row![text("Settings are being saved"), Spinner::new()]
+            row![
+                text(LOCALES.lookup(&state.locale, "settings-are-being-saved")),
+                Spinner::new()
+            ]
         } else if state.save_was_successful {
             row![text(&state.save_message).style(text::success)]
         } else {
             row![text(&state.save_message).style(text::danger)]
         },
-        text(format!("{} Settings", state.current_tab.name())).size(24),
+        text(LOCALES.lookup_with_args(
+            &state.locale,
+            "arg-settings",
+            &HashMap::from([(Cow::from("current-tab"), state.current_tab.name().into())]),
+        ))
+        .size(24),
         row(SettingsTab::get_all()
             .into_iter()
             .map(|tab| button(text(tab.name()))
@@ -64,27 +75,29 @@ fn sync_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'
         container(
             column![
                 row![
-                    text("Server Url:"),
+                    text(LOCALES.lookup(&state.locale, "server-url")),
                     Space::with_width(Length::Fixed(20.0)),
-                    text_input("Server Url", &state.server_url_editor_text)
-                        .width(Length::Fixed(200.0))
-                        .on_input(
-                            |s| Message::Settings(SettingsPageMessage::SyncUpdateServerUrl(s))
-                        )
-                        .on_submit(Message::Settings(SettingsPageMessage::SyncSetServerUrl)),
-                    button("Set Url")
+                    text_input(
+                        &LOCALES.lookup(&state.locale, "server-url"),
+                        &state.server_url_editor_text
+                    )
+                    .width(Length::Fixed(200.0))
+                    .on_input(|s| Message::Settings(SettingsPageMessage::SyncUpdateServerUrl(s)))
+                    .on_submit(Message::Settings(SettingsPageMessage::SyncSetServerUrl)),
+                    button(text(LOCALES.lookup(&state.locale, "set-url")))
                         .on_press(Message::Settings(SettingsPageMessage::SyncSetServerUrl))
                 ]
                 .width(Length::Fill),
                 row![
                     text(format!(
-                        "Default Data Folder: {:?}",
+                        "{}: {:?}",
+                        LOCALES.lookup(&state.locale, "default-data-folder"),
                         app_config.sync_config.default_data_storage_folder
                     ))
                     .align_x(Alignment::Center)
                     .width(Length::Fill),
                     button(
-                        text("Select Default Data Folder")
+                        text(LOCALES.lookup(&state.locale, "select-default-data-folder"))
                             .width(Length::Fill)
                             .align_x(Alignment::Center)
                     )
@@ -94,7 +107,7 @@ fn sync_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'
                 ]
                 .width(Length::Fill),
                 toggler(app_config.sync_config.should_sync)
-                    .label("Whether syncing should run")
+                    .label(LOCALES.lookup(&state.locale, "whether-syncing-should-run"))
                     .on_toggle(|b| Message::Settings(SettingsPageMessage::SyncSetShouldSync(b))),
             ]
             .padding(20)
@@ -106,7 +119,7 @@ fn sync_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'
     .into()
 }
 
-fn tasks_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
+fn tasks_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
     scrollable(
         container(
             column![
@@ -116,13 +129,21 @@ fn tasks_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                             .tasks_config
                             .default_folder
                             .as_ref()
-                            .map(|value| format!("Default Task Projects Folder: {value:?}"))
-                            .unwrap_or(String::from("No Default Task Projects Folder Selected"))
+                            .map(|value| format!(
+                                "{}: {value:?}",
+                                LOCALES.lookup(&state.locale, "default-task-projects-folder")
+                            ))
+                            .unwrap_or(
+                                LOCALES.lookup(
+                                    &state.locale,
+                                    "no-default-task-projects-folder-selected"
+                                )
+                            )
                     )
                     .align_x(Alignment::Center)
                     .width(Length::Fill),
                     button(
-                        text("Select Default Task Projects Folder")
+                        text(LOCALES.lookup(&state.locale, "select-default-task-projects-folder"))
                             .width(Length::Fill)
                             .align_x(Alignment::Center)
                     )
@@ -137,13 +158,21 @@ fn tasks_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                             .tasks_config
                             .default_project_file
                             .as_ref()
-                            .map(|value| format!("Default Tasks Project File: {value:?}"))
-                            .unwrap_or(String::from("No Default Tasks Project File Selected"))
+                            .map(|value| format!(
+                                "{}: {value:?}",
+                                LOCALES.lookup(&state.locale, "default-tasks-project-file")
+                            ))
+                            .unwrap_or(
+                                LOCALES.lookup(
+                                    &state.locale,
+                                    "no-default-tasks-project-file-selected"
+                                )
+                            )
                     )
                     .align_x(Alignment::Center)
                     .width(Length::Fill),
                     button(
-                        text("Select Default Tasks Project File")
+                        text(LOCALES.lookup(&state.locale, "select-default-tasks-project-file"))
                             .width(Length::Fill)
                             .align_x(Alignment::Center)
                     )
@@ -153,27 +182,32 @@ fn tasks_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                 ]
                 .width(Length::Fill),
                 toggler(app_config.tasks_config.kanban_task_view_is_default)
-                    .label("Kanban task view as default")
+                    .label(LOCALES.lookup(&state.locale, "kanban-task-view-as-default"))
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::TasksSetKanbanTaskViewIsDefault(b)
                     )),
                 toggler(app_config.tasks_config.show_sidebar_on_start)
-                    .label("Show sidebar on start")
+                    .label(LOCALES.lookup(&state.locale, "show-sidebar-on-start"))
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::TasksSetShowSidebarOnStart(b)
                     )),
                 toggler(app_config.tasks_config.confirm_before_delete)
-                    .label("Confirm before deleting a task")
+                    .label(LOCALES.lookup(&state.locale, "confirm-before-deleting-a-task"))
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::TasksSetConfirmBeforeDelete(b)
                     )),
                 toggler(app_config.tasks_config.show_task_completion_toolbar)
-                    .label("Show task completion toolbar on each task")
+                    .label(
+                        LOCALES.lookup(&state.locale, "show-task-completion-toolbar-on-each-task")
+                    )
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::TasksSetShowTaskCompletionToolbar(b)
                     )),
                 toggler(app_config.tasks_config.right_click_to_edit_task)
-                    .label("Right clicking on a task should open it for editing")
+                    .label(LOCALES.lookup(
+                        &state.locale,
+                        "right-clicking-on-a-task-should-open-it-for-editing"
+                    ))
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::TasksSetRightClickToEditTask(b)
                     )),
@@ -187,7 +221,7 @@ fn tasks_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
     .into()
 }
 
-fn notes_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
+fn notes_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
     scrollable(
         container(
             column![
@@ -197,13 +231,18 @@ fn notes_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                             .notes_config
                             .default_folder
                             .as_ref()
-                            .map(|value| format!("Default Notes Folder: {value:?}"))
-                            .unwrap_or(String::from("No Default Notes Folder Selected"))
+                            .map(|value| format!(
+                                "{}: {value:?}",
+                                LOCALES.lookup(&state.locale, "default-notes-folder")
+                            ))
+                            .unwrap_or(
+                                LOCALES.lookup(&state.locale, "no-default-notes-folder-selected")
+                            )
                     )
                     .align_x(Alignment::Center)
                     .width(Length::Fill),
                     button(
-                        text("Select Default Notes Folder")
+                        text(LOCALES.lookup(&state.locale, "select-default-notes-folder"))
                             .width(Length::Fill)
                             .align_x(Alignment::Center)
                     )
@@ -218,13 +257,16 @@ fn notes_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                             .notes_config
                             .website_folder
                             .as_ref()
-                            .map(|value| format!("Website Folder: {value:?}"))
-                            .unwrap_or(String::from("No Website Folder Selected"))
+                            .map(|value| format!(
+                                "{}: {value:?}",
+                                LOCALES.lookup(&state.locale, "website-folder")
+                            ))
+                            .unwrap_or(LOCALES.lookup(&state.locale, "no-website-folder-selected"))
                     )
                     .align_x(Alignment::Center)
                     .width(Length::Fill),
                     button(
-                        text("Select Website Folder")
+                        text(LOCALES.lookup(&state.locale, "select-website-folder"))
                             .width(Length::Fill)
                             .align_x(Alignment::Center)
                     )
@@ -234,32 +276,32 @@ fn notes_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
                 ]
                 .width(Length::Fill),
                 toggler(app_config.notes_config.show_sidebar_on_start)
-                    .label("Show sidebar on startup")
+                    .label(LOCALES.lookup(&state.locale, "show-sidebar-on-startup"))
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::NotesSetShowSidebarOnStart(b)
                     )),
                 toggler(app_config.notes_config.show_editor_on_start)
-                    .label("Show editor on startup")
+                    .label(LOCALES.lookup(&state.locale, "show-editor-on-startup"))
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::NotesSetShowEditorOnStart(b)
                     )),
                 toggler(app_config.notes_config.show_markdown_on_start)
-                    .label("Show markdown preview on startup")
+                    .label(LOCALES.lookup(&state.locale, "show-markdown-preview-on-startup"))
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::NotesSetShowMarkdownOnStart(b)
                     )),
                 toggler(app_config.notes_config.confirm_before_delete)
-                    .label("Confirm before deleting a note")
+                    .label(LOCALES.lookup(&state.locale, "confirm-before-deleting-a-note"))
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::NotesSetShowConfirmDelete(b)
                     )),
                 toggler(app_config.notes_config.autocomplete_brackets_etc)
-                    .label("Autocomplete brackets, quotes, etc")
+                    .label(LOCALES.lookup(&state.locale, "autocomplete-brackets-quotes-etc"))
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::NotesSetAutocompleteBrackets(b)
                     )),
                 toggler(app_config.notes_config.autocomplete_lists)
-                    .label("Autocomplete lists")
+                    .label(LOCALES.lookup(&state.locale, "autocomplete-lists"))
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::NotesSetAutocompleteLists(b)
                     )),
@@ -273,7 +315,7 @@ fn notes_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element
     .into()
 }
 
-fn passwords_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
+fn passwords_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
     scrollable(
         container(
             column![
@@ -283,13 +325,18 @@ fn passwords_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Ele
                             .passwords_config
                             .default_database
                             .as_ref()
-                            .map(|value| format!("Default Database: {value:?}"))
-                            .unwrap_or(String::from("No Default Database Selected"))
+                            .map(|value| format!(
+                                "{}: {value:?}",
+                                LOCALES.lookup(&state.locale, "default-database")
+                            ))
+                            .unwrap_or(
+                                LOCALES.lookup(&state.locale, "no-default-database-selected")
+                            )
                     )
                     .align_x(Alignment::Center)
                     .width(Length::Fill),
                     button(
-                        text("Select Default Database")
+                        text(LOCALES.lookup(&state.locale, "select-default-database"))
                             .width(Length::Fill)
                             .align_x(Alignment::Center)
                     )
@@ -299,7 +346,7 @@ fn passwords_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Ele
                 ]
                 .width(Length::Fill),
                 toggler(app_config.passwords_config.show_sidebar_on_start)
-                    .label("Show sidebar on startup")
+                    .label(LOCALES.lookup(&state.locale, "show-sidebar-on-startup"))
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::PasswordsSetShowSidebarOnStart(b)
                     )),
@@ -313,7 +360,7 @@ fn passwords_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Ele
     .into()
 }
 
-fn gallery_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
+fn gallery_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
     scrollable(
         container(
             column![
@@ -323,13 +370,18 @@ fn gallery_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Eleme
                             .gallery_config
                             .default_folder
                             .as_ref()
-                            .map(|value| format!("Default Folder: {value:?}"))
-                            .unwrap_or(String::from("No Default Folder Selected"))
+                            .map(|value| format!(
+                                "{}: {value:?}",
+                                LOCALES.lookup(&state.locale, "default-photos-folder")
+                            ))
+                            .unwrap_or(
+                                LOCALES.lookup(&state.locale, "no-default-photos-folder-selected")
+                            )
                     )
                     .align_x(Alignment::Center)
                     .width(Length::Fill),
                     button(
-                        text("Select Default Folder")
+                        text(LOCALES.lookup(&state.locale, "select-default-photos-folder"))
                             .width(Length::Fill)
                             .align_x(Alignment::Center)
                     )
@@ -339,17 +391,17 @@ fn gallery_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Eleme
                 ]
                 .width(Length::Fill),
                 toggler(app_config.gallery_config.run_thumbnail_generation_on_start)
-                    .label("Run thumbnail generation on start")
+                    .label(LOCALES.lookup(&state.locale, "run-thumbnail-generation-on-start"))
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::GallerySetRunThumbnailGenerationOnStart(b)
                     )),
                 toggler(app_config.gallery_config.run_face_extraction_on_start)
-                    .label("Run face extraction on start")
+                    .label(LOCALES.lookup(&state.locale, "run-face-extraction-on-start"))
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::GallerySetRunFaceExtractionOnStart(b)
                     )),
                 toggler(app_config.gallery_config.run_face_recognition_on_start)
-                    .label("Run face recognition on start")
+                    .label(LOCALES.lookup(&state.locale, "run-face-recognition-on-start"))
                     .on_toggle(|b| Message::Settings(
                         SettingsPageMessage::GallerySetRunFaceRecognitionOnStart(b)
                     )),
@@ -364,12 +416,12 @@ fn gallery_tab<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Eleme
 }
 
 fn default_page_picker<'a>(
-    _state: &'a SettingsPage,
+    state: &'a SettingsPage,
     app_config: &'a AppConfig,
 ) -> Element<'a, Message> {
     container(
         column![
-            text("Select the default page on startup").size(20),
+            text(LOCALES.lookup(&state.locale, "select-the-default-page-on-startup")).size(20),
             pick_list(
                 Page::get_all()
                     .into_iter()
@@ -387,12 +439,13 @@ fn default_page_picker<'a>(
     .into()
 }
 
-fn theme_picker<'a>(_state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
+fn theme_picker<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'a, Message> {
     container(
         column![
-            text("Select a theme").size(20),
+            text(LOCALES.lookup(&state.locale, "select-a-theme")).size(20),
             text(format!(
-                "Current theme: {:?}",
+                "{}: {:?}",
+                LOCALES.lookup(&state.locale, "current-theme"),
                 app_config.get_theme().unwrap_or(Theme::Light)
             )),
             row(Theme::ALL.iter().map(|theme| {
