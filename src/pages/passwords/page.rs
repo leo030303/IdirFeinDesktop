@@ -11,14 +11,6 @@ use super::passwords_utils::save_database;
 use super::update::update;
 use super::view::{main_view, tool_view};
 
-/**
-CODE FINISHED, TODO:
-Search "unwrap" and replace with error handling
-Search "clone" and replace with reference where possible
-Comment the code where necessary
-Create tests for each update function and util function
-*/
-
 #[derive(Debug, Clone)]
 pub struct Password {
     pub id: uuid::Uuid,
@@ -165,6 +157,7 @@ impl PasswordsPage {
     }
 
     pub fn subscription() -> iced::Subscription<Message> {
+        // Keyboard shortcuts
         event::listen_with(|event, status, _id| match (event, status) {
             (
                 Event::Keyboard(keyboard::Event::KeyPressed {

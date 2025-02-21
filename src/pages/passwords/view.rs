@@ -277,7 +277,11 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                 .width(Length::FillPortion(1))
                 .on_press(Message::Passwords(
                     PasswordsPageMessage::DeletePasswordEntry(
-                        state.selected_password_entry.clone().unwrap().id
+                        state
+                            .selected_password_entry
+                            .clone()
+                            .expect("Already checked")
+                            .id
                     )
                 ))
             ]
@@ -464,9 +468,8 @@ fn existing_database_selected_and_locked_view(state: &PasswordsPage) -> Element<
                             Cow::from("file_path"),
                             state
                                 .selected_keepass_file
-                                .clone()
-                                .unwrap_or_default()
-                                .to_str()
+                                .as_ref()
+                                .map(|selected| selected.to_str())
                                 .unwrap_or_default()
                                 .into()
                         )]),

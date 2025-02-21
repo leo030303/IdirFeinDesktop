@@ -1,3 +1,5 @@
+use std::mem;
+
 use arboard::Clipboard;
 use iced::Task;
 use rand::{thread_rng, Rng};
@@ -31,15 +33,11 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
             } else {
                 state.passwords_list.push(Password {
                     id: uuid::Uuid::new_v4(),
-                    title: state.current_title_text.clone(),
-                    username: state.current_username_text.clone(),
-                    url: state.current_url_text.clone(),
-                    password: state.current_password_text.clone(),
+                    title: mem::take(&mut state.current_title_text),
+                    username: mem::take(&mut state.current_username_text),
+                    url: mem::take(&mut state.current_url_text),
+                    password: mem::take(&mut state.current_password_text),
                 });
-                state.current_title_text = String::new();
-                state.current_url_text = String::new();
-                state.current_username_text = String::new();
-                state.current_password_text = String::new();
             }
         }
         PasswordsPageMessage::DeletePasswordEntry(id_to_delete) => {
@@ -64,10 +62,14 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
                 let selected_key_file = state.selected_key_file.take();
                 return Task::perform(
                     get_passwords(keepass_file_path, password, selected_key_file),
-                    |passwords_list_option| {
-                        Message::Passwords(PasswordsPageMessage::RetrievedPasswordsList(
-                            passwords_list_option,
-                        ))
+                    |passwords_list_result| match passwords_list_result {
+                        Ok(passwords_list) => Message::Passwords(
+                            PasswordsPageMessage::RetrievedPasswordsList(Some(passwords_list)),
+                        ),
+                        Err(err) => Message::ShowToast(
+                            false,
+                            format!("Failed to save get passwords: {err}"),
+                        ),
                     },
                 );
             } else {
@@ -87,19 +89,20 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
             }
         }
         PasswordsPageMessage::UpdateMasterPasswordField(s) => state.master_password_field_text = s,
-        PasswordsPageMessage::SelectPassword(password) => {
+        PasswordsPageMessage::SelectPassword(mut password) => {
             state.selected_password_entry = password.clone();
             state.current_title_text = password
-                .clone()
-                .map_or(String::new(), |password| password.title);
+                .as_mut()
+                .map_or(String::new(), |password| mem::take(&mut password.title));
             state.current_url_text = password
-                .clone()
-                .map_or(String::new(), |password| password.url);
+                .as_mut()
+                .map_or(String::new(), |password| mem::take(&mut password.url));
             state.current_username_text = password
-                .clone()
-                .map_or(String::new(), |password| password.username);
-            state.current_password_text =
-                password.map_or(String::new(), |password| password.password);
+                .as_mut()
+                .map_or(String::new(), |password| mem::take(&mut password.username));
+            state.current_password_text = password
+                .as_mut()
+                .map_or(String::new(), |password| mem::take(&mut password.password));
         }
         PasswordsPageMessage::UpdateCurrentTitleText(s) => state.current_title_text = s,
         PasswordsPageMessage::UpdateCurrentUrlText(s) => state.current_url_text = s,
@@ -128,10 +131,8 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
         PasswordsPageMessage::Lock => {
             state.is_unlocked = false;
             if state.is_dirty {
-                let master_password_field_text = state.master_password_field_text.clone();
-                let key_file_option = state.selected_key_file.clone();
-                state.master_password_field_text = String::new();
-                state.selected_key_file = None;
+                let master_password_field_text = mem::take(&mut state.master_password_field_text);
+                let key_file_option = mem::take(&mut state.selected_key_file);
                 let password = if master_password_field_text.is_empty() {
                     None
                 } else {
@@ -156,9 +157,22 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
         PasswordsPageMessage::ToggleHideCurrentPassword => {
             state.hide_current_password_entry = !state.hide_current_password_entry
         }
-        PasswordsPageMessage::CopyValueToClipboard(s) => {
-            Clipboard::new().unwrap().set_text(s).unwrap()
-        }
+        PasswordsPageMessage::CopyValueToClipboard(s) => match Clipboard::new() {
+            Ok(mut clipboard) => {
+                if let Err(err) = clipboard.set_text(s) {
+                    return Task::done(Message::ShowToast(
+                        false,
+                        format!("Couldn't copy text to clipboard: {err}"),
+                    ));
+                }
+            }
+            Err(err) => {
+                return Task::done(Message::ShowToast(
+                    false,
+                    format!("Couldn't access clipboard: {err}"),
+                ));
+            }
+        },
         PasswordsPageMessage::PickDatabaseFile => {
             return Task::perform(
                 async {
