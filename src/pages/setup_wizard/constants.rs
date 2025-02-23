@@ -253,7 +253,11 @@ pub const COUNTRY_CODES_FOR_WIFI_SETUP: [(&str, &str); 249] = [
 ];
 
 // Source URL and destination filename
-pub const APP_DATA_URLS: [(&str, &str); 190] = [
+pub const APP_DATA_URLS: [(&str, &str); 191] = [
+    (
+        "https://raw.githubusercontent.com/leo030303/idirfein-resources/refs/heads/main/idirfein_server",
+        "idirfein_server",
+    ),
     (
         "https://raw.githubusercontent.com/leo030303/idirfein-resources/refs/heads/main/web/styles.css",
         "web/styles.css",

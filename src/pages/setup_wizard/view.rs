@@ -1,4 +1,5 @@
 
+use iced_aw::Spinner;
 use iced::{widget::{pick_list, progress_bar, rich_text, scrollable, span}, Alignment::Center, Element, Font, Length};
 
 use crate::app::Message;
@@ -16,30 +17,88 @@ pub fn main_view(state: &SetupWizard) -> Element<Message> {
         SetupWizardStep::ChooseRemoteFoldersToSync => choose_remote_folders_to_sync_view(state),
         SetupWizardStep::CloseWizard => close_wizard_view(state),
         SetupWizardStep::OptionalSetupRemoteAccess => optional_setup_remote_access_view(state),
-        SetupWizardStep::InsertTargetHardriveIntoThisComputer => {
-            insert_target_hardrive_into_this_computer_view(state)
-        }
-        SetupWizardStep::ConfirmTargetHarddrive => confirm_target_harddrive_view(state),
-        SetupWizardStep::RemoveTargetHarddrive => remove_target_harddrive_view(state),
         SetupWizardStep::InsertSdCardIntoThisComputer => {
             insert_sd_card_into_this_computer_view(state)
         }
-        SetupWizardStep::PickDeviceWhichIsTargetSdCard => {
-            pick_device_which_is_target_sd_card_view(state)
-        }
-        SetupWizardStep::ConfirmSdCardChoice => confirm_sd_card_choice_view(state),
         SetupWizardStep::SettingUpSdCard => setting_up_sd_card_view(state),
-        SetupWizardStep::SdCardSetupCompletePleaseEject => {
-            sd_card_setup_complete_please_eject_view(state)
-        }
-        SetupWizardStep::PlugInServerConfirmConnection => {
-            plug_in_server_confirm_connection_view(state)
-        }
         SetupWizardStep::DownloadExtraAppData => download_extra_app_data(state) ,
         SetupWizardStep::GetWifiDetails => get_wifi_details(state),
         SetupWizardStep::SetRpiServerPassword => set_rpi_server_password(state),
         SetupWizardStep::CreateServerUsers => create_server_users(state),
+        SetupWizardStep::SdCardSetupCompletePleaseEjectAndPlugin => sd_card_setup_complete_please_eject_and_plugin(state),
+        SetupWizardStep::WriteConfigToSd => write_config_to_sd(state),
+        SetupWizardStep::ListUsersChooseYours => list_users_choose_yours(state),
     }
+}
+
+fn list_users_choose_yours(state: &SetupWizard) -> Element<Message> {
+    container(column![
+        text("Select your user")
+            .width(Length::Fill)
+            .center()
+            .size(24),
+        text("Select the user for this device from the list of users. Also copy the username and authentication token for each user as you won't be able to access them later. Ensure to use secure communication methods to send the authentication details to each user.")
+            .width(Length::Fill)
+            .center()
+            .size(20),
+        // TODO list users, have copy buttons, have select button to pick the one for this device
+        if state.work_in_progress_client_config.sync_config.client_username.is_none() || state.work_in_progress_client_config.sync_config.client_secret.is_none() {
+            button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
+        } else {
+            button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
+                .on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::ConfirmConnection)))
+        }
+    ].max_width(800)
+    .padding(20)
+    .spacing(10)).center_x(Length::Fill)
+    .into()
+}
+fn sd_card_setup_complete_please_eject_and_plugin(_state: &SetupWizard) -> Element<Message> {
+    container(column![
+        text("Please remove the SD card and insert it into the server")
+            .width(Length::Fill)
+            .center()
+            .size(24),
+        text("The SD card has been ejected and is safe to remove. Please insert it into the server and plug the server in. Wait for at least 2 minutes and then plug out the server and remove the SD card. Insert the SD card back into this device. Once you have done all this, press continue.")
+            .width(Length::Fill)
+            .center()
+            .size(20),
+        button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
+            .on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::OptionalSetupRemoteAccess)))
+    ].max_width(800)
+    .padding(20)
+    .spacing(10)).center_x(Length::Fill)
+    .into()
+}
+
+fn write_config_to_sd(state: &SetupWizard) -> Element<Message> {
+    container(column![
+        text("Writing config to SD card")
+            .width(Length::Fill)
+            .center()
+            .size(24),
+        if state.is_writing_config {
+            column![
+        text("This might take a few minutes. Don't turn off your computer. Don't close the app. Don't remove the SD card.")
+            .width(Length::Fill)
+            .center()
+            .size(20).style(text::danger),
+                Spinner::new(),
+            ]
+        } else {
+            column![
+                text("All done, remove the SD card, insert it into the Raspberry Pi, and plug it in.")
+                    .width(Length::Fill)
+                    .center()
+                    .size(20).style(text::success),
+                button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
+                .on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::ListUsersChooseYours)))
+            ]
+        }
+    ].max_width(800)
+    .padding(20)
+    .spacing(10)).center_x(Length::Fill)
+    .into()
 }
 
 fn set_rpi_server_password(state: &SetupWizard) -> Element<Message> {
@@ -101,7 +160,11 @@ fn create_server_users(state: &SetupWizard) -> Element<Message> {
                 .into()
             })).spacing(5)
         ),
-        button(text("Continue").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::InsertTargetHardriveIntoThisComputer))).width(Length::Fill),
+        if state.work_in_progress_server_config.users_list.is_empty() {
+            button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
+        } else {
+            button(text("Continue").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::DownloadExtraAppData))).width(Length::Fill)
+        }
     ].max_width(800)
     .padding(20)
     .spacing(10)).center_x(Length::Fill)
@@ -111,7 +174,7 @@ fn create_server_users(state: &SetupWizard) -> Element<Message> {
 
 fn decide_whether_to_setup_server_view(state: &SetupWizard) -> Element<Message> {
     column![
-        button(text("Test").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::SettingUpSdCard ))).width(Length::Fill),
+        button(text("Test").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::OptionalSetupRemoteAccess))).width(Length::Fill), // TODO remove this
         text("Welcome to IdirFéin!")
             .width(Length::Fill)
             .center()
@@ -196,7 +259,7 @@ fn confirm_connection_view(state: &SetupWizard) -> Element<Message> {
                         .style(text::success),
                     button(text("Continue").width(Length::Fill).center())
                         .on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(
-                            SetupWizardStep::ChooseRemoteFoldersToSync
+                    if matches!(state.setup_type, SetupType::FullServerSetup) {SetupWizardStep::CloseWizard} else {SetupWizardStep::ChooseRemoteFoldersToSync}
                         )))
                         .width(Length::Fill)
                 ]
@@ -210,11 +273,13 @@ fn confirm_connection_view(state: &SetupWizard) -> Element<Message> {
             .width(Length::Fill)
             .center()
             .size(20),
-                    button(text("Back to details page").width(Length::Fill).center())
-                        .on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(
-                            SetupWizardStep::EnterServerUrlAndTotpSecret
-                        )))
-                        .width(Length::Fill),
+                    if matches!(state.setup_type, SetupType::FullServerSetup) {column![]} else {column![
+                        button(text("Back to details page").width(Length::Fill).center())
+                            .on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(
+                                SetupWizardStep::EnterServerUrlAndTotpSecret
+                            )))
+                            .width(Length::Fill),
+                    ]},
                     button(text("Retry").width(Length::Fill).center())
                         .on_press(Message::SetupWizard(SetupWizardMessage::TestConnection))
                         .width(Length::Fill)
@@ -226,7 +291,7 @@ fn confirm_connection_view(state: &SetupWizard) -> Element<Message> {
                     .width(Length::Fill)
                     .center()
                     .size(24),
-                text("This might take a minute. Make sure you're connected to the entire and the server is on.")
+                text("This might take a minute. Make sure you're connected to the internet and the server is on. If its a local only server, you must be connected to the same WiFi as the server")
                     .width(Length::Fill)
                     .center()
                     .size(20),
@@ -351,6 +416,8 @@ fn optional_setup_remote_access_view(state: &SetupWizard) -> Element<Message> {
                 rich_text![span("When you're done that, go to "), span("https://www.duckdns.org/").underline(true).link(Message::SetupWizard(SetupWizardMessage::LinkClicked("https://www.duckdns.org/"))), span(" and make an account. Once thats done, add your desired domain, and copy the domain (the yourdomain part of yourdomain.duckdns.org) and your token into the fields below.")].width(Length::Fill).center(),
                 text_input("DuckDNS Domain", &state.work_in_progress_server_config.duckdns_domain).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateServerDuckDnsDomain(s))),
                 text_input("DuckDNS Token", &state.work_in_progress_server_config.duckdns_token).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateServerDuckDnsToken(s))),
+                text("Lastly, enter an email address in order to get the certs needed to access the server securely").width(Length::Fill).center(),
+                text_input("Email address", &state.work_in_progress_server_config.certbot_email).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateServerCertbotEmail(s))),
                 Space::with_height(Length::Fill),
                 button(text("Finish remote access setup").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::ConfirmRemoteAccessDetails)).width(Length::Fill)
                     .style(button::success)
@@ -369,37 +436,35 @@ fn optional_setup_remote_access_view(state: &SetupWizard) -> Element<Message> {
     .spacing(10)
     .into()
 }
-fn insert_target_hardrive_into_this_computer_view(state: &SetupWizard) -> Element<Message> {
+fn insert_sd_card_into_this_computer_view(state: &SetupWizard) -> Element<Message> {
     container(column![
-        text("Insert the hardrive you want to use for storage")
+        text("Insert the SD card you want to use into this computer")
             .width(Length::Fill)
             .center()
             .size(24),
-        text("Plug the harddrive you want to use into this computer. Once you have, press List Disks, and then select it from the list. If you're unsure which disk it is, try removing it, clicking List Disks, taking note of all of them, and then plugging the device back in and refreshing the list to see which one is new. On your server, its best to not have multiple external harddrives plugged in, as the target harddrive is identified by its size, which could overlap with another device.")
+        text("This SD card will be wiped, so make sure you don't have any important data on it. It will hold the operating system for the server, but not any of the data you store on it, that is on a separate hardrive. The minimum recommended size for this card is 4GB.")
+            .width(Length::Fill)
+            .center()
+            .size(16),
+        text("Make sure you're absolutely certain you have selected the right disk, as all data will be deleted on it. The main harddrive of your computer is also displayed. If you aren't sure, remove the sd card, refresh the list, then insert it again and refresh again and check which disk is new.")
+            .style(text::danger)
             .width(Length::Fill)
             .center()
             .size(16),
         button(text("List Disks").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GetListOfDisks)).width(Length::Fill),
-        scrollable(column(state.list_of_disks.iter().map(|disk_info| text(format!("Name: {} Total Size: {} Is Removable: {}\n\n\n", disk_info.name, bytesize::to_string(disk_info.total_space, false), disk_info.is_removable)).into())))
+        scrollable(column(state.list_of_disks.iter().map(|disk_info| button(text(format!("Name: {} Total Size: {}", disk_info.name, disk_info.total_space)).width(Length::Fill).center()).style(if state.selected_sd_card.as_ref().is_some_and(|selected| *selected == disk_info.name) {button::secondary} else {button::primary}).on_press(Message::SetupWizard(SetupWizardMessage::SelectSdCard(disk_info.clone()))).width(Length::Fill).into())).spacing(30)),
+        Space::with_height(Length::Fixed(30.0)),
+        if state.selected_sd_card.is_none() {
+            button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
+        } else if state.show_sd_card_are_you_sure {
+            button(text(format!("Double check {} is the correct disk as it will be wiped, then click to continue", state.selected_sd_card.as_ref().expect("Just checked this"))).width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::SettingUpSdCard))).width(Length::Fill).style(button::danger)
+        } else {
+            button(text(format!("Selected SD card is: {}  Continue?", state.selected_sd_card.as_ref().expect("Just checked this"))).width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::ShowSdCardAreYouSureMessage)).width(Length::Fill)
+        }
     ].max_width(800)
     .padding(20)
     .spacing(10)).center_x(Length::Fill)
     .into()
-}
-fn confirm_target_harddrive_view(_state: &SetupWizard) -> Element<Message> {
-    "confirm_target_harddrive_view".into()
-}
-fn remove_target_harddrive_view(_state: &SetupWizard) -> Element<Message> {
-    "remove_target_harddrive_view".into()
-}
-fn insert_sd_card_into_this_computer_view(_state: &SetupWizard) -> Element<Message> {
-    "insert_sd_card_into_this_computer_view".into()
-}
-fn pick_device_which_is_target_sd_card_view(_state: &SetupWizard) -> Element<Message> {
-    "pick_device_which_is_target_sd_card_view".into()
-}
-fn confirm_sd_card_choice_view(_state: &SetupWizard) -> Element<Message> {
-    "confirm_sd_card_choice_view".into()
 }
 fn setting_up_sd_card_view(state: &SetupWizard) -> Element<Message> {
     container(column![
@@ -407,7 +472,13 @@ fn setting_up_sd_card_view(state: &SetupWizard) -> Element<Message> {
             .width(Length::Fill)
             .center()
             .size(24),
+        button(text("Test").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::SdCardSetupCompletePleaseEjectAndPlugin))).width(Length::Fill), // TODO remove this
         text("Do not close the app. Do not turn off your device. Do not remove the SD card. This will take a few minutes. You will be asked to authorise the app to write to the SD card.")
+            .width(Length::Fill)
+            .center()
+            .size(16),
+        text(format!("Selected SD card is: {}  If this is wrong, close the app and start again, do not hit start as you will delete all data on the selected disk", state.selected_sd_card.as_ref().expect("Must have SD selected here")))
+            .style(text::danger)
             .width(Length::Fill)
             .center()
             .size(16),
@@ -459,35 +530,26 @@ fn setting_up_sd_card_view(state: &SetupWizard) -> Element<Message> {
         
     },
     SetupProgressBarValue::FlashingSdCard => {
-            column![
+            column![row![
                 text("Flashing SD Card")
                     .width(Length::Fill)
                     .center()
                     .size(20),
-            ]
+                Spinner::new()
+            ].spacing(10)]
         
     },
-    SetupProgressBarValue::WritingConfig => {
-            column![
-                text("Writing Config")
-                    .width(Length::Fill)
-                    .center()
-                    .size(20)
-            ]
-        
+    SetupProgressBarValue::Finished => {
+        column![
+            text("All Done").style(text::success),
+            button(text("Continue").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::SdCardSetupCompletePleaseEjectAndPlugin))).width(Length::Fill)
+        ]
     },
-    SetupProgressBarValue::Finished => {column![text("All Done").style(text::success)]},
 }
     ].max_width(1200)
     .padding(20)
     .spacing(10)).center_x(Length::Fill)
     .into()
-}
-fn sd_card_setup_complete_please_eject_view(_state: &SetupWizard) -> Element<Message> {
-    "sd_card_setup_complete_please_eject_view".into()
-}
-fn plug_in_server_confirm_connection_view(_state: &SetupWizard) -> Element<Message> {
-    "plug_in_server_confirm_connection_view".into() // Should direct to download extra app data
 }
 
 fn get_wifi_details(state: &SetupWizard) -> Element<Message> {
@@ -524,6 +586,7 @@ fn get_wifi_details(state: &SetupWizard) -> Element<Message> {
 
 fn download_extra_app_data(state: &SetupWizard) -> Element<Message> {
     container(column![
+        button(text("Test").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::StartWritingConfigToSd)).width(Length::Fill), // TODO remove this
         text("Downloading extra app data")
             .width(Length::Fill)
             .center()
@@ -558,8 +621,13 @@ fn download_extra_app_data(state: &SetupWizard) -> Element<Message> {
             .padding(10)]
         
     },
-    _ => {column![text("All Done").style(text::success), 
-                    button(text("Continue").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::CloseWizard))).width(Length::Fill)
+    _ => {column![
+            text("All Done").style(text::success), 
+            button(text("Continue").width(Length::Fill).center()).on_press(Message::SetupWizard(
+                if matches!(state.setup_type, SetupType::FullServerSetup) {SetupWizardMessage::StartWritingConfigToSd} else {SetupWizardMessage::GoToStep(
+             SetupWizardStep::CloseWizard   
+            )}
+        )).width(Length::Fill)
     ]},
 }
     ].max_width(1200)

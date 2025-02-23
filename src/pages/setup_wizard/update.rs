@@ -8,14 +8,14 @@ use crate::constants::APP_ID;
 use crate::{app::Message, utils::auth_utils};
 
 use super::constants::COUNTRY_CODES_FOR_WIFI_SETUP;
-use super::setup_wizard_utils::is_valid_ip;
+use super::setup_wizard_utils::{get_list_of_disks, is_valid_ip, write_config_to_rpi};
 use super::{
-    page::{DiskInfo, SetupWizard, SetupWizardMessage, SetupWizardStep},
+    page::{SetupWizard, SetupWizardMessage, SetupWizardStep},
     setup_wizard_utils,
 };
 
-const RPI_OS_IMAGE_ARCHIVE_FILENAME: &str = "rpi_os_lite.img.xz";
-const RPI_OS_IMAGE_EXTRACTED_FILENAME: &str = "rpi_os_lite.img";
+pub const RPI_OS_IMAGE_ARCHIVE_FILENAME: &str = "rpi_os_lite.img.xz";
+pub const RPI_OS_IMAGE_EXTRACTED_FILENAME: &str = "rpi_os_lite.img";
 const RASPBERRY_PI_OS_LITE_DOWNLOAD_LINK: &str = "https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-11-19/2024-11-19-raspios-bookworm-arm64-lite.img.xz";
 
 pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Message> {
@@ -93,7 +93,17 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                             SetupWizardMessage::TestConnection,
                         )));
                     }
+                } else {
+                    return Task::done(Message::ShowToast(
+                        false,
+                        String::from("Secret token is incorrect, are you sure you typed it right?"),
+                    ));
                 }
+            } else {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Need to fill all fields"),
+                ));
             }
         }
         SetupWizardMessage::TestConnection => {
@@ -186,8 +196,9 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
             state.setup_type = setup_type;
         }
         SetupWizardMessage::GetListOfDisks => {
-            let disks = sysinfo::Disks::new_with_refreshed_list();
-            state.list_of_disks = disks.list().iter().map(DiskInfo::from_disk).collect();
+            return Task::perform(get_list_of_disks(), |list_of_disks| {
+                Message::SetupWizard(SetupWizardMessage::SetListOfDisks(list_of_disks))
+            });
         }
         SetupWizardMessage::SetProgressBarValue(progress) => {
             state.progress_bar_value = progress;
@@ -243,9 +254,17 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                 dirs::data_local_dir().expect("No config directory, big problem");
             extracted_img_file_path.push(APP_ID);
             extracted_img_file_path.push(RPI_OS_IMAGE_EXTRACTED_FILENAME);
-            let temp_target_name = String::from("mmcblk0"); // TODO change to selected option
+            let temp_target_name = state
+                .selected_sd_card
+                .clone()
+                .expect("Must have SD selected");
+            let wpa_supplicant_file_content = state.wpa_supplicant_file_content.clone();
             return Task::run(
-                setup_wizard_utils::flash_img_to_sd_card(extracted_img_file_path, temp_target_name),
+                setup_wizard_utils::flash_img_to_sd_card(
+                    extracted_img_file_path,
+                    temp_target_name,
+                    wpa_supplicant_file_content,
+                ),
                 |progress_result| match progress_result {
                     Ok(progress) => {
                         Message::SetupWizard(SetupWizardMessage::SetProgressBarValue(progress))
@@ -253,9 +272,6 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                     Err(err) => Message::ShowToast(false, format!("Error with flashing: {err}")),
                 },
             );
-            // .chain(Task::done(Message::SetupWizard(
-            //     SetupWizardMessage::WriteConfig,
-            // ))); TODO uncomment
         }
         SetupWizardMessage::DownloadExtraData => {
             return Task::run(
@@ -299,6 +315,16 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                 return Task::done(Message::ShowToast(
                     false,
                     String::from("DuckDNS token can't be blank"),
+                ));
+            }
+            if state
+                .work_in_progress_server_config
+                .certbot_email
+                .is_empty()
+            {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Certbot email can't be blank"),
                 ));
             }
             state.work_in_progress_server_config.is_lan_only = false;
@@ -367,9 +393,7 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                     }
                 })
                 .expect("All country names have to be in list");
-            state
-                .work_in_progress_server_config
-                .wpa_supplicant_file_content = format!(
+            state.wpa_supplicant_file_content = format!(
                 r#"country={}
 update_config=1
 ctrl_interface=/var/run/wpa_supplicant
@@ -384,11 +408,43 @@ network={{
                 state.work_in_progress_server_config.wifi_password
             );
             return Task::done(Message::SetupWizard(SetupWizardMessage::GoToStep(
-                SetupWizardStep::OptionalSetupRemoteAccess,
+                SetupWizardStep::InsertSdCardIntoThisComputer,
             )));
         }
         SetupWizardMessage::UpdateServerPassword(s) => {
             state.work_in_progress_server_config.server_password = s;
+        }
+        SetupWizardMessage::StartWritingConfigToSd => {
+            state.current_step = SetupWizardStep::WriteConfigToSd;
+            state.is_writing_config = true;
+            let sd_card_to_write_to = state.selected_sd_card.clone().expect("has to be selected");
+            let server_config = state.work_in_progress_server_config.clone();
+            return Task::perform(
+                write_config_to_rpi(sd_card_to_write_to, server_config),
+                |function_result| {
+                    if let Err(err) = function_result {
+                        Message::ShowToast(false, format!("Error while writing config: {err}"))
+                    } else {
+                        Message::SetupWizard(SetupWizardMessage::FinishWritingConfigToSd)
+                    }
+                },
+            );
+        }
+        SetupWizardMessage::SetListOfDisks(list_of_disks) => {
+            state.list_of_disks = list_of_disks;
+        }
+        SetupWizardMessage::SelectSdCard(disk_info) => {
+            state.selected_sd_card = Some(disk_info.name);
+            state.show_sd_card_are_you_sure = false;
+        }
+        SetupWizardMessage::ShowSdCardAreYouSureMessage => {
+            state.show_sd_card_are_you_sure = true;
+        }
+        SetupWizardMessage::UpdateServerCertbotEmail(s) => {
+            state.work_in_progress_server_config.certbot_email = s;
+        }
+        SetupWizardMessage::FinishWritingConfigToSd => {
+            state.is_writing_config = false;
         }
     }
     Task::none()

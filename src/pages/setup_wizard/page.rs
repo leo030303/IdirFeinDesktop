@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 
 use iced::{Element, Task};
 use serde::{Deserialize, Serialize};
@@ -17,28 +16,13 @@ pub enum SetupProgressBarValue {
     DownloadingFile(f32),
     ExtractingImg(f32),
     FlashingSdCard,
-    WritingConfig,
     Finished,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiskInfo {
     pub name: String,
-    pub mount_point: PathBuf,
-    pub total_space: u64,
-    pub available_space: u64,
-    pub is_removable: bool,
-}
-impl DiskInfo {
-    pub fn from_disk(disk: &sysinfo::Disk) -> Self {
-        Self {
-            name: disk.name().to_string_lossy().to_string(),
-            mount_point: disk.mount_point().to_path_buf(),
-            total_space: disk.total_space(),
-            available_space: disk.available_space(),
-            is_removable: disk.is_removable(),
-        }
-    }
+    pub total_space: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,8 +45,8 @@ pub struct ServerConfig {
     pub wifi_ssid: String,
     pub wifi_password: String,
     pub country_name_option: Option<&'static str>,
-    pub wpa_supplicant_file_content: String,
     pub server_password: String,
+    pub certbot_email: String,
 }
 
 impl Default for ServerConfig {
@@ -78,13 +62,14 @@ impl Default for ServerConfig {
             wifi_ssid: String::new(),
             wifi_password: String::new(),
             country_name_option: None,
-            wpa_supplicant_file_content: String::new(),
             server_password: String::new(),
+            certbot_email: String::new(),
         }
     }
 }
 
 pub struct SetupWizard {
+    pub locale: fluent_templates::LanguageIdentifier,
     pub current_step: SetupWizardStep,
     pub work_in_progress_server_config: ServerConfig,
     pub work_in_progress_client_config: AppConfig,
@@ -98,6 +83,10 @@ pub struct SetupWizard {
     pub setup_type: SetupType,
     pub list_of_disks: Vec<DiskInfo>,
     pub progress_bar_value: SetupProgressBarValue,
+    pub selected_sd_card: Option<String>,
+    pub is_writing_config: bool,
+    pub show_sd_card_are_you_sure: bool,
+    pub wpa_supplicant_file_content: String,
 }
 
 #[derive(Debug, Clone)]
@@ -128,12 +117,51 @@ pub enum SetupWizardMessage {
     LinkClicked(&'static str),
     UpdateServerDuckDnsDomain(String),
     UpdateServerDuckDnsToken(String),
+    UpdateServerCertbotEmail(String),
     UpdateWifiSsid(String),
     UpdateWifiPassword(String),
     SetWifiCountryName(&'static str),
     SetWifiDetails,
     UpdateServerPassword(String),
+    StartWritingConfigToSd,
+    FinishWritingConfigToSd,
+    SetListOfDisks(Vec<DiskInfo>),
+    SelectSdCard(DiskInfo),
+    ShowSdCardAreYouSureMessage,
 }
+
+// Offline setup
+//
+// DecideWhetherToSetupServer
+// DownloadExtraAppData
+// CloseWizard
+//
+//
+// Existing server setup
+//
+// DecideWhetherToSetupServer
+// EnterServerUrlAndTotpSecret
+// ConfirmConnection
+// ChooseRemoteFoldersToSync
+// DownloadExtraAppData
+// CloseWizard
+//
+//
+// Full server setup
+//
+// DecideWhetherToSetupServer
+// GetWifiDetails
+// InsertSdCardIntoThisComputer
+// SettingUpSdCard
+// SdCardSetupCompletePleaseEjectAndPlugin
+// OptionalSetupRemoteAccess
+// SetRpiServerPassword
+// CreateServerUsers
+// DownloadExtraAppData
+// WriteConfigToSd
+// ListUsersChooseYours
+// ConfirmConnection
+// CloseWizard
 
 #[derive(Debug, Clone)]
 pub enum SetupWizardStep {
@@ -148,11 +176,17 @@ pub enum SetupWizardStep {
     /// Choose which remote folders you want to hold on this device, if any
     ChooseRemoteFoldersToSync,
 
-    CloseWizard,
-
     // Full server setup path
     /// Say to setup 2.4ghz, get wifi ssid and password and country code, create wpa_supplicant file which gets written
     GetWifiDetails,
+
+    /// Tells user to insert SD card into computer, user clicks to confirm they have
+    InsertSdCardIntoThisComputer,
+    /// Please wait while we setup your device, flash OS
+    SettingUpSdCard,
+
+    /// SD card setup is complete, it has been ejected and is safe to remove, plug it in, we will display a 1 minute timer, then unplug it and plug it back it back
+    SdCardSetupCompletePleaseEjectAndPlugin,
 
     /// Ask if the user wants to setup external WLAN access, explain what this means
     /// Prompts user to set up port forwarding, give links to guides, says what port to use, confirm when done
@@ -165,33 +199,22 @@ pub enum SetupWizardStep {
     /// Get the user to create the list of users for server syncing
     CreateServerUsers,
 
-    /// Plug in the harddrive to be used, select it from list so config can store its UUID
-    InsertTargetHardriveIntoThisComputer,
-    /// Confirm this is the harddrive you want to use
-    ConfirmTargetHarddrive,
-    /// Eject harddrive and tell the user to plug it into the server
-    RemoveTargetHarddrive,
-    /// Tells user to insert SD card into computer, user clicks to confirm they have
-    InsertSdCardIntoThisComputer,
-    /// All usb devices get displayed, user picks SD card
-    PickDeviceWhichIsTargetSdCard,
-    /// Confirm this is the device you want, all info will be wiped
-    ConfirmSdCardChoice,
-    /// Please wait while we setup your device, flash OS, flash server software, write config etc
-    SettingUpSdCard,
-    /// SD card setup is complete, it has been ejected and is safe to remove
-    SdCardSetupCompletePleaseEject,
-    /// Please put the sd in your rpi zero and plug it in, a pop up appears when the app connects to the server successfully
-    PlugInServerConfirmConnection,
-
     /// Downloading extra data
     DownloadExtraAppData,
+    WriteConfigToSd,
+    CloseWizard,
+    ListUsersChooseYours,
 }
 
 impl SetupWizard {
     pub fn new() -> Self {
         let server_config = ServerConfig::default();
+        let locale: fluent_templates::LanguageIdentifier = current_locale::current_locale()
+            .expect("Can't get locale")
+            .parse()
+            .expect("Failed to parse locale");
         Self {
+            locale,
             current_step: SetupWizardStep::DecideWhetherToSetupServer,
             new_user_name_input_text: String::new(),
             work_in_progress_server_config: server_config,
@@ -205,6 +228,10 @@ impl SetupWizard {
             setup_type: SetupType::NoneSelectedYet,
             list_of_disks: vec![],
             progress_bar_value: SetupProgressBarValue::WaitingToStart,
+            selected_sd_card: None,
+            is_writing_config: false,
+            show_sd_card_are_you_sure: false,
+            wpa_supplicant_file_content: String::new(),
         }
     }
 
