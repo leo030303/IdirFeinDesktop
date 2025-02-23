@@ -13,9 +13,11 @@ use super::view::{main_view, tool_view};
 
 #[derive(Debug, Clone)]
 pub struct Password {
+    /// Unique identifier for the password
     pub id: uuid::Uuid,
     pub title: String,
     pub username: String,
+    /// URL the entry is for, if it's for a website
     pub url: String,
     pub password: String,
 }
@@ -36,26 +38,47 @@ impl Default for PasswordPageConfig {
 }
 
 pub struct PasswordsPage {
+    /// The current language locale ID
     pub(crate) locale: fluent_templates::LanguageIdentifier,
+    /// Whether the database is unlocked
     pub(super) is_unlocked: bool,
+    /// Whether the database has been modified but not saved
     pub(super) is_dirty: bool,
+    /// Whether the UI to create a new database should be shown
     pub(super) is_creating_new_keepass_file: bool,
+    /// Whether to show the sidebar UI
     pub(super) show_sidebar: bool,
+    /// Whether the incorrect password was entered
     pub(super) incorrect_password_entered: bool,
+    /// The list of passwords from the database thats opened
     pub(super) passwords_list: Vec<Password>,
+    /// The path to the database file currently open, if any
     pub(super) selected_keepass_file: Option<PathBuf>,
+    /// The path to the file being use as a keyfile, if any
     pub(super) selected_key_file: Option<PathBuf>,
+    /// The content of the Master Password text field
     pub(super) master_password_field_text: String,
+    /// The content of the Title text field
     pub(super) current_title_text: String,
+    /// The content of the URL text field
     pub(super) current_url_text: String,
+    /// The content of the Username text field
     pub(super) current_username_text: String,
+    /// The content of the Password text field
     pub(super) current_password_text: String,
+    /// The content of the Master Password Reentry text field
     pub(super) master_password_reentry_field_text: String,
+    /// The string to filter the titles of the passwords list by, if "" no filtering is done
     pub(super) current_passwords_list_filter: String,
+    /// The entry selected to display/edit, if any
     pub(super) selected_password_entry: Option<Password>,
+    /// Whether to hide the contents of the master password field
     pub(super) hide_master_password_entry: bool,
+    /// Whether to hide the contents of the password editing field
     pub(super) hide_current_password_entry: bool,
+    /// Whether to hide the contents of the master password reentry field
     pub(super) hide_master_password_reentry_entry: bool,
+    /// Whether the master password fields text and its reentry fields text don't match
     pub(super) passwords_dont_match: bool,
 }
 
