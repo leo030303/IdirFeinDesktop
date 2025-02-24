@@ -39,7 +39,7 @@ pub fn main_view(state: &TasksPage) -> Element<Message> {
                         text(
                             state
                                 .current_project_file
-                                .clone()
+                                .as_ref()
                                 .expect("Can't fail")
                                 .file_stem()
                                 .unwrap_or_default()
@@ -696,7 +696,7 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
             row![
                 text_input(
                     &LOCALES.lookup(&state.locale, "new-project-name"),
-                    &state.new_project_name_entry_content
+                    &state.new_project_name_field_content
                 )
                 .width(Length::Fill)
                 .on_input(|s| Message::Tasks(TasksPageMessage::UpdateNewProjectNameEntry(s)))
@@ -764,8 +764,7 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                         &project
                             .file_stem()
                             .unwrap_or_default()
-                            .to_str()
-                            .unwrap_or(&LOCALES.lookup(&state.locale, "couldnt-read-filename"))
+                            .to_string_lossy()
                             .to_lowercase()
                     ) ^ state.show_archived_projects)
                     .filter(|project| project
@@ -778,8 +777,8 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                     .map(|project| {
                         if state
                             .current_project_being_managed
-                            .clone()
-                            .is_some_and(|selected_project| selected_project == *project)
+                            .as_ref()
+                            .is_some_and(|selected_project| *selected_project == *project)
                         {
                             if state.show_archived_projects {
                                 row![
@@ -805,15 +804,15 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                                 ]
                                 .spacing(5)
                                 .into()
-                            } else if state.display_rename_view {
+                            } else if state.display_rename_project_view {
                                 row![
                                     text_input(
                                         &LOCALES.lookup(&state.locale, "rename-project"),
-                                        &state.rename_project_entry_text
+                                        &state.rename_project_field_text
                                     )
                                     .width(Length::Fill)
                                     .on_input(|s| Message::Tasks(
-                                        TasksPageMessage::SetRenameProjectEntryText(s)
+                                        TasksPageMessage::UpdateRenameProjectEntryText(s)
                                     ))
                                     .on_submit(Message::Tasks(TasksPageMessage::RenameProject))
                                     .id(text_input::Id::new(RENAME_PROJECT_TEXT_INPUT_ID)),
@@ -844,7 +843,7 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                                 ]
                                 .spacing(5)
                                 .into()
-                            } else if state.display_delete_view {
+                            } else if state.display_delete_project_view {
                                 row![
                                     button(
                                         text(LOCALES.lookup(&state.locale, "delete"))
@@ -866,7 +865,7 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                                 ]
                                 .spacing(5)
                                 .into()
-                            } else if state.display_archive_view {
+                            } else if state.display_archive_project_view {
                                 row![
                                     button(
                                         text(LOCALES.lookup(&state.locale, "archive"))
@@ -948,8 +947,8 @@ fn sidebar_view(state: &TasksPage) -> Element<Message> {
                                 .style(
                                     if state
                                         .current_project_file
-                                        .clone()
-                                        .is_some_and(|value| value == *project)
+                                        .as_ref()
+                                        .is_some_and(|value| *value == *project)
                                     {
                                         button::secondary
                                     } else {

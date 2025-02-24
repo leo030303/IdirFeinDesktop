@@ -1,5 +1,6 @@
 use std::{
     fs::{self, File},
+    mem,
     path::PathBuf,
 };
 
@@ -67,7 +68,7 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
                         if let Ok(archived_projects_json) =
                             fs::read_to_string(selected_folder.join(ARCHIVED_FILE_NAME))
                         {
-                            serde_json::from_str(&archived_projects_json).unwrap()
+                            serde_json::from_str(&archived_projects_json).unwrap_or_default()
                         } else {
                             vec![]
                         }
@@ -183,7 +184,7 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
                             .tasks_list
                             .get_mut(task_index)
                             .expect("Shouldn't be possible for this to fail")
-                            .title = state.current_task_title_text.clone();
+                            .title = mem::take(&mut state.current_task_title_text);
                         state
                             .tasks_list
                             .get_mut(task_index)
@@ -194,16 +195,17 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
                 }
                 None => {
                     state.tasks_list.push(TaskData {
-                        title: state.current_task_title_text.clone(),
+                        title: mem::take(&mut state.current_task_title_text),
                         description: state.current_task_description_content.text(),
                         ..Default::default()
                     });
                     state.is_dirty = true;
                 }
             };
-            return Task::done(Message::Tasks(TasksPageMessage::SaveProject)).chain(Task::done(
-                Message::Tasks(TasksPageMessage::ClearAndCloseTaskEditDialog),
-            ));
+            state.current_task_description_content = text_editor::Content::default();
+            state.current_task_id = None;
+            state.show_task_edit_dialog = false;
+            return Task::done(Message::Tasks(TasksPageMessage::SaveProject));
         }
         TasksPageMessage::SaveProject => {
             if state.is_dirty {
@@ -242,14 +244,8 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
         TasksPageMessage::UpdateTaskDescription(action) => {
             state.current_task_description_content.perform(action)
         }
-        TasksPageMessage::ClearAndCloseTaskEditDialog => {
-            state.current_task_title_text = String::new();
-            state.current_task_description_content = text_editor::Content::with_text("");
-            state.current_task_id = None;
-            state.show_task_edit_dialog = false;
-        }
         TasksPageMessage::DeleteTaskWithConfirmationCheck(task_id) => {
-            if state.confirm_before_delete {
+            if state.should_confirm_before_delete {
                 state.current_task_id = Some(task_id);
                 return Task::done(Message::Tasks(
                     TasksPageMessage::ToggleConfirmBeforeDeleteDialog,
@@ -285,8 +281,8 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
         TasksPageMessage::CreateNewProject => {
             state.is_creating_new_project = false;
             if let Some(mut selected_folder) = state.selected_folder.clone() {
-                selected_folder.push(&state.new_project_name_entry_content);
-                state.new_project_name_entry_content = String::new();
+                selected_folder.push(&state.new_project_name_field_content);
+                state.new_project_name_field_content = String::new();
                 selected_folder.set_extension("json");
                 if let Err(err) = File::create(selected_folder) {
                     return Task::done(Message::ShowToast(
@@ -298,10 +294,10 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
                 }
             }
         }
-        TasksPageMessage::UpdateNewProjectNameEntry(s) => state.new_project_name_entry_content = s,
+        TasksPageMessage::UpdateNewProjectNameEntry(s) => state.new_project_name_field_content = s,
         TasksPageMessage::CancelCreateNewProject => {
             state.is_creating_new_project = false;
-            state.new_project_name_entry_content = String::new();
+            state.new_project_name_field_content = String::new();
         }
         TasksPageMessage::EscapeKeyPressed => {
             state.show_task_edit_dialog = false;
@@ -347,16 +343,16 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
             state.show_extra_tools_menu = !state.show_extra_tools_menu
         }
         TasksPageMessage::ShowMenuForProject(project_path) => {
-            state.display_rename_view = false;
-            state.display_delete_view = false;
+            state.display_rename_project_view = false;
+            state.display_delete_project_view = false;
             state.current_project_being_managed = project_path
         }
-        TasksPageMessage::SetRenameProjectEntryText(s) => state.rename_project_entry_text = s,
+        TasksPageMessage::UpdateRenameProjectEntryText(s) => state.rename_project_field_text = s,
         TasksPageMessage::DeleteProject => {
             if let Some(current_project_file) = state.current_project_being_managed.as_ref() {
-                fs::remove_file(current_project_file).unwrap();
+                let _ = fs::remove_file(current_project_file);
                 state.current_project_being_managed = None;
-                state.display_delete_view = false;
+                state.display_delete_project_view = false;
                 return Task::done(Message::Tasks(TasksPageMessage::LoadProjectsList)).chain(
                     Task::done(Message::ShowToast(true, String::from("Project deleted"))),
                 );
@@ -366,16 +362,16 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
             if let Some(_selected_folder) = state.selected_folder.as_ref() {
                 if let Some(current_project_file) = state.current_project_being_managed.as_ref() {
                     let mut new_path =
-                        current_project_file.with_file_name(&state.rename_project_entry_text);
+                        current_project_file.with_file_name(&state.rename_project_field_text);
 
                     new_path.set_extension("json");
-                    fs::rename(current_project_file, &new_path).unwrap();
+                    let _ = fs::rename(current_project_file, &new_path);
                     if state.current_project_file == state.current_project_being_managed {
                         state.current_project_file = Some(new_path);
                     }
-                    state.rename_project_entry_text = String::new();
-                    state.display_rename_view = false;
-                    state.display_delete_view = false;
+                    state.rename_project_field_text = String::new();
+                    state.display_rename_project_view = false;
+                    state.display_delete_project_view = false;
                     state.current_project_being_managed = None;
                 } else {
                     return Task::done(Message::ShowToast(
@@ -394,21 +390,21 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
             }
         }
         TasksPageMessage::ToggleRenameProjectView => {
-            state.display_rename_view = !state.display_rename_view;
-            if state.display_rename_view {
+            state.display_rename_project_view = !state.display_rename_project_view;
+            if state.display_rename_project_view {
                 return text_input::focus(text_input::Id::new(RENAME_PROJECT_TEXT_INPUT_ID));
             } else {
-                state.rename_project_entry_text = String::new();
+                state.rename_project_field_text = String::new();
             }
         }
         TasksPageMessage::ToggleDeleteProjectView => {
-            state.display_delete_view = !state.display_delete_view;
+            state.display_delete_project_view = !state.display_delete_project_view;
         }
         TasksPageMessage::SetShowTaskCompletionToolbar(b) => {
             state.show_task_completion_toolbar = b;
         }
         TasksPageMessage::SetConfirmBeforeDelete(b) => {
-            state.confirm_before_delete = b;
+            state.should_confirm_before_delete = b;
         }
         TasksPageMessage::SetRightClickToEditTask(b) => {
             state.right_click_to_edit_task = b;
@@ -427,16 +423,24 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
                     let project_to_archive = current_project_being_managed
                         .file_stem()
                         .unwrap_or_default()
-                        .to_str()
-                        .unwrap_or("Couldn't read filename")
+                        .to_string_lossy()
                         .to_lowercase();
                     state.archived_list.push(project_to_archive);
-                    let serialised = serde_json::to_string(&state.archived_list).unwrap();
-                    let _ = fs::write(selected_folder.join(ARCHIVED_FILE_NAME), serialised);
+                    match serde_json::to_string(&state.archived_list) {
+                        Ok(serialised) => {
+                            let _ = fs::write(selected_folder.join(ARCHIVED_FILE_NAME), serialised);
+                        }
+                        Err(err) => {
+                            return Task::done(Message::ShowToast(
+                                false,
+                                format!("Couldn't write archived files list: {err:?}"),
+                            ));
+                        }
+                    }
                 }
             }
             state.current_project_being_managed = None;
-            state.display_archive_view = false;
+            state.display_archive_project_view = false;
         }
         TasksPageMessage::UnarchiveProject => {
             if let Some(selected_folder) = state.selected_folder.as_ref() {
@@ -446,25 +450,34 @@ pub fn update(state: &mut TasksPage, message: TasksPageMessage) -> Task<Message>
                     let project_to_unarchive = current_project_being_managed
                         .file_stem()
                         .unwrap_or_default()
-                        .to_str()
-                        .unwrap_or("Couldn't read filename")
+                        .to_string_lossy()
                         .to_lowercase();
-                    state.archived_list.remove(
-                        state
-                            .archived_list
-                            .iter()
-                            .position(|item| *item == project_to_unarchive)
-                            .unwrap(),
-                    );
-                    let serialised = serde_json::to_string(&state.archived_list).unwrap();
-                    let _ = fs::write(selected_folder.join(ARCHIVED_FILE_NAME), serialised);
+                    if let Some(index_to_remove) = state
+                        .archived_list
+                        .iter()
+                        .position(|item| *item == project_to_unarchive)
+                    {
+                        state.archived_list.remove(index_to_remove);
+                        match serde_json::to_string(&state.archived_list) {
+                            Ok(serialised) => {
+                                let _ =
+                                    fs::write(selected_folder.join(ARCHIVED_FILE_NAME), serialised);
+                            }
+                            Err(err) => {
+                                return Task::done(Message::ShowToast(
+                                    false,
+                                    format!("Couldn't write archived files list: {err:?}"),
+                                ));
+                            }
+                        }
+                    }
                 }
             }
             state.current_project_being_managed = None;
-            state.display_archive_view = false;
+            state.display_archive_project_view = false;
         }
         TasksPageMessage::ToggleArchiveProjectView => {
-            state.display_archive_view = !state.display_archive_view;
+            state.display_archive_project_view = !state.display_archive_project_view;
         }
         TasksPageMessage::ToggleShowArchivedProjects => {
             state.show_archived_projects = !state.show_archived_projects;

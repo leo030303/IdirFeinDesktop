@@ -81,42 +81,66 @@ impl Default for TaskPageConfig {
 }
 
 pub struct TasksPage {
+    /// The current language locale ID
     pub(crate) locale: fluent_templates::LanguageIdentifier,
+    /// The path to the folder of project files to display, if any
     pub(crate) selected_folder: Option<PathBuf>,
+    /// The path to the project file chosen to display, if any
     pub(crate) current_project_file: Option<PathBuf>,
+    /// The format to display the tasks in, either Kanban or List
     pub(crate) task_view_type: TaskViewType,
+    /// The list of paths of the project files in the selected directory
     pub(crate) projects_list: Vec<PathBuf>,
+    /// The list of tasks in the selected project
     pub(crate) tasks_list: Vec<TaskData>,
+    /// Whether to show the sidebar UI
     pub(crate) show_sidebar: bool,
+    /// Whether to show the dialog to edit the currently selected task
     pub(crate) show_task_edit_dialog: bool,
+    /// The contents of the task title field
     pub(crate) current_task_title_text: String,
+    /// The contents of the task description field
     pub(crate) current_task_description_content: text_editor::Content,
+    /// The ID of the task selected for management
     pub(crate) current_task_id: Option<Uuid>,
-    pub(crate) confirm_before_delete: bool,
+    /// Whether a confirmation dialog should be shown before deleting a task
+    pub(crate) should_confirm_before_delete: bool,
+    /// Whether to show the delete confirmation dialog UI on screen
     pub(crate) show_confirm_before_delete_dialog: bool,
+    /// Whether the current project has been modified without being saved to disk
     pub(crate) is_dirty: bool,
+    /// Whether the user is in the middle of creating a new project file
     pub(crate) is_creating_new_project: bool,
-    pub(crate) new_project_name_entry_content: String,
+    /// The content of the new project name field
+    pub(crate) new_project_name_field_content: String,
+    /// Whether to show the UI to change a tasks completion state on each task in Kanban view
     pub(crate) show_task_completion_toolbar: bool,
+    /// Whether to display the list of extra tools in the tool bar
     pub(crate) show_extra_tools_menu: bool,
+    /// The project who's details are being edited, if any
     pub(crate) current_project_being_managed: Option<PathBuf>,
-    pub(crate) display_rename_view: bool,
-    pub(crate) display_delete_view: bool,
-    pub(crate) display_archive_view: bool,
-    pub(crate) rename_project_entry_text: String,
+    /// Whether to display the UI to rename the selected project
+    pub(crate) display_rename_project_view: bool,
+    /// Whether to display the UI to delete the selected project
+    pub(crate) display_delete_project_view: bool,
+    /// Whether to display the UI to archive/unarchive the selected project
+    pub(crate) display_archive_project_view: bool,
+    /// The content of the rename project title field
+    pub(crate) rename_project_field_text: String,
+    /// Whether to show the task editing UI after right clicking a task in Kanban mode
     pub(crate) right_click_to_edit_task: bool,
+    /// The string to filter the list of tasks by, titles and descriptions
     pub(crate) filter_tasks_text: String,
+    /// The string to filter the list of projects by
     pub(crate) filter_projects_text: String,
+    /// The filenames of the prjects in the current folder which have been archived
     pub(crate) archived_list: Vec<String>,
+    /// Whether to list projects which have been archived
     pub(crate) show_archived_projects: bool,
 }
 
 #[derive(Debug, Clone)]
 pub enum TasksPageMessage {
-    ToggleShowTaskEditDialog,
-    ToggleShowSidebar,
-    ToggleConfirmBeforeDeleteDialog,
-    ToggleTaskViewType,
     PickProjectsFolder,
     SetProjectsFolder(Option<PathBuf>),
     LoadProjectsList,
@@ -126,37 +150,40 @@ pub enum TasksPageMessage {
     SelectTaskToEdit(Option<Uuid>),
     DeleteTask(Uuid),
     DeleteTaskWithConfirmationCheck(Uuid),
-    OpenEditDialogForTask(Uuid),
     UpdateTaskTitle(String),
     UpdateTaskDescription(text_editor::Action),
     SetTaskCompletionState(Uuid, TaskCompletionState),
     UpdateCurrentTask,
     SaveProject,
+    OpenEditDialogForTask(Uuid),
     StartCreatingNewTask,
-    ClearAndCloseTaskEditDialog,
     StartCreatingNewProject,
     CreateNewProject,
-    UpdateNewProjectNameEntry(String),
     CancelCreateNewProject,
+    UpdateNewProjectNameEntry(String),
     EscapeKeyPressed,
     DropTask(Uuid, iced::Point, iced::Rectangle),
     HandleTaskDropZones(Uuid, Vec<(iced::advanced::widget::Id, iced::Rectangle)>),
-    ToggleExtraToolsMenu,
     ShowMenuForProject(Option<PathBuf>),
-    SetRenameProjectEntryText(String),
+    UpdateRenameProjectEntryText(String),
     RenameProject,
     ArchiveProject,
     UnarchiveProject,
     DeleteProject,
-    ToggleRenameProjectView,
-    ToggleDeleteProjectView,
-    ToggleArchiveProjectView,
     SetShowTaskCompletionToolbar(bool),
     SetConfirmBeforeDelete(bool),
     SetRightClickToEditTask(bool),
     UpdateTasksFilter(String),
     UpdateProjectsFilter(String),
+    ToggleExtraToolsMenu,
+    ToggleRenameProjectView,
+    ToggleDeleteProjectView,
+    ToggleArchiveProjectView,
     ToggleShowArchivedProjects,
+    ToggleShowTaskEditDialog,
+    ToggleShowSidebar,
+    ToggleConfirmBeforeDeleteDialog,
+    ToggleTaskViewType,
 }
 
 impl TasksPage {
@@ -177,22 +204,22 @@ impl TasksPage {
             tasks_list: vec![],
             projects_list: vec![],
             show_sidebar: config.show_sidebar_on_start,
-            confirm_before_delete: config.confirm_before_delete,
+            should_confirm_before_delete: config.confirm_before_delete,
             show_confirm_before_delete_dialog: false,
             show_task_edit_dialog: false,
             current_task_title_text: String::new(),
-            current_task_description_content: text_editor::Content::with_text(""),
+            current_task_description_content: text_editor::Content::default(),
             current_task_id: None,
             is_dirty: false,
             is_creating_new_project: false,
-            new_project_name_entry_content: String::new(),
+            new_project_name_field_content: String::new(),
             show_task_completion_toolbar: config.show_task_completion_toolbar,
             show_extra_tools_menu: false,
             current_project_being_managed: None,
-            display_rename_view: false,
-            display_archive_view: false,
-            display_delete_view: false,
-            rename_project_entry_text: String::new(),
+            display_rename_project_view: false,
+            display_archive_project_view: false,
+            display_delete_project_view: false,
+            rename_project_field_text: String::new(),
             right_click_to_edit_task: config.right_click_to_edit_task,
             filter_tasks_text: String::new(),
             filter_projects_text: String::new(),
@@ -218,6 +245,7 @@ impl TasksPage {
     }
 
     pub fn subscription() -> iced::Subscription<Message> {
+        // Keyboard shortcuts
         event::listen_with(|event, status, _id| match (event, status) {
             (
                 Event::Keyboard(keyboard::Event::KeyPressed {
