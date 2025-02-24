@@ -17,11 +17,11 @@ use iced::{
 use crate::app::Message;
 
 use super::{
-    gallery_utils::PhotoProcessingProgress,
     page::{
         GalleryPage, GalleryPageMessage, FACE_DATA_FOLDER_NAME, GALLERY_SCROLLABLE_ID,
         IMAGE_HEIGHT, LIST_PEOPLE_SCROLL_ID, UNNAMED_STRING,
     },
+    utils::common::PhotoProcessingProgress,
 };
 
 pub fn main_view(state: &GalleryPage) -> Element<Message> {
@@ -73,12 +73,7 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
                 Space::with_height(Length::Fill),
             ],
             image::viewer(Handle::from_path(
-                state
-                    .selected_image
-                    .as_ref()
-                    .expect("Shouldn't fail")
-                    .0
-                    .clone(),
+                &state.selected_image.as_ref().expect("Shouldn't fail").0
             ))
             .width(Length::Fill)
             .height(Length::Fill),
@@ -198,10 +193,10 @@ fn gallery_grid(state: &GalleryPage) -> Element<Message> {
     column![
         photo_processing_progress_bar(state),
         if let Some(person_to_view) = state.person_to_view.as_ref() {
-            column![text(LOCALES.lookup_with_args(
-                &state.locale,
-                "photos-of-arg",
-                &HashMap::from([(Cow::from("person-name"), person_to_view.name.clone().into(),)]),
+            column![text(format!(
+                "{} {}",
+                LOCALES.lookup(&state.locale, "photos-of-person-name",),
+                person_to_view.name
             ))
             .width(Length::Fill)
             .center()
@@ -468,7 +463,7 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
                         ),
                         (
                             Cow::from("name-2"),
-                            state.rename_person_editor_text.clone().into(),
+                            (&state.rename_person_field_text).into(),
                         )
                     ]),
                 )
@@ -531,13 +526,15 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
                         .width(Length::Fill)
                         .center()
                 )
-                .on_press(Message::Gallery(GalleryPageMessage::MaybeIgnorePerson))
+                .on_press(Message::Gallery(
+                    GalleryPageMessage::ShowIgnorePersonConfirmation
+                ))
                 .width(Length::Fill),
                 text_input(
                     &LOCALES.lookup(&state.locale, "rename-person"),
-                    &state.rename_person_editor_text
+                    &state.rename_person_field_text
                 )
-                .on_input(|s| Message::Gallery(GalleryPageMessage::UpdateRenamePersonEditor(s)))
+                .on_input(|s| Message::Gallery(GalleryPageMessage::UpdateRenamePersonField(s)))
                 .on_submit(Message::Gallery(GalleryPageMessage::MaybeRenamePerson(
                     None
                 )))
@@ -562,7 +559,7 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
                     .iter()
                     .filter(|(name_of_person, _thumbnail_path)| name_of_person
                         .to_lowercase()
-                        .contains(&state.rename_person_editor_text.to_lowercase()))
+                        .contains(&state.rename_person_field_text.to_lowercase()))
                     .filter(|(name_of_person, _thumbnail_path)| name_of_person != UNNAMED_STRING)
                     .map(|(name_of_person, _thumbnail_path)| {
                         button(

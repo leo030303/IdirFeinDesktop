@@ -2,6 +2,7 @@ use arboard::Clipboard;
 use std::{
     ffi::OsStr,
     fs::{self},
+    mem,
     os::linux::fs::MetadataExt,
     path::{Path, PathBuf},
 };
@@ -18,18 +19,21 @@ use rfd::FileDialog;
 use crate::{app::Message, pages::gallery::page::IMAGE_HEIGHT};
 
 use super::{
-    gallery_utils::{
-        self, get_all_photos_by_name, get_detected_faces_for_image, get_named_people_for_display,
-        update_face_data, PhotoProcessingProgress,
-    },
-    page::PersonToView,
-};
-use super::{
-    gallery_utils::{get_parent_folders, run_ocr},
     page::{
-        GalleryPage, GalleryPageMessage, ImageRow, ARROW_KEY_SCROLL_AMOUNT, FACE_DATA_FOLDER_NAME,
-        GALLERY_SCROLLABLE_ID, LIST_PEOPLE_SCROLL_ID, NUM_IMAGES_IN_ROW, PAGE_KEY_SCROLL_AMOUNT,
-        RENAME_PERSON_INPUT_ID, ROW_BATCH_SIZE, THUMBNAIL_FOLDER_NAME, THUMBNAIL_SIZE,
+        GalleryPage, GalleryPageMessage, ImageRow, PersonToView, ARROW_KEY_SCROLL_AMOUNT,
+        FACE_DATA_FOLDER_NAME, GALLERY_SCROLLABLE_ID, LIST_PEOPLE_SCROLL_ID, NUM_IMAGES_IN_ROW,
+        PAGE_KEY_SCROLL_AMOUNT, RENAME_PERSON_INPUT_ID, ROW_BATCH_SIZE, THUMBNAIL_FOLDER_NAME,
+        THUMBNAIL_SIZE,
+    },
+    utils::{
+        common::{
+            get_all_photos_by_name, get_detected_faces_for_image, get_named_people_for_display,
+            get_parent_folders, update_face_data, PhotoProcessingProgress,
+        },
+        face_extraction::extract_all_faces,
+        face_recognition::group_all_faces,
+        text_recognition::run_ocr,
+        thumbnail_generation::generate_thumbnails,
     },
 };
 
@@ -127,7 +131,6 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             state.gallery_paths_list = gallery_files_list.clone().into_iter().flatten().collect();
             state.gallery_parents_list = parent_paths;
             state.gallery_row_list = gallery_files_list
-                .clone()
                 .into_iter()
                 .enumerate()
                 .map(|(index, photo_vec)| ImageRow {
@@ -508,7 +511,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         GalleryPageMessage::SelectImageForBigView(image_path_option) => {
             state.person_to_manage = None;
             state.current_image_ocr_text = None;
-            state.rename_person_editor_text = String::new();
+            state.rename_person_field_text = String::new();
             state.show_ignore_person_confirmation = false;
             state.show_rename_confirmation = false;
             if image_path_option.is_none() {
@@ -539,7 +542,17 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 return scrollable::scroll_to(
                     GALLERY_SCROLLABLE_ID.clone(),
                     scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
-                );
+                )
+                .chain(Task::done(Message::Gallery(
+                    GalleryPageMessage::LoadImageRows(
+                        state
+                            .gallery_row_list
+                            .iter()
+                            .take(ROW_BATCH_SIZE)
+                            .cloned()
+                            .collect(),
+                    ),
+                )));
             } else if state.show_people_view {
                 state.show_people_view = false;
             }
@@ -614,7 +627,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             if matches!(state.photo_process_progress, PhotoProcessingProgress::None) {
                 let image_paths = state.gallery_paths_list.clone();
                 let (mut new_task, abort_handle) =
-                    Task::run(gallery_utils::extract_all_faces(image_paths), |progress| {
+                    Task::run(extract_all_faces(image_paths), |progress| {
                         Message::Gallery(GalleryPageMessage::SetPhotoProcessProgress(
                             progress.unwrap_or_default(),
                         ))
@@ -637,15 +650,13 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         GalleryPageMessage::GenerateAllThumbnails => {
             if matches!(state.photo_process_progress, PhotoProcessingProgress::None) {
                 let image_paths = state.gallery_paths_list.clone();
-                let (mut new_task, abort_handle) = Task::run(
-                    gallery_utils::generate_thumbnails(image_paths),
-                    |progress| {
+                let (mut new_task, abort_handle) =
+                    Task::run(generate_thumbnails(image_paths), |progress| {
                         Message::Gallery(GalleryPageMessage::SetPhotoProcessProgress(
                             progress.unwrap_or_default(),
                         ))
-                    },
-                )
-                .abortable();
+                    })
+                    .abortable();
                 state.photo_process_abort_handle = Some(abort_handle);
                 if state.run_face_extraction_on_start {
                     new_task = new_task.chain(Task::done(Message::Gallery(
@@ -698,7 +709,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             if matches!(state.photo_process_progress, PhotoProcessingProgress::None) {
                 let parent_folders = state.gallery_parents_list.clone();
                 let (new_task, abort_handle) =
-                    Task::run(gallery_utils::group_all_faces(parent_folders), |progress| {
+                    Task::run(group_all_faces(parent_folders), |progress| {
                         Message::Gallery(GalleryPageMessage::SetPhotoProcessProgress(
                             progress.unwrap_or_default(),
                         ))
@@ -715,7 +726,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::CloseManagePersonView => {
             state.person_to_manage = None;
-            state.rename_person_editor_text = String::new();
+            state.rename_person_field_text = String::new();
             state.show_ignore_person_confirmation = false;
             state.show_rename_confirmation = false;
         }
@@ -725,16 +736,16 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::MaybeRenamePerson(name_option) => {
             if let Some(name) = name_option {
-                state.rename_person_editor_text = name;
+                state.rename_person_field_text = name;
                 state.show_rename_confirmation = true;
-            } else if !state.rename_person_editor_text.is_empty() {
+            } else if !state.rename_person_field_text.is_empty() {
                 state.show_rename_confirmation = true;
             }
         }
         GalleryPageMessage::ConfirmRenamePerson => {
             if matches!(state.photo_process_progress, PhotoProcessingProgress::None) {
                 if let Some((image_path, mut face_data)) = state.person_to_manage.take() {
-                    face_data.name_of_person = Some(state.rename_person_editor_text.clone());
+                    face_data.name_of_person = Some(mem::take(&mut state.rename_person_field_text));
                     let finishing_message = Task::done(Message::Gallery(
                         GalleryPageMessage::SelectImageForBigView(Some(image_path.clone())),
                     ));
@@ -752,8 +763,6 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                             Message::Gallery(GalleryPageMessage::SetPeopleList(list_of_people))
                         },
                     ));
-                    state.person_to_manage = None;
-                    state.rename_person_editor_text = String::new();
                     state.show_ignore_person_confirmation = false;
                     state.show_rename_confirmation = false;
                     return background_task;
@@ -767,12 +776,12 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::CancelRenamePerson => {
             state.show_rename_confirmation = false;
-            state.rename_person_editor_text = String::new();
+            state.rename_person_field_text = String::new();
         }
-        GalleryPageMessage::UpdateRenamePersonEditor(s) => {
-            state.rename_person_editor_text = s;
+        GalleryPageMessage::UpdateRenamePersonField(s) => {
+            state.rename_person_field_text = s;
         }
-        GalleryPageMessage::MaybeIgnorePerson => {
+        GalleryPageMessage::ShowIgnorePersonConfirmation => {
             state.show_ignore_person_confirmation = true;
             state.show_rename_confirmation = false;
         }
@@ -792,7 +801,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                     .chain(finishing_message);
                     state.person_to_manage = None;
                     state.show_ignore_person_confirmation = false;
-                    state.rename_person_editor_text = String::new();
+                    state.rename_person_field_text = String::new();
                     state.show_rename_confirmation = false;
                     return background_task;
                 }
@@ -813,7 +822,17 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 return scrollable::scroll_to(
                     GALLERY_SCROLLABLE_ID.clone(),
                     scrollable::AbsoluteOffset { x: 0.0, y: 0.0 },
-                );
+                )
+                .chain(Task::done(Message::Gallery(
+                    GalleryPageMessage::LoadImageRows(
+                        state
+                            .gallery_row_list
+                            .iter()
+                            .take(ROW_BATCH_SIZE)
+                            .cloned()
+                            .collect(),
+                    ),
+                )));
             } else {
                 state.show_people_view = !state.show_people_view;
             }

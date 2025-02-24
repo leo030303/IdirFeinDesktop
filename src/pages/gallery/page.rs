@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::app::Message;
 
-use super::gallery_utils::{FaceData, PhotoProcessingProgress};
 use super::update::update;
+use super::utils::common::{FaceData, PhotoProcessingProgress};
 use super::view::{main_view, tool_view};
 
 pub(crate) const NUM_IMAGES_IN_ROW: usize = 4;
@@ -45,27 +45,49 @@ pub struct GalleryPageConfig {
 }
 
 pub struct GalleryPage {
+    /// The current language locale ID
     pub(crate) locale: fluent_templates::LanguageIdentifier,
+    /// The path to the folder of images to display, if any
     pub(crate) selected_folder: Option<PathBuf>,
+    /// The path to the image to display in the big image view, if any
     pub(crate) selected_image: Option<(PathBuf, Vec<FaceData>)>,
+    /// The index in the list of rows of the first row that has its images loaded
     pub(crate) first_loaded_row_index: usize,
+    /// The list of rows of images
     pub(crate) gallery_row_list: Vec<ImageRow>,
+    /// The list of paths to the images in the current folder
     pub(crate) gallery_paths_list: Vec<PathBuf>,
+    /// The list of paths of subfolders which contain images in the current folder
     pub(crate) gallery_parents_list: Vec<PathBuf>,
+    /// The handle of the scrollview of the main gallery UI
     pub(crate) gallery_scrollable_viewport_option: Option<Viewport>,
+    /// The handle of the scrollview of the people list UI
     pub(crate) people_list_scrollable_viewport_option: Option<Viewport>,
+    /// The progress of the current background photo processing job
     pub(crate) photo_process_progress: PhotoProcessingProgress,
+    /// The handle to stop the current background processing job, if any
     pub(crate) photo_process_abort_handle: Option<iced::task::Handle>,
+    /// The path to the photo being managed, and the facedata of the person being managed
     pub(crate) person_to_manage: Option<(PathBuf, FaceData)>,
-    pub(crate) rename_person_editor_text: String,
+    /// The content of the rename selected person field
+    pub(crate) rename_person_field_text: String,
+    /// Whether to show the confirmation UI for ignoring a face
     pub(crate) show_ignore_person_confirmation: bool,
+    /// Whether to show the confirmation UI for renaming a face
     pub(crate) show_rename_confirmation: bool,
+    /// Whether to show the list of people that have been recognised in the current folder
     pub(crate) show_people_view: bool,
+    /// The name and path to the thumbnail image for each recognised person
     pub(crate) people_list: Vec<(String, PathBuf)>,
+    /// The person selected to list all photos of, if any
     pub(crate) person_to_view: Option<PersonToView>,
+    /// Whether to run thumbnail generation on application start
     pub(crate) run_thumbnail_generation_on_start: bool,
+    /// Whether to run face extraction on application start
     pub(crate) run_face_extraction_on_start: bool,
+    /// Whether to run face recognition on application start
     pub(crate) run_face_recognition_on_start: bool,
+    /// The text extracted from the current image, if any
     pub(crate) current_image_ocr_text: Option<String>,
 }
 
@@ -112,8 +134,8 @@ pub enum GalleryPageMessage {
     MaybeRenamePerson(Option<String>),
     ConfirmRenamePerson,
     CancelRenamePerson,
-    UpdateRenamePersonEditor(String),
-    MaybeIgnorePerson,
+    UpdateRenamePersonField(String),
+    ShowIgnorePersonConfirmation,
     ConfirmIgnorePerson,
     CancelIgnorePerson,
     TogglePeopleView,
@@ -145,7 +167,7 @@ impl GalleryPage {
             photo_process_progress: PhotoProcessingProgress::None,
             photo_process_abort_handle: None,
             person_to_manage: None,
-            rename_person_editor_text: String::new(),
+            rename_person_field_text: String::new(),
             show_ignore_person_confirmation: false,
             show_rename_confirmation: false,
             show_people_view: false,
@@ -174,6 +196,7 @@ impl GalleryPage {
         main_view(self)
     }
     pub fn subscription() -> iced::Subscription<Message> {
+        // Keyboard shortcuts
         event::listen_with(|event, status, _id| match (event, status) {
             (
                 Event::Keyboard(keyboard::Event::KeyPressed {
