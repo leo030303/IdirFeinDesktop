@@ -518,8 +518,18 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 state.selected_image = None;
             } else {
                 let image_path = image_path_option.expect("Can't fail");
-                let faces_vec = get_detected_faces_for_image(&image_path);
-                state.selected_image = Some((image_path, faces_vec));
+                let faces_vec_result = get_detected_faces_for_image(&image_path);
+                match faces_vec_result {
+                    Ok(faces_vec) => {
+                        state.selected_image = Some((image_path, faces_vec));
+                    }
+                    Err(err) => {
+                        return Task::done(Message::ShowToast(
+                            false,
+                            format!("Couldn't load faces in image: {err}"),
+                        ));
+                    }
+                }
             }
             if let Some(viewport) = state.gallery_scrollable_viewport_option {
                 return scrollable::scroll_to(
@@ -751,10 +761,14 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                     ));
                     let parent_folders = state.gallery_parents_list.clone();
                     let background_task = Task::perform(
-                        async move {
-                            update_face_data(image_path, face_data);
+                        async move { update_face_data(image_path, face_data) },
+                        |res| match res {
+                            Ok(_) => Message::None,
+                            Err(err) => Message::ShowToast(
+                                false,
+                                format!("Couldn't update face data: {err}"),
+                            ),
                         },
-                        |_| Message::None,
                     )
                     .chain(finishing_message)
                     .chain(Task::perform(
@@ -793,10 +807,14 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                         GalleryPageMessage::SelectImageForBigView(Some(image_path.clone())),
                     ));
                     let background_task = Task::perform(
-                        async move {
-                            update_face_data(image_path, face_data.clone());
+                        async move { update_face_data(image_path, face_data.clone()) },
+                        |res| match res {
+                            Ok(_) => Message::None,
+                            Err(err) => Message::ShowToast(
+                                false,
+                                format!("Couldn't update face data: {err}"),
+                            ),
                         },
-                        |_| Message::None,
                     )
                     .chain(finishing_message);
                     state.person_to_manage = None;

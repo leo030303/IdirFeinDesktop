@@ -27,7 +27,7 @@ pub fn match_face_to_person(
 
     let mut checked_names = vec![];
     let best_person_and_score = named_people_list
-        .iter()
+        .into_iter()
         .filter(|(person_name, _named_person_face_features)| {
             !unknown_face.checked_names.contains(person_name)
         })
@@ -44,7 +44,7 @@ pub fn match_face_to_person(
                     .to_string_lossy(),
                 "",
             )
-            .unwrap();
+            .expect("Face recognition model path is incorrect");
             let l2_score = opencv_face_recognizer.match_(
                 &named_person_face_features,
                 &unknown_face_features,
@@ -62,7 +62,7 @@ pub fn match_face_to_person(
 
     if let Some((person_name, l2_score)) = best_person_and_score {
         if l2_score <= L2NORM_SIMILAR_THRESH {
-            return Some(person_name.clone());
+            return Some(person_name);
         }
     }
 
@@ -77,18 +77,22 @@ pub fn get_all_named_people(parent_folders: &[PathBuf]) -> Vec<(String, Mat)> {
             .join(FACE_DATA_FILE_NAME);
         if face_data_file.exists() {
             if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
-                let face_data_vec: Vec<(OsString, Option<FaceData>)> =
-                    serde_json::from_str(&face_data_json).unwrap();
-                face_data_vec
-                    .into_iter()
-                    .filter_map(|(_original_image_name, face_data_option)| face_data_option)
-                    .filter(|face_data| !face_data.is_ignored && face_data.name_of_person.is_some())
-                    .for_each(|face_data| {
-                        all_named_people.push((
-                            face_data.name_of_person.clone().expect("Can't fail"),
-                            face_data.matrix(),
-                        ))
-                    });
+                if let Ok(face_data_vec) =
+                    serde_json::from_str::<Vec<(OsString, Option<FaceData>)>>(&face_data_json)
+                {
+                    face_data_vec
+                        .into_iter()
+                        .filter_map(|(_original_image_name, face_data_option)| face_data_option)
+                        .filter(|face_data| {
+                            !face_data.is_ignored && face_data.name_of_person.is_some()
+                        })
+                        .for_each(|face_data| {
+                            all_named_people.push((
+                                face_data.name_of_person.clone().expect("Can't fail"),
+                                face_data.matrix(),
+                            ))
+                        });
+                }
             }
         }
     });
@@ -118,9 +122,12 @@ pub fn group_all_faces(
                     .join(FACE_DATA_FILE_NAME);
                 if face_data_file.exists() {
                     if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
-                        let face_data_vec: Vec<(OsString, Option<FaceData>)> =
-                            serde_json::from_str(&face_data_json).unwrap();
-                        total_number_of_faces += face_data_vec.len();
+                        if let Ok(face_data_vec) = serde_json::from_str::<
+                            Vec<(OsString, Option<FaceData>)>,
+                        >(&face_data_json)
+                        {
+                            total_number_of_faces += face_data_vec.len();
+                        }
                     }
                 }
             }
@@ -131,37 +138,42 @@ pub fn group_all_faces(
                     .join(FACE_DATA_FILE_NAME);
                 if face_data_file.exists() {
                     if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
-                        let mut face_data_vec: Vec<(OsString, Option<FaceData>)> =
-                            serde_json::from_str(&face_data_json).unwrap();
-                        for (_original_image_name, face_data_option) in face_data_vec.iter_mut() {
-                            if let Some(face_data) = face_data_option.as_mut() {
-                                if !face_data.is_ignored && face_data.name_of_person.is_none() {
-                                    let matched_name_option =
-                                        match_face_to_person(face_data, named_people.clone());
-                                    if let Some(matched_name) = matched_name_option {
-                                        println!(
-                                            "Recognised {:?} as {matched_name}",
-                                            face_data.thumbnail_filename
-                                        );
-                                        face_data.name_of_person = Some(matched_name);
+                        if let Ok(mut face_data_vec) = serde_json::from_str::<
+                            Vec<(OsString, Option<FaceData>)>,
+                        >(&face_data_json)
+                        {
+                            for (_original_image_name, face_data_option) in face_data_vec.iter_mut()
+                            {
+                                if let Some(face_data) = face_data_option.as_mut() {
+                                    if !face_data.is_ignored && face_data.name_of_person.is_none() {
+                                        let matched_name_option =
+                                            match_face_to_person(face_data, named_people.clone());
+                                        if let Some(matched_name) = matched_name_option {
+                                            println!(
+                                                "Recognised {:?} as {matched_name}",
+                                                face_data.thumbnail_filename
+                                            );
+                                            face_data.name_of_person = Some(matched_name);
+                                        }
                                     }
                                 }
+                                number_of_faces_processed_so_far += 1;
+                                if number_of_faces_processed_so_far % 5 == 0
+                                    && tx
+                                        .send(
+                                            number_of_faces_processed_so_far as f32
+                                                / total_number_of_faces as f32,
+                                        )
+                                        .await
+                                        .is_err()
+                                {
+                                    return;
+                                };
                             }
-                            number_of_faces_processed_so_far += 1;
-                            if number_of_faces_processed_so_far % 5 == 0
-                                && tx
-                                    .send(
-                                        number_of_faces_processed_so_far as f32
-                                            / total_number_of_faces as f32,
-                                    )
-                                    .await
-                                    .is_err()
-                            {
-                                return;
-                            };
+                            if let Ok(serialised) = serde_json::to_string(&face_data_vec) {
+                                let _ = fs::write(face_data_file, serialised);
+                            }
                         }
-                        let serialised = serde_json::to_string(&face_data_vec).unwrap();
-                        let _ = fs::write(face_data_file, serialised);
                     }
                 }
             }

@@ -10,7 +10,6 @@ project(
 base_id = 'com.github.leo030303.IdirFein'
 
 
-desktop_file_validate = find_program('desktop-file-validate', required: false)
 cargo = find_program('cargo')
 
 version = meson.project_version()

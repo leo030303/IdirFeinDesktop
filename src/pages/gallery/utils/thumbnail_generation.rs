@@ -24,8 +24,12 @@ pub fn generate_thumbnails(
                 return;
             }
             let total_number_of_images = image_paths_to_process.len();
-            for (image_index, image_path) in image_paths_to_process.into_iter().enumerate() {
-                let file_name = image_path.file_name().unwrap();
+            for (image_index, image_path) in image_paths_to_process
+                .into_iter()
+                .filter(|image_path| image_path.file_name().is_some())
+                .enumerate()
+            {
+                let file_name = image_path.file_name().expect("Already checked");
                 let mut thumbnail_path =
                     image_path.parent().unwrap_or(Path::new("/")).to_path_buf();
                 thumbnail_path.push(THUMBNAIL_FOLDER_NAME);

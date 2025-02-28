@@ -118,7 +118,7 @@ impl FaceData {
     }
 }
 
-pub fn get_detected_faces_for_image(image_path: &Path) -> Vec<FaceData> {
+pub fn get_detected_faces_for_image(image_path: &Path) -> Result<Vec<FaceData>, String> {
     let face_data_file = image_path
         .parent()
         .unwrap_or(Path::new("/"))
@@ -127,8 +127,8 @@ pub fn get_detected_faces_for_image(image_path: &Path) -> Vec<FaceData> {
     if face_data_file.exists() {
         if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
             let face_data_vec: Vec<(OsString, Option<FaceData>)> =
-                serde_json::from_str(&face_data_json).unwrap();
-            face_data_vec
+                serde_json::from_str(&face_data_json).map_err(|err| err.to_string())?;
+            Ok(face_data_vec
                 .into_iter()
                 .filter(|face_data| {
                     image_path
@@ -136,12 +136,12 @@ pub fn get_detected_faces_for_image(image_path: &Path) -> Vec<FaceData> {
                         .is_some_and(|file_name| face_data.0 == file_name)
                 })
                 .filter_map(|(_file_name, face_data_option)| face_data_option)
-                .collect()
+                .collect())
         } else {
-            vec![]
+            Ok(vec![])
         }
     } else {
-        vec![]
+        Ok(vec![])
     }
 }
 
@@ -174,7 +174,7 @@ pub fn get_parent_folders(image_paths_to_process: &[PathBuf]) -> Vec<PathBuf> {
 }
 
 /// Can update any field other than thumbnail
-pub fn update_face_data(image_path: PathBuf, new_face_data: FaceData) {
+pub fn update_face_data(image_path: PathBuf, new_face_data: FaceData) -> Result<(), String> {
     let face_data_file = image_path
         .parent()
         .unwrap_or(Path::new("/"))
@@ -183,7 +183,7 @@ pub fn update_face_data(image_path: PathBuf, new_face_data: FaceData) {
     if face_data_file.exists() {
         if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
             let mut face_data_vec: Vec<(OsString, Option<FaceData>)> =
-                serde_json::from_str(&face_data_json).unwrap();
+                serde_json::from_str(&face_data_json).map_err(|err| err.to_string())?;
             let target_filename = image_path.file_name().unwrap_or_default().to_os_string();
             let target_index_option =
                 face_data_vec
@@ -197,11 +197,13 @@ pub fn update_face_data(image_path: PathBuf, new_face_data: FaceData) {
             if let Some(target_index) = target_index_option {
                 face_data_vec[target_index] =
                     (face_data_vec[target_index].0.clone(), Some(new_face_data));
-                let serialised = serde_json::to_string(&face_data_vec).unwrap();
+                let serialised =
+                    serde_json::to_string(&face_data_vec).map_err(|err| err.to_string())?;
                 let _ = fs::write(face_data_file, serialised);
             }
         }
     }
+    Ok(())
 }
 pub fn get_named_people_for_display(parent_folders: &[PathBuf]) -> Vec<(String, PathBuf)> {
     let mut all_named_people: Vec<(String, PathBuf)> = vec![];
@@ -211,24 +213,26 @@ pub fn get_named_people_for_display(parent_folders: &[PathBuf]) -> Vec<(String, 
             .join(FACE_DATA_FILE_NAME);
         if face_data_file.exists() {
             if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
-                let face_data_vec: Vec<(OsString, Option<FaceData>)> =
-                    serde_json::from_str(&face_data_json).unwrap();
-                face_data_vec
-                    .into_iter()
-                    .filter_map(|(_original_image_name, face_data_option)| face_data_option)
-                    .filter(|face_data| !face_data.is_ignored)
-                    .for_each(|face_data| {
-                        all_named_people.push((
-                            face_data
-                                .name_of_person
-                                .clone()
-                                .unwrap_or(String::from(UNNAMED_STRING)),
-                            parent_path
-                                .join(FACE_DATA_FOLDER_NAME)
-                                .join(face_data.thumbnail_filename)
-                                .to_path_buf(),
-                        ))
-                    });
+                if let Ok(face_data_vec) =
+                    serde_json::from_str::<Vec<(OsString, Option<FaceData>)>>(&face_data_json)
+                {
+                    face_data_vec
+                        .into_iter()
+                        .filter_map(|(_original_image_name, face_data_option)| face_data_option)
+                        .filter(|face_data| !face_data.is_ignored)
+                        .for_each(|face_data| {
+                            all_named_people.push((
+                                face_data
+                                    .name_of_person
+                                    .clone()
+                                    .unwrap_or(String::from(UNNAMED_STRING)),
+                                parent_path
+                                    .join(FACE_DATA_FOLDER_NAME)
+                                    .join(face_data.thumbnail_filename)
+                                    .to_path_buf(),
+                            ))
+                        });
+                }
             }
         }
     });
@@ -245,24 +249,26 @@ pub fn get_all_photos_by_name(target_name: String, parent_folders: &[PathBuf]) -
             .join(FACE_DATA_FILE_NAME);
         if face_data_file.exists() {
             if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
-                let face_data_vec: Vec<(OsString, Option<FaceData>)> =
-                    serde_json::from_str(&face_data_json).unwrap();
-                face_data_vec
-                    .into_iter()
-                    .filter_map(|(_original_image_name, face_data_option)| face_data_option)
-                    .filter(|face_data| {
-                        !face_data.is_ignored
-                            && (face_data
-                                .name_of_person
-                                .as_ref()
-                                .is_some_and(|current_name| *current_name == target_name)
-                                || (face_data.name_of_person.is_none()
-                                    && target_name == UNNAMED_STRING))
-                    })
-                    .for_each(|face_data| {
-                        all_pictures_of_target_person
-                            .push(parent_path.join(face_data.original_filename).to_path_buf())
-                    });
+                if let Ok(face_data_vec) =
+                    serde_json::from_str::<Vec<(OsString, Option<FaceData>)>>(&face_data_json)
+                {
+                    face_data_vec
+                        .into_iter()
+                        .filter_map(|(_original_image_name, face_data_option)| face_data_option)
+                        .filter(|face_data| {
+                            !face_data.is_ignored
+                                && (face_data
+                                    .name_of_person
+                                    .as_ref()
+                                    .is_some_and(|current_name| *current_name == target_name)
+                                    || (face_data.name_of_person.is_none()
+                                        && target_name == UNNAMED_STRING))
+                        })
+                        .for_each(|face_data| {
+                            all_pictures_of_target_person
+                                .push(parent_path.join(face_data.original_filename).to_path_buf())
+                        });
+                }
             }
         }
     });

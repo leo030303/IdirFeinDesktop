@@ -316,89 +316,104 @@ pub fn extract_all_faces(
             if tx.send(0.0).await.is_err() {
                 return;
             }
-            let face_extractor = FaceExtractor::build().unwrap();
-            let mut face_data_vecs_map: HashMap<PathBuf, Vec<(OsString, Option<FaceData>)>> =
-                HashMap::new();
+            if let Some(face_extractor) = FaceExtractor::build() {
+                let mut face_data_vecs_map: HashMap<PathBuf, Vec<(OsString, Option<FaceData>)>> =
+                    HashMap::new();
 
-            let total_number_of_images = image_paths_to_extract.len();
-            for (image_index, image_path) in image_paths_to_extract.into_iter().enumerate() {
-                let parent_path = image_path.parent().unwrap_or(Path::new("/"));
-                let face_data_vec_option = face_data_vecs_map.get_mut(parent_path);
-                let face_data_file = image_path
-                    .parent()
-                    .unwrap_or(Path::new("/"))
-                    .join(FACE_DATA_FOLDER_NAME)
-                    .join(FACE_DATA_FILE_NAME);
-                match face_data_vec_option {
-                    Some(face_data_vec) => {
-                        if !face_data_vec.iter().any(|face_data| {
-                            image_path
-                                .file_name()
-                                .is_some_and(|file_name| face_data.0 == file_name)
-                        }) {
-                            let new_face_data_vec = face_extractor.extract_faces(&image_path);
-                            if new_face_data_vec.is_empty() {
-                                face_data_vec
-                                    .push((image_path.file_name().unwrap().to_owned(), None));
-                            } else {
-                                new_face_data_vec.into_iter().for_each(|face_data| {
+                let total_number_of_images = image_paths_to_extract.len();
+                for (image_index, image_path) in image_paths_to_extract.into_iter().enumerate() {
+                    let parent_path = image_path.parent().unwrap_or(Path::new("/"));
+                    let face_data_vec_option = face_data_vecs_map.get_mut(parent_path);
+                    let face_data_file = image_path
+                        .parent()
+                        .unwrap_or(Path::new("/"))
+                        .join(FACE_DATA_FOLDER_NAME)
+                        .join(FACE_DATA_FILE_NAME);
+                    match face_data_vec_option {
+                        Some(face_data_vec) => {
+                            if !face_data_vec.iter().any(|face_data| {
+                                image_path
+                                    .file_name()
+                                    .is_some_and(|file_name| face_data.0 == file_name)
+                            }) {
+                                let new_face_data_vec = face_extractor.extract_faces(&image_path);
+                                if new_face_data_vec.is_empty() {
                                     face_data_vec.push((
-                                        image_path.file_name().unwrap().to_owned(),
-                                        Some(face_data),
-                                    ))
-                                });
+                                        image_path.file_name().expect("Already checked").to_owned(),
+                                        None,
+                                    ));
+                                } else {
+                                    new_face_data_vec.into_iter().for_each(|face_data| {
+                                        face_data_vec.push((
+                                            image_path
+                                                .file_name()
+                                                .expect("Already checked")
+                                                .to_owned(),
+                                            Some(face_data),
+                                        ))
+                                    });
+                                }
+                                if let Ok(serialised) = serde_json::to_string(&face_data_vec) {
+                                    let _ = fs::write(face_data_file, serialised);
+                                }
                             }
-                            let serialised = serde_json::to_string(&face_data_vec).unwrap();
-                            let _ = fs::write(face_data_file, serialised);
                         }
-                    }
-                    None => {
-                        let mut face_data_vec: Vec<(OsString, Option<FaceData>)> =
-                            if face_data_file.exists() {
-                                if let Ok(face_data_json) = fs::read_to_string(&face_data_file) {
-                                    serde_json::from_str(&face_data_json).unwrap()
+                        None => {
+                            let mut face_data_vec: Vec<(OsString, Option<FaceData>)> =
+                                if face_data_file.exists() {
+                                    if let Ok(face_data_json) = fs::read_to_string(&face_data_file)
+                                    {
+                                        serde_json::from_str(&face_data_json)
+                                            .expect("Corrupted face data")
+                                    } else {
+                                        vec![]
+                                    }
                                 } else {
                                     vec![]
-                                }
-                            } else {
-                                vec![]
-                            };
-                        if !face_data_vec.iter().any(|face_data| {
-                            image_path
-                                .file_name()
-                                .is_some_and(|file_name| face_data.0 == file_name)
-                        }) {
-                            let new_face_data_vec = face_extractor.extract_faces(&image_path);
-                            if new_face_data_vec.is_empty() {
-                                face_data_vec
-                                    .push((image_path.file_name().unwrap().to_owned(), None));
-                            } else {
-                                new_face_data_vec.into_iter().for_each(|face_data| {
+                                };
+                            if !face_data_vec.iter().any(|face_data| {
+                                image_path
+                                    .file_name()
+                                    .is_some_and(|file_name| face_data.0 == file_name)
+                            }) {
+                                let new_face_data_vec = face_extractor.extract_faces(&image_path);
+                                if new_face_data_vec.is_empty() {
                                     face_data_vec.push((
-                                        image_path.file_name().unwrap().to_owned(),
-                                        Some(face_data),
-                                    ))
-                                });
+                                        image_path.file_name().expect("Already checked").to_owned(),
+                                        None,
+                                    ));
+                                } else {
+                                    new_face_data_vec.into_iter().for_each(|face_data| {
+                                        face_data_vec.push((
+                                            image_path
+                                                .file_name()
+                                                .expect("Already checked")
+                                                .to_owned(),
+                                            Some(face_data),
+                                        ))
+                                    });
+                                }
+                                if !face_data_file.exists() {
+                                    let _ = fs::create_dir_all(
+                                        face_data_file.parent().unwrap_or(Path::new("/")),
+                                    );
+                                }
+                                if let Ok(serialised) = serde_json::to_string(&face_data_vec) {
+                                    let _ = fs::write(face_data_file, serialised);
+                                }
                             }
-                            let serialised = serde_json::to_string(&face_data_vec).unwrap();
-                            if !face_data_file.exists() {
-                                let _ = fs::create_dir_all(
-                                    face_data_file.parent().unwrap_or(Path::new("/")),
-                                );
-                            }
-                            let _ = fs::write(face_data_file, serialised);
+                            let parent_pathbuf = parent_path.to_path_buf();
+                            face_data_vecs_map.insert(parent_pathbuf, face_data_vec);
                         }
-                        let parent_pathbuf = parent_path.to_path_buf();
-                        face_data_vecs_map.insert(parent_pathbuf, face_data_vec);
+                    };
+                    if image_index % 5 == 0
+                        && tx
+                            .send(image_index as f32 / total_number_of_images as f32)
+                            .await
+                            .is_err()
+                    {
+                        return;
                     }
-                };
-                if image_index % 5 == 0
-                    && tx
-                        .send(image_index as f32 / total_number_of_images as f32)
-                        .await
-                        .is_err()
-                {
-                    return;
                 }
             }
             let _ = tx.send(1.0).await;
