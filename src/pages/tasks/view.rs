@@ -276,24 +276,15 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
-            text(
-                LOCALES.lookup_with_args(
-                    &state.locale,
-                    "tasks-count-arg",
-                    &HashMap::from([(
-                        Cow::from("count"),
-                        state
-                            .tasks_list
-                            .iter()
-                            .filter(|task| matches!(
-                                task.completion_state,
-                                TaskCompletionState::Backlog
-                            ))
-                            .count()
-                            .into(),
-                    )]),
-                )
-            )
+            text(format!(
+                "{} {}",
+                LOCALES.lookup(&state.locale, "tasks-count"),
+                state
+                    .tasks_list
+                    .iter()
+                    .filter(|task| matches!(task.completion_state, TaskCompletionState::Backlog))
+                    .count()
+            ))
             .font(Font {
                 style: iced::font::Style::Italic,
                 ..Default::default()
@@ -343,24 +334,15 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
-            text(
-                LOCALES.lookup_with_args(
-                    &state.locale,
-                    "tasks-count-arg",
-                    &HashMap::from([(
-                        Cow::from("count"),
-                        state
-                            .tasks_list
-                            .iter()
-                            .filter(|task| matches!(
-                                task.completion_state,
-                                TaskCompletionState::ToDo
-                            ))
-                            .count()
-                            .into(),
-                    )]),
-                )
-            )
+            text(format!(
+                "{} {}",
+                LOCALES.lookup(&state.locale, "tasks-count"),
+                state
+                    .tasks_list
+                    .iter()
+                    .filter(|task| matches!(task.completion_state, TaskCompletionState::ToDo))
+                    .count()
+            ))
             .font(Font {
                 style: iced::font::Style::Italic,
                 ..Default::default()
@@ -407,24 +389,15 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
-            text(
-                LOCALES.lookup_with_args(
-                    &state.locale,
-                    "tasks-count-arg",
-                    &HashMap::from([(
-                        Cow::from("count"),
-                        state
-                            .tasks_list
-                            .iter()
-                            .filter(|task| matches!(
-                                task.completion_state,
-                                TaskCompletionState::Doing
-                            ))
-                            .count()
-                            .into(),
-                    )]),
-                )
-            )
+            text(format!(
+                "{} {}",
+                LOCALES.lookup(&state.locale, "tasks-count"),
+                state
+                    .tasks_list
+                    .iter()
+                    .filter(|task| matches!(task.completion_state, TaskCompletionState::Doing))
+                    .count()
+            ))
             .font(Font {
                 style: iced::font::Style::Italic,
                 ..Default::default()
@@ -471,24 +444,15 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
                 Space::with_width(Length::Fill),
             ]
             .padding(5),
-            text(
-                LOCALES.lookup_with_args(
-                    &state.locale,
-                    "tasks-count-arg",
-                    &HashMap::from([(
-                        Cow::from("count"),
-                        state
-                            .tasks_list
-                            .iter()
-                            .filter(|task| matches!(
-                                task.completion_state,
-                                TaskCompletionState::Done
-                            ))
-                            .count()
-                            .into(),
-                    )]),
-                )
-            )
+            text(format!(
+                "{} {}",
+                LOCALES.lookup(&state.locale, "tasks-count-arg"),
+                state
+                    .tasks_list
+                    .iter()
+                    .filter(|task| matches!(task.completion_state, TaskCompletionState::Done))
+                    .count()
+            ))
             .font(Font {
                 style: iced::font::Style::Italic,
                 ..Default::default()

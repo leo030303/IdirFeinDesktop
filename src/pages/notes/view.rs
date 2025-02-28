@@ -1,6 +1,3 @@
-use std::borrow::Cow;
-use std::collections::HashMap;
-
 use crate::pages::notes::notes_utils::get_colour_for_category;
 use crate::LOCALES;
 use fluent_templates::Loader;
@@ -547,29 +544,20 @@ fn document_statistics_view(state: &NotesPage) -> Element<Message> {
                 iced::widget::tooltip::Position::Bottom
             ),
         ],
-        text(LOCALES.lookup_with_args(
-            &state.locale,
-            "character-count-arg",
-            &HashMap::from([(
-                Cow::from("count"),
-                state.current_note_statistics.char_count.into(),
-            )]),
+        text(format!(
+            "{} {}",
+            LOCALES.lookup(&state.locale, "character-count"),
+            state.current_note_statistics.char_count
         )),
-        text(LOCALES.lookup_with_args(
-            &state.locale,
-            "word-count-arg",
-            &HashMap::from([(
-                Cow::from("count"),
-                state.current_note_statistics.word_count.into(),
-            )]),
+        text(format!(
+            "{} {}",
+            LOCALES.lookup(&state.locale, "word-count"),
+            state.current_note_statistics.word_count
         )),
-        text(LOCALES.lookup_with_args(
-            &state.locale,
-            "reading-time-arg",
-            &HashMap::from([(
-                Cow::from("time"),
-                state.current_note_statistics.reading_time_in_mins.into(),
-            )]),
+        text(format!(
+            "{} {}",
+            LOCALES.lookup(&state.locale, "reading-time"),
+            state.current_note_statistics.reading_time_in_mins
         )),
         Tooltip::new(
             button(Svg::new(svg::Handle::from_memory(include_bytes!(

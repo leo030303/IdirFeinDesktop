@@ -1,6 +1,3 @@
-use std::borrow::Cow;
-use std::collections::HashMap;
-
 use fluent_templates::Loader;
 use iced::Alignment::Center;
 
@@ -147,13 +144,10 @@ fn new_database_set_password_view(state: &PasswordsPage) -> Element<Message> {
         .align_x(Horizontal::Center),
         container(
             button(text(if let Some(keyfile) = &state.selected_key_file {
-                LOCALES.lookup_with_args(
-                    &state.locale,
-                    "selected-keyfile",
-                    &HashMap::from([(
-                        Cow::from("keyfile_path"),
-                        keyfile.as_path().to_string_lossy().into(),
-                    )]),
+                format!(
+                    "{} {}",
+                    LOCALES.lookup(&state.locale, "selected-keyfile"),
+                    keyfile.as_path().to_string_lossy()
                 )
             } else {
                 LOCALES.lookup(&state.locale, "select-keyfile")
@@ -460,30 +454,21 @@ fn existing_database_selected_and_locked_view(state: &PasswordsPage) -> Element<
         .align_x(Horizontal::Center),
         container(
             row![
-                button(text(
-                    LOCALES.lookup_with_args(
-                        &state.locale,
-                        "selected-file",
-                        &HashMap::from([(
-                            Cow::from("file_path"),
-                            state
-                                .selected_keepass_file
-                                .as_ref()
-                                .map(|selected| selected.to_str())
-                                .unwrap_or_default()
-                                .into()
-                        )]),
-                    )
-                ))
+                button(text(format!(
+                    "{} {}",
+                    LOCALES.lookup(&state.locale, "selected-file"),
+                    state
+                        .selected_keepass_file
+                        .as_ref()
+                        .and_then(|selected| selected.to_str())
+                        .unwrap_or_default()
+                )))
                 .on_press(Message::Passwords(PasswordsPageMessage::PickDatabaseFile)),
                 button(text(if let Some(keyfile) = &state.selected_key_file {
-                    LOCALES.lookup_with_args(
-                        &state.locale,
-                        "selected-keyfile",
-                        &HashMap::from([(
-                            Cow::from("keyfile_path"),
-                            keyfile.as_path().to_string_lossy().into(),
-                        )]),
+                    format!(
+                        "{} {}",
+                        LOCALES.lookup(&state.locale, "selected-keyfile"),
+                        keyfile.as_path().to_string_lossy()
                     )
                 } else {
                     LOCALES.lookup(&state.locale, "select-keyfile")

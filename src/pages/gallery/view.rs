@@ -1,5 +1,5 @@
 use crate::{pages::gallery::page::RENAME_PERSON_INPUT_ID, LOCALES};
-use std::{borrow::Cow, collections::HashMap, path::Path};
+use std::path::Path;
 
 use fluent_templates::Loader;
 use iced::{
@@ -389,20 +389,14 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
             ))
             .content_fit(iced::ContentFit::ScaleDown)
             .filter_method(image::FilterMethod::Nearest),
-            text(
-                LOCALES.lookup_with_args(
-                    &state.locale,
-                    "ignore-arg",
-                    &HashMap::from([(
-                        Cow::from("person-name"),
-                        face_data
-                            .name_of_person
-                            .as_ref()
-                            .unwrap_or(&String::from(UNNAMED_STRING))
-                            .into(),
-                    )]),
-                )
-            )
+            text(format!(
+                "{} {}?",
+                LOCALES.lookup(&state.locale, "ignore",),
+                face_data
+                    .name_of_person
+                    .as_ref()
+                    .unwrap_or(&String::from(UNNAMED_STRING))
+            ))
             .width(Length::Fill)
             .center(),
             button(
@@ -448,26 +442,15 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
             .content_fit(iced::ContentFit::ScaleDown)
             .filter_method(image::FilterMethod::Nearest)
             .width(Length::Fill),
-            text(
-                LOCALES.lookup_with_args(
-                    &state.locale,
-                    "rename-face-from-arg-to-arg",
-                    &HashMap::from([
-                        (
-                            Cow::from("name-1"),
-                            face_data
-                                .name_of_person
-                                .as_ref()
-                                .unwrap_or(&String::from(UNNAMED_STRING))
-                                .into(),
-                        ),
-                        (
-                            Cow::from("name-2"),
-                            (&state.rename_person_field_text).into(),
-                        )
-                    ]),
-                )
-            )
+            text(format!(
+                "{} {} -> {}?",
+                LOCALES.lookup(&state.locale, "rename-face-from",),
+                face_data
+                    .name_of_person
+                    .as_ref()
+                    .unwrap_or(&String::from(UNNAMED_STRING)),
+                state.rename_person_field_text
+            ))
             .width(Length::Fill)
             .center(),
             button(
@@ -563,10 +546,10 @@ fn person_management_view(state: &GalleryPage) -> Element<Message> {
                     .filter(|(name_of_person, _thumbnail_path)| name_of_person != UNNAMED_STRING)
                     .map(|(name_of_person, _thumbnail_path)| {
                         button(
-                            text(LOCALES.lookup_with_args(
-                                &state.locale,
-                                "rename-to-arg",
-                                &HashMap::from([(Cow::from("person-name"), name_of_person.into())]),
+                            text(format!(
+                                "{} {}",
+                                LOCALES.lookup(&state.locale, "rename-to"),
+                                name_of_person
                             ))
                             .width(Length::Fill)
                             .center(),
