@@ -230,7 +230,9 @@ impl AppState {
                     subscriptions_vec.push(TasksPage::subscription());
                 }
             }
-            if self.config.sync_config.should_sync {
+            if self.config.sync_config.should_sync
+                && self.config.sync_config.client_credentials.is_some()
+            {
                 subscriptions_vec.push(
                     Subscription::run_with_id(
                         "server_connection_subscription",
@@ -240,6 +242,11 @@ impl AppState {
                             self.sync_page.ignore_string_list.clone(),
                             self.config.sync_config.default_data_storage_folder.clone(),
                             self.config.sync_config.ignored_remote_folder_ids.clone(),
+                            self.config
+                                .sync_config
+                                .client_credentials
+                                .clone()
+                                .expect("Already checked"),
                         ),
                     )
                     .map(Message::ServerMessageEvent),

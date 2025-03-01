@@ -17,7 +17,7 @@ use std::time::Duration;
 
 use crate::utils::sync_utils::ServerFileRequest;
 
-use super::auth_utils::get_auth_pair;
+use super::auth_utils::AuthCredentials;
 use super::sync_utils::SyncManager;
 
 // const LORO_SERVER: &str = "ws://127.0.0.1:8000/loro";
@@ -28,10 +28,10 @@ pub fn connect(
     ignore_list: Vec<String>,
     default_data_storage_folder: PathBuf,
     client_ignored_remote_folders_list: Vec<String>,
+    auth_credentials: AuthCredentials,
 ) -> impl Stream<Item = Event> {
     stream::channel(100, |mut output| async move {
         let mut state = ConnectionState::Disconnected;
-        let (client_id, auth_token) = get_auth_pair();
 
         let mut post_server_url_with_auth = Url::parse(&(String::from("http://") + &server_url)) // TODO Change to https for prod
             .unwrap()
@@ -39,7 +39,7 @@ pub fn connect(
             .unwrap();
         post_server_url_with_auth
             .query_pairs_mut()
-            .append_pair("client_id", &client_id);
+            .append_pair("client_id", &auth_credentials.client_id);
 
         let mut sync_manager = SyncManager::new(
             folders_to_sync,
@@ -52,7 +52,7 @@ pub fn connect(
             match reqwest::Client::new()
                 .post(post_server_url_with_auth.as_ref())
                 .body(sync_manager.get_initialiser_data())
-                .bearer_auth(&auth_token)
+                .bearer_auth(auth_credentials.calculate_totp())
                 .send()
                 .await
             {
@@ -84,7 +84,7 @@ pub fn connect(
             .unwrap();
         socket_server_url_with_auth
             .query_pairs_mut()
-            .append_pair("client_id", &client_id);
+            .append_pair("client_id", &auth_credentials.client_id);
 
         loop {
             match &mut state {
@@ -96,7 +96,11 @@ pub fn connect(
                         .unwrap();
                     let _ = request.headers_mut().insert(
                         reqwest::header::AUTHORIZATION,
-                        HeaderValue::from_str(&format!("Bearer {}", auth_token)).unwrap(),
+                        HeaderValue::from_str(&format!(
+                            "Bearer {}",
+                            auth_credentials.calculate_totp()
+                        ))
+                        .unwrap(),
                     );
                     match async_tungstenite::tokio::connect_async(request).await {
                         Ok((websocket, _)) => {

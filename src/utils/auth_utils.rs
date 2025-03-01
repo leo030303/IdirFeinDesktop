@@ -1,15 +1,16 @@
-fn get_auth_details() -> (String, String) {
-    // TODO get from config
-    (String::from("Leo"), String::from("12345"))
+use serde::{Deserialize, Serialize};
+use totp_rs::{Algorithm, TOTP};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthCredentials {
+    pub client_id: String,
+    pub client_secret: Vec<u8>,
 }
 
-pub fn get_auth_pair() -> (String, String) {
-    // TODO calculate properly
-    let (client_id, totp_seed) = get_auth_details();
-    (client_id, totp_seed)
-}
-
-pub fn calculate_totp(_client_secret: &[u8]) -> String {
-    // TODO calculate properly
-    String::from("12345")
+impl AuthCredentials {
+    pub fn calculate_totp(&self) -> String {
+        let totp = TOTP::new(Algorithm::SHA1, 6, 1, 30, self.client_secret.clone())
+            .expect("Invalid credentials");
+        totp.generate_current().expect("Invalid credentials")
+    }
 }

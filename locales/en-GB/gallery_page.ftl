@@ -12,7 +12,6 @@ extracting-faces = Extracting Faces
 recognising-faces = Recognising Faces
 select-gallery-folder = Select Gallery Folder
 close-person-manager = Close Person Manager
-ignore = Ignore 
 confirm = Confirm
 rename-face-from = Rename face from
 ignore =  Ignore

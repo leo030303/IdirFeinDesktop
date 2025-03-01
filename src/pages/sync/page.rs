@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::app::Message;
 use crate::constants::APP_ID;
+use crate::utils::auth_utils::AuthCredentials;
 
 use super::update::update;
 use super::view::{main_view, tool_view};
@@ -29,8 +30,7 @@ pub struct SyncPageConfig {
     pub server_url: String,
     pub default_data_storage_folder: PathBuf,
     pub should_sync: bool,
-    pub client_username: Option<String>,
-    pub client_secret: Option<Vec<u8>>,
+    pub client_credentials: Option<AuthCredentials>,
     pub ignored_remote_folder_ids: Vec<String>,
     pub sync_frequency_settings: SyncFrequencySettings,
 }
@@ -41,8 +41,7 @@ impl Default for SyncPageConfig {
             server_url: String::new(),
             default_data_storage_folder: dirs::home_dir().unwrap().join("idirfein"),
             should_sync: false,
-            client_username: None,
-            client_secret: None,
+            client_credentials: None,
             ignored_remote_folder_ids: vec![],
             sync_frequency_settings: SyncFrequencySettings::SyncOnlyOnRequest,
         }

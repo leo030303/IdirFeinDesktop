@@ -4,8 +4,9 @@ use base64::Engine;
 use iced::Task;
 use url::Url;
 
+use crate::app::Message;
 use crate::constants::APP_ID;
-use crate::{app::Message, utils::auth_utils};
+use crate::utils::auth_utils::AuthCredentials;
 
 use super::constants::COUNTRY_CODES_FOR_WIFI_SETUP;
 use super::setup_wizard_utils::{get_list_of_disks, is_valid_ip, write_config_to_rpi};
@@ -81,11 +82,10 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                         state
                             .work_in_progress_client_config
                             .sync_config
-                            .client_username = Some(state.client_username_input_text.clone());
-                        state
-                            .work_in_progress_client_config
-                            .sync_config
-                            .client_secret = Some(decoded_secret);
+                            .client_credentials = Some(AuthCredentials {
+                            client_id: state.client_username_input_text.clone(),
+                            client_secret: decoded_secret,
+                        });
                         return Task::done(Message::SetupWizard(SetupWizardMessage::GoToStep(
                             SetupWizardStep::ConfirmConnection,
                         )))
@@ -110,7 +110,11 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
             let client_secret = base64::prelude::BASE64_STANDARD
                 .decode(&state.client_secret_input_text)
                 .expect("Just checked this");
-            let client_username = state.client_username_input_text.clone();
+            let client_id = state.client_username_input_text.clone();
+            let auth_credentials = AuthCredentials {
+                client_id,
+                client_secret,
+            };
             let server_url = state
                 .server_url_input_text
                 .split("://")
@@ -128,9 +132,9 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                             .unwrap();
                     server_url_with_auth
                         .query_pairs_mut()
-                        .append_pair("client_id", &client_username);
+                        .append_pair("client_id", &auth_credentials.client_id);
 
-                    let auth_token = auth_utils::calculate_totp(&client_secret);
+                    let auth_token = auth_credentials.calculate_totp();
                     let mut retry_counter = 0;
                     loop {
                         if retry_counter >= 3 {

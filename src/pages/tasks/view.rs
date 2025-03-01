@@ -1,5 +1,3 @@
-use std::{borrow::Cow, collections::HashMap};
-
 use crate::{
     pages::tasks::page::{TaskViewType, NEW_PROJECT_TEXT_INPUT_ID},
     LOCALES,

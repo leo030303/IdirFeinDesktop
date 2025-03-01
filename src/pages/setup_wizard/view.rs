@@ -42,7 +42,7 @@ fn list_users_choose_yours(state: &SetupWizard) -> Element<Message> {
             .center()
             .size(20),
         // TODO list users, have copy buttons, have select button to pick the one for this device
-        if state.work_in_progress_client_config.sync_config.client_username.is_none() || state.work_in_progress_client_config.sync_config.client_secret.is_none() {
+        if state.work_in_progress_client_config.sync_config.client_credentials.is_none() {
             button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
         } else {
             button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
