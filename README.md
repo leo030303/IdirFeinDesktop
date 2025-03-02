@@ -1,1 +1,1 @@
-**Need to include libonnxruntime.so in build for face extraction**
+Requires at least flatpak-builder 1.4.4 to build
