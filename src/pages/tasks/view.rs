@@ -444,7 +444,7 @@ fn kanban_view(state: &TasksPage) -> Element<Message> {
             .padding(5),
             text(format!(
                 "{} {}",
-                LOCALES.lookup(&state.locale, "tasks-count-arg"),
+                LOCALES.lookup(&state.locale, "tasks-count"),
                 state
                     .tasks_list
                     .iter()
