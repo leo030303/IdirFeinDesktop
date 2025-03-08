@@ -123,7 +123,6 @@ pub enum GalleryPageMessage {
     EscapeKeyPressed,
     SelectPreviousImage,
     SelectNextImage,
-    CopySelectedImagePath,
     ExtractAllFaces,
     GenerateAllThumbnails,
     RunFaceRecognition,
@@ -145,7 +144,6 @@ pub enum GalleryPageMessage {
     PeopleListScrolled(Viewport),
     RunOcrOnSelectedImage,
     SetCurrentImageOcrText(Option<String>),
-    CopyOcrText,
 }
 
 impl GalleryPage {

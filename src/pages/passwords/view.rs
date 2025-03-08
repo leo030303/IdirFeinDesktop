@@ -296,8 +296,8 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                     )))
                     .height(Length::Fill)
                 )
-                .on_press(Message::Passwords(
-                    PasswordsPageMessage::CopyValueToClipboard(state.current_title_text.clone())
+                .on_press(Message::CopyValueToClipboard(
+                    state.current_title_text.clone()
                 ))
                 .width(Length::FillPortion(1)),
                 text(LOCALES.lookup(&state.locale, "copy")),
@@ -320,8 +320,8 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                     )))
                     .height(Length::Fill)
                 )
-                .on_press(Message::Passwords(
-                    PasswordsPageMessage::CopyValueToClipboard(state.current_url_text.clone())
+                .on_press(Message::CopyValueToClipboard(
+                    state.current_url_text.clone()
                 ))
                 .width(Length::FillPortion(1)),
                 text(LOCALES.lookup(&state.locale, "copy")),
@@ -346,8 +346,8 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                     )))
                     .height(Length::Fill)
                 )
-                .on_press(Message::Passwords(
-                    PasswordsPageMessage::CopyValueToClipboard(state.current_username_text.clone())
+                .on_press(Message::CopyValueToClipboard(
+                    state.current_username_text.clone()
                 ))
                 .width(Length::FillPortion(1)),
                 text(LOCALES.lookup(&state.locale, "copy")),
@@ -418,8 +418,8 @@ fn entry_edit_view(state: &PasswordsPage) -> Element<Message> {
                     )))
                     .height(Length::Fill)
                 )
-                .on_press(Message::Passwords(
-                    PasswordsPageMessage::CopyValueToClipboard(state.current_password_text.clone())
+                .on_press(Message::CopyValueToClipboard(
+                    state.current_password_text.clone()
                 ))
                 .width(Length::FillPortion(1)),
                 text(LOCALES.lookup(&state.locale, "copy")),

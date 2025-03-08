@@ -99,7 +99,11 @@ fn big_image_viewer(state: &GalleryPage) -> Element<Message> {
                             button(Svg::new(svg::Handle::from_memory(include_bytes!(
                                 "../../../icons/copy.svg"
                             ))))
-                            .on_press(Message::Gallery(GalleryPageMessage::CopyOcrText)),
+                            .on_press(
+                                Message::CopyValueToClipboard(
+                                    state.current_image_ocr_text.clone().unwrap_or_default()
+                                )
+                            ),
                             text(LOCALES.lookup(&state.locale, "copy-detected-text")),
                             iced::widget::tooltip::Position::Bottom
                         ),
@@ -606,7 +610,14 @@ pub fn tool_view(state: &GalleryPage) -> Element<Message> {
                 button(Svg::new(svg::Handle::from_memory(include_bytes!(
                     "../../../icons/copy.svg"
                 ))))
-                .on_press(Message::Gallery(GalleryPageMessage::CopySelectedImagePath)),
+                .on_press(Message::CopyValueToClipboard(
+                    state
+                        .selected_image
+                        .as_ref()
+                        .and_then(|(image_path, _)| image_path.as_path().to_str())
+                        .unwrap_or_default()
+                        .to_string()
+                )),
                 text(LOCALES.lookup(&state.locale, "copy-image-path-shortcut")),
                 iced::widget::tooltip::Position::Bottom
             ),

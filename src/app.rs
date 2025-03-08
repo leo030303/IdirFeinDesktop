@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use arboard::Clipboard;
 use fluent_templates::Loader;
 use iced::{
     alignment::Horizontal,
@@ -45,6 +46,7 @@ pub enum Message {
     ServerMessageEvent(socket_utils::Event),
     SendServerMessage(String),
     FinishSetup,
+    CopyValueToClipboard(String),
 }
 
 pub struct AppState {
@@ -174,6 +176,22 @@ impl AppState {
                 self.config = self.setup_wizard.work_in_progress_client_config.clone();
                 return Task::done(Message::SaveConfig);
             }
+            Message::CopyValueToClipboard(s) => match Clipboard::new() {
+                Ok(mut clipboard) => {
+                    if let Err(err) = clipboard.set_text(s) {
+                        return Task::done(Message::ShowToast(
+                            false,
+                            format!("Couldn't copy text to clipboard: {err}"),
+                        ));
+                    }
+                }
+                Err(err) => {
+                    return Task::done(Message::ShowToast(
+                        false,
+                        format!("Couldn't access clipboard: {err}"),
+                    ));
+                }
+            },
             Message::None => (),
         }
         Task::none()

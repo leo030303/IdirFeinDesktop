@@ -1,6 +1,5 @@
 use std::mem;
 
-use arboard::Clipboard;
 use iced::Task;
 use rand::{thread_rng, Rng};
 use rfd::FileDialog;
@@ -157,22 +156,6 @@ pub fn update(state: &mut PasswordsPage, message: PasswordsPageMessage) -> Task<
         PasswordsPageMessage::ToggleHideCurrentPassword => {
             state.hide_current_password_entry = !state.hide_current_password_entry
         }
-        PasswordsPageMessage::CopyValueToClipboard(s) => match Clipboard::new() {
-            Ok(mut clipboard) => {
-                if let Err(err) = clipboard.set_text(s) {
-                    return Task::done(Message::ShowToast(
-                        false,
-                        format!("Couldn't copy text to clipboard: {err}"),
-                    ));
-                }
-            }
-            Err(err) => {
-                return Task::done(Message::ShowToast(
-                    false,
-                    format!("Couldn't access clipboard: {err}"),
-                ));
-            }
-        },
         PasswordsPageMessage::PickDatabaseFile => {
             return Task::perform(
                 async {

@@ -102,7 +102,6 @@ pub enum PasswordsPageMessage {
     ToggleHideCurrentPassword,
     ToggleHideMasterPassword,
     ToggleHideMasterPasswordReentry,
-    CopyValueToClipboard(String),
     PickDatabaseFile,
     SetDatabaseFile(Option<PathBuf>),
     StartCreatingNewKeepassFile,

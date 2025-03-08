@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-arboard = "3.4.0"
+arboard = {version="3.4.0", features = ["wayland-data-control"]}
 bytes = "1.7.1"
 dirs = "5.0.1"
 iced = { git = "https://github.com/leo030303/iced", branch = "markdown_updates", features = ["markdown", "lazy", "highlighter", "svg", "tokio", "image", "debug", "unconditional-rendering"]}

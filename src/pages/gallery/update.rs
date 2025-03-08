@@ -1,4 +1,3 @@
-use arboard::Clipboard;
 use std::{
     ffi::OsStr,
     fs::{self},
@@ -67,6 +66,9 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                                 .filter_entry(|entry| {
                                     !entry.path().ends_with(THUMBNAIL_FOLDER_NAME)
                                         && !entry.path().ends_with(FACE_DATA_FOLDER_NAME)
+                                        && entry.path().file_name().is_some_and(|basename| {
+                                            !basename.to_string_lossy().starts_with(".")
+                                        })
                                 });
                             let mut all_image_files = directory_iterator
                                 .filter_map(|read_dir_object| read_dir_object.ok())
@@ -703,18 +705,6 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                 ));
             }
         }
-        GalleryPageMessage::CopySelectedImagePath => {
-            if let Some((image_path, _)) = state.selected_image.as_ref() {
-                if let Ok(mut clipboard) = Clipboard::new() {
-                    let _ = clipboard.set_text(image_path.as_path().to_str().unwrap_or_default());
-                } else {
-                    return Task::done(Message::ShowToast(
-                        false,
-                        String::from("Couldn't access clipboard"),
-                    ));
-                }
-            }
-        }
         GalleryPageMessage::RunFaceRecognition => {
             if matches!(state.photo_process_progress, PhotoProcessingProgress::None) {
                 let parent_folders = state.gallery_parents_list.clone();
@@ -953,18 +943,6 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
         }
         GalleryPageMessage::SetCurrentImageOcrText(ocr_text_option) => {
             state.current_image_ocr_text = ocr_text_option;
-        }
-        GalleryPageMessage::CopyOcrText => {
-            if let Some(ocr_text) = state.current_image_ocr_text.as_ref() {
-                if let Ok(mut clipboard) = Clipboard::new() {
-                    let _ = clipboard.set_text(ocr_text);
-                } else {
-                    return Task::done(Message::ShowToast(
-                        false,
-                        String::from("Couldn't access clipboard"),
-                    ));
-                }
-            }
         }
     }
     Task::none()
