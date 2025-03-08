@@ -51,6 +51,6 @@ if get_option('profile') == 'development'
   run_command('cp', '-f', 'hooks/pre-commit.hook', '.git/hooks/pre-commit', check: false)
 endif
 
-subdir('data')
+subdir('assets')
 subdir('src')
 

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=IdirFein
+Comment=Client for IdirFéin
+Type=Application
+Exec=idirfein
+Terminal=false
+Categories=Development;
+Keywords=Client;Iced;
+Icon=com.github.leo030303.IdirFein
+StartupNotify=true
