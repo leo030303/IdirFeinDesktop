@@ -1,11 +1,15 @@
 
-use iced_aw::Spinner;
-use iced::{widget::{pick_list, progress_bar, rich_text, scrollable, span}, Alignment::Center, Element, Font, Length};
+use base64::prelude::BASE64_STANDARD;
+use base64::Engine;
+use fluent_templates::Loader;
+use iced::widget::image::FilterMethod;
+use iced::{widget::{image::Handle, progress_bar, rich_text, scrollable, span, Image}, Alignment::Center, Element, Font, Length};
 
 use crate::app::Message;
-use iced::widget::{button, column, container, row, text, text_input, Space};
+use crate::LOCALES;
+use iced::widget::{button, column, container, row, svg, text, text_input, Space, Svg, Tooltip};
 
-use super::{constants::COUNTRY_CODES_FOR_WIFI_SETUP, page::{SetupProgressBarValue, SetupType, SetupWizard, SetupWizardMessage, SetupWizardStep}};
+use super::page::{SetupProgressBarValue, SetupType, SetupWizard, SetupWizardMessage, SetupWizardStep};
 
 pub fn main_view(state: &SetupWizard) -> Element<Message> {
     match state.current_step {
@@ -17,20 +21,122 @@ pub fn main_view(state: &SetupWizard) -> Element<Message> {
         SetupWizardStep::ChooseRemoteFoldersToSync => choose_remote_folders_to_sync_view(state),
         SetupWizardStep::CloseWizard => close_wizard_view(state),
         SetupWizardStep::OptionalSetupRemoteAccess => optional_setup_remote_access_view(state),
-        SetupWizardStep::InsertSdCardIntoThisComputer => {
-            insert_sd_card_into_this_computer_view(state)
-        }
-        SetupWizardStep::SettingUpSdCard => setting_up_sd_card_view(state),
         SetupWizardStep::DownloadExtraAppData => download_extra_app_data(state) ,
-        SetupWizardStep::GetWifiDetails => get_wifi_details(state),
-        SetupWizardStep::SetRpiServerPassword => set_rpi_server_password(state),
         SetupWizardStep::CreateServerUsers => create_server_users(state),
-        SetupWizardStep::SdCardSetupCompletePleaseEjectAndPlugin => sd_card_setup_complete_please_eject_and_plugin(state),
-        SetupWizardStep::WriteConfigToSd => write_config_to_sd(state),
         SetupWizardStep::ListUsersChooseYours => list_users_choose_yours(state),
+        SetupWizardStep::ImagerSetupSteps => imager_setup_steps(state) ,
+        SetupWizardStep::SshConnectionStepsRunScript => ssh_connection_steps_run_script(state),
     }
 }
 
+fn ssh_connection_steps_run_script(_state: &SetupWizard) -> Element<Message> {
+    container(column![
+        text("Finish Server Setup")
+            .width(Length::Fill)
+            .center()
+            .size(24),
+        container(scrollable(
+            column![
+                text("1. Make sure the Raspberry Pi is still powered on and the ethernet cable is still plugged into the router. Also ensure your computer is connected to the same WiFi.").width(Length::Fill),
+                text("2. Open the terminal app on your computer. If you can't find it search for terminal").width(Length::Fill),
+                text("3. Enter \"ssh username@address\", replacing username with the username you had set (the default is the same username as the user on the computer you set it up on), and address with the address you had set (the default address is raspberrypi.station)").width(Length::Fill),
+                text("4. When prompted, enter \"yes\" to connect to the server, and enter the password you set for the Raspberry Pi (the default is the same password as the computer you set it up on)").width(Length::Fill),
+                text("5. Type \"nano script.sh\" and press enter. Then click the button below to copy the setup script").width(Length::Fill),
+                button("Click this button to copy the setup script").on_press(Message::SetupWizard(SetupWizardMessage::CopySetupScript)),
+                text("6. Use Ctrl+V to paste the script into the editor open in the terminal. Then press Ctrl+X and then y and then enter to exit the editor.").width(Length::Fill),
+                text("7. Type \"chmod +x script.sh\" and hit enter. Then type \"./script.sh\" and press enter. This is going to take a while. Wait until the terminal says \"All Done\", then you can close the terminal app.").width(Length::Fill),
+                text("8. Unplug the server, then plug it back in and wait around 3 minutes before continuing, ensuring the hardrive and ethernet cables are inserted. Then press the Continue button to finish setup").width(Length::Fill),
+                button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
+                    .on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::ListUsersChooseYours)))
+            ].spacing(10)
+        )).style(container::bordered_box).padding(20),
+    ]
+    .padding(20)
+    .spacing(10)).center_x(Length::Fill)
+    .into()
+    
+}
+
+fn imager_setup_steps(_state: &SetupWizard) -> Element<Message> {
+    container(column![
+        text("Setup server")
+            .width(Length::Fill)
+            .center()
+            .size(24),
+        container(scrollable(
+            column![
+                text("There are a few steps to take:")
+                    .width(Length::Fill)
+                    .center()
+                    .size(20),
+                row![
+                    rich_text![span("1. Install Raspberry Pi Imager from Flathub here, just like you installed this app from Flathub "), span("https://flathub.org/apps/org.raspberrypi.rpi-imager").underline(true).link(Message::SetupWizard(SetupWizardMessage::LinkClicked("https://flathub.org/apps/org.raspberrypi.rpi-imager")))].width(Length::Fill),
+                    Space::with_width(Length::Fill)
+                ],
+                row![
+                    text("2. Once installed, ensure you are connected to the internet, then insert your SD card you want to flash, and for \"Choose Device\", pick Raspberry Pi Zero 2 W").width(Length::Fill).align_y(Center).height(Length::Fixed(130.0)),
+                    Image::new(Handle::from_bytes(include_bytes!("../../../icons/setup_page_images/rpi_zero.png").to_vec()))
+                        .content_fit(iced::ContentFit::ScaleDown)
+                        .filter_method(FilterMethod::Nearest).height(Length::Fixed(130.0)).width(Length::Fill),
+                ],
+                row![
+                    text("3. Next, in \"Choose OS\", scroll down and choose \"Raspberry Pi OS (other)\"").width(Length::Fill).align_y(Center).height(Length::Fixed(130.0)),
+                    Image::new(Handle::from_bytes(include_bytes!("../../../icons/setup_page_images/other_os.png").to_vec()))
+                        .content_fit(iced::ContentFit::ScaleDown)
+                        .filter_method(FilterMethod::Nearest).height(Length::Fixed(130.0)).width(Length::Fill),
+                ],
+                row![
+                    text("4. In the resulting menu, choose \"Raspberry Pi OS Lite (64-bit)\"").width(Length::Fill).align_y(Center).height(Length::Fixed(130.0)),
+                    Image::new(Handle::from_bytes(include_bytes!("../../../icons/setup_page_images/raspberry_pi_os.png").to_vec()))
+                        .content_fit(iced::ContentFit::ScaleDown)
+                        .filter_method(FilterMethod::Nearest).height(Length::Fixed(130.0)).width(Length::Fill),
+                ],
+                row![
+                    text("5. Next in \"Choose Storage\", select the SD card you want to use. Make sure its inserted into your device. Be absolutely certain you have picked the correct one as it will be wiped.").width(Length::Fill),
+                    Space::with_width(Length::Fill)
+                ],
+                row![
+                    text("6. Click \"Next\"").width(Length::Fill).align_y(Center).height(Length::Fixed(130.0)),
+                    Image::new(Handle::from_bytes(include_bytes!("../../../icons/setup_page_images/next.png").to_vec()))
+                        .content_fit(iced::ContentFit::ScaleDown)
+                        .filter_method(FilterMethod::Nearest).height(Length::Fixed(130.0)).width(Length::Fill),
+                ],
+                row![
+                    text("7. In the popup, select \"Edit Settings\"").width(Length::Fill).align_y(Center).height(Length::Fixed(130.0)),
+                    Image::new(Handle::from_bytes(include_bytes!("../../../icons/setup_page_images/os_customisation.png").to_vec()))
+                        .content_fit(iced::ContentFit::ScaleDown)
+                        .filter_method(FilterMethod::Nearest).height(Length::Fixed(130.0)).width(Length::Fill),
+                ],
+                row![
+                    text("8. Select \"Set username and password\" and deselect the rest of the checkboxes. Set the username and password to something memorable.").width(Length::Fill).align_y(Center).height(Length::Fixed(300.0)),
+                    Image::new(Handle::from_bytes(include_bytes!("../../../icons/setup_page_images/general_custom.png").to_vec()))
+                        .content_fit(iced::ContentFit::ScaleDown)
+                        .filter_method(FilterMethod::Nearest).height(Length::Fixed(300.0)).width(Length::Fill),
+                ],
+                row![
+                    text("9. Select \"Services\" from the top navigation bar, and select \"Enable SSH\" and pick \"Use password authentication\". Then press \"Save\", and on the next menu press \"Yes\"").width(Length::Fill).align_y(Center).height(Length::Fixed(300.0)),
+                    Image::new(Handle::from_bytes(include_bytes!("../../../icons/setup_page_images/services_custom.png").to_vec()))
+                        .content_fit(iced::ContentFit::ScaleDown)
+                        .filter_method(FilterMethod::Nearest).height(Length::Fixed(300.0)).width(Length::Fill),
+                ],
+                row![
+                    text("10. Wait for the install to complete, then remove the SD card once you are told to.").width(Length::Fill),
+                    Space::with_width(Length::Fill)
+                ],
+                row![
+                    text("11. Assemble the ethernet hat, insert the SD card into the Raspberry Pi, plug in your harddrive to the hat and your ethernet cable, then plug the other end of the ethernet cable into your router. Plug in the power cable into your Raspberry Pi. The light on the hat should glow red, and on the Raspberry Pi there should be a red light and an intermittently flashing green light. Leave the device plugged in and press the Continue button below.").width(Length::Fill),
+                    Space::with_width(Length::Fill)
+                ],
+                button(text("When finished setup: Continue").width(Length::Fill).center()).width(Length::Fill)
+                    .on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::OptionalSetupRemoteAccess)))
+            ].spacing(10)
+        )).style(container::bordered_box).padding(20),
+    ]
+    .padding(20)
+    .spacing(10)).center_x(Length::Fill)
+    .into()
+    
+}
 fn list_users_choose_yours(state: &SetupWizard) -> Element<Message> {
     container(column![
         text("Select your user")
@@ -41,7 +147,26 @@ fn list_users_choose_yours(state: &SetupWizard) -> Element<Message> {
             .width(Length::Fill)
             .center()
             .size(20),
-        // TODO list users, have copy buttons, have select button to pick the one for this device
+        container(column(state.work_in_progress_server_config.users_list.iter().map(|(username, auth_token)| 
+            row![
+                text(format!("Username: {username}")).width(Length::Fill), 
+                text(format!("Auth Token: {}", BASE64_STANDARD.encode(auth_token))).width(Length::Fill), 
+                Tooltip::new(
+                    button(
+                        Svg::new(svg::Handle::from_memory(include_bytes!(
+                            "../../../icons/copy.svg"
+                        )))
+                        .height(Length::Fixed(20.0))
+                    )
+                    .on_press(Message::CopyValueToClipboard(format!("Username: {} Auth Token: {}", username.clone(), BASE64_STANDARD.encode(auth_token)))
+                    ).width(Length::Fixed(50.0)),
+                    text(LOCALES.lookup(&state.locale, "copy")),
+                    iced::widget::tooltip::Position::Bottom,
+                ),
+                button(if state.work_in_progress_client_config.sync_config.client_credentials.as_ref().is_some_and(|credentials| credentials.client_id == *username){"Selected"} else {"Select"}).style(if state.work_in_progress_client_config.sync_config.client_credentials.as_ref().is_some_and(|credentials| credentials.client_id == *username) {button::secondary} else {button::primary}).on_press(Message::SetupWizard(SetupWizardMessage::SetUserForThisDevice { username: username.clone(), auth_token: BASE64_STANDARD.encode(auth_token) }))
+        
+        ].spacing(20).padding(10).into())))
+        .style(container::bordered_box).padding(10),
         if state.work_in_progress_client_config.sync_config.client_credentials.is_none() {
             button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
         } else {
@@ -53,78 +178,6 @@ fn list_users_choose_yours(state: &SetupWizard) -> Element<Message> {
     .spacing(10)).center_x(Length::Fill)
     .into()
 }
-fn sd_card_setup_complete_please_eject_and_plugin(_state: &SetupWizard) -> Element<Message> {
-    container(column![
-        text("Please remove the SD card and insert it into the server")
-            .width(Length::Fill)
-            .center()
-            .size(24),
-        text("The SD card has been ejected and is safe to remove. Please insert it into the server and plug the server in. Wait for at least 2 minutes and then plug out the server and remove the SD card. Insert the SD card back into this device. Once you have done all this, press continue.")
-            .width(Length::Fill)
-            .center()
-            .size(20),
-        button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
-            .on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::OptionalSetupRemoteAccess)))
-    ].max_width(800)
-    .padding(20)
-    .spacing(10)).center_x(Length::Fill)
-    .into()
-}
-
-fn write_config_to_sd(state: &SetupWizard) -> Element<Message> {
-    container(column![
-        text("Writing config to SD card")
-            .width(Length::Fill)
-            .center()
-            .size(24),
-        if state.is_writing_config {
-            column![
-        text("This might take a few minutes. Don't turn off your computer. Don't close the app. Don't remove the SD card.")
-            .width(Length::Fill)
-            .center()
-            .size(20).style(text::danger),
-                Spinner::new(),
-            ]
-        } else {
-            column![
-                text("All done, remove the SD card, insert it into the Raspberry Pi, and plug it in.")
-                    .width(Length::Fill)
-                    .center()
-                    .size(20).style(text::success),
-                button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
-                .on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::ListUsersChooseYours)))
-            ]
-        }
-    ].max_width(800)
-    .padding(20)
-    .spacing(10)).center_x(Length::Fill)
-    .into()
-}
-
-fn set_rpi_server_password(state: &SetupWizard) -> Element<Message> {
-    container(column![
-        text("Set Password for the server")
-            .width(Length::Fill)
-            .center()
-            .size(24),
-        text("Pick the password for the server. You'll never need this for standard use of IdirFéin, but its important for securing your server, so make sure its sufficiently complex.")
-            .width(Length::Fill)
-            .center()
-            .size(20),
-        text_input("Server Password", &state.work_in_progress_server_config.server_password).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateServerPassword(s))),
-        if state.work_in_progress_server_config.server_password.is_empty() {
-            button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
-        } else {
-            button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
-                .on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::CreateServerUsers)))
-        }
-    ].max_width(800)
-    .padding(20)
-    .spacing(10)).center_x(Length::Fill)
-    .into()
-    
-}
-
 fn create_server_users(state: &SetupWizard) -> Element<Message> {
     container(column![
         text("Create server users")
@@ -174,7 +227,6 @@ fn create_server_users(state: &SetupWizard) -> Element<Message> {
 
 fn decide_whether_to_setup_server_view(state: &SetupWizard) -> Element<Message> {
     column![
-        button(text("Test").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::OptionalSetupRemoteAccess))).width(Length::Fill), // TODO remove this
         text("Welcome to IdirFéin!")
             .width(Length::Fill)
             .center()
@@ -210,10 +262,10 @@ fn decide_whether_to_setup_server_view(state: &SetupWizard) -> Element<Message> 
         .style(container::bordered_box).padding(10),
             container(column![
                 text("Setup a new server").width(Length::Fill).center().size(24),
-                text("Setup a new server from scratch. To do this, you will need:\n 1. A Raspberry Pi Zero or similar\n 2. An SD card to use with the device\n 3. A harddrive for data storage\n 4. You must be connected to the internet router you intend to host the server from, and you need to be able to access the router settings\n\nSetup should take around 30 minutes").width(Length::Fill).center(),
+                rich_text![span("Setup a new server from scratch. To do this, you will need:\n 1. A Raspberry Pi Zero or similar\n 2. An SD card to use with the device\n 3. A harddrive for data storage\n 4. You must be connected to the internet router you intend to host the server from, which you are able to connect an ethernet cable to, and you need to be able to access the router settings\n 5. An ethernet hat such as this one "), span("https://thepihut.com/products/ethernet-and-usb-hub-hat-for-raspberry-pi").underline(true).link(Message::SetupWizard(SetupWizardMessage::LinkClicked("https://thepihut.com/products/ethernet-and-usb-hub-hat-for-raspberry-pi"))), span("\n 6. An ethernet cable\n\nSetup should take around 30 minutes")].width(Length::Fill).center(),
                 Space::with_height(Length::Fill),
                 if matches!(state.setup_type, SetupType::FullServerSetup) {
-                    button(text("Confirm Choice").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::GetWifiDetails))).width(Length::Fill)
+                    button(text("Confirm Choice").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::ImagerSetupSteps))).width(Length::Fill)
                         .style(button::success)
                 } else {
                     button(text("Setup a new server").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::SetSetupType(SetupType::FullServerSetup))).width(Length::Fill)
@@ -407,12 +459,18 @@ fn optional_setup_remote_access_view(state: &SetupWizard) -> Element<Message> {
             .width(Length::Fill)
             .center()
             .size(20),
-        row![
-            container(column![
-                text("Setup remote access").width(Length::Fill).center().size(24),
+        column![
+            container(
+                column![
                 text("Set static local IP for server:").width(Length::Fill).center(),
                 text_input("Static IP (x.x.x.x)", &state.work_in_progress_server_config.static_ip).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateServerStaticIp(s))),
-                rich_text![span("Go to "), span("https://portforward.com/router.htm").underline(true).link(Message::SetupWizard(SetupWizardMessage::LinkClicked("https://portforward.com/router.htm"))), span(format!(" and find your router on the list. This will give you a guide on how to setup port forwarding. You need to set port 443 to go to port {0} on IP {1}", state.work_in_progress_server_config.port, state.work_in_progress_server_config.static_ip))].width(Length::Fill).center(),
+                text_input("Router Gateway IP (x.x.x.x)", &state.work_in_progress_server_config.gateway_ip).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateServerGatewayIp(s))),
+                ]
+            ).style(container::bordered_box).padding(10),
+            row![
+            container(column![
+                text("Setup remote access").width(Length::Fill).center().size(24),
+                rich_text![span("Go to "), span("https://portforward.com/router.htm").underline(true).link(Message::SetupWizard(SetupWizardMessage::LinkClicked("https://portforward.com/router.htm"))), span(format!(" and find your router on the list. This will give you a guide on how to setup port forwarding. You need to set port 443 to go to port 8000 on IP {0}", state.work_in_progress_server_config.static_ip))].width(Length::Fill).center(),
                 rich_text![span("When you're done that, go to "), span("https://www.duckdns.org/").underline(true).link(Message::SetupWizard(SetupWizardMessage::LinkClicked("https://www.duckdns.org/"))), span(" and make an account. Once thats done, add your desired domain, and copy the domain (the yourdomain part of yourdomain.duckdns.org) and your token into the fields below.")].width(Length::Fill).center(),
                 text_input("DuckDNS Domain", &state.work_in_progress_server_config.duckdns_domain).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateServerDuckDnsDomain(s))),
                 text_input("DuckDNS Token", &state.work_in_progress_server_config.duckdns_token).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateServerDuckDnsToken(s))),
@@ -427,166 +485,18 @@ fn optional_setup_remote_access_view(state: &SetupWizard) -> Element<Message> {
                 text("Use on local network only").width(Length::Fill).center().size(24),
                 text("You won't be able to access the server when you aren't connected to the same WiFi as the server. You can't change this later without setting up the server from scratch.").width(Length::Fill).center(),
                 Space::with_height(Length::Fill),
-                    button(text("Use on local network only").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::SetRpiServerPassword))).width(Length::Fill)
+                    button(text("Use on local network only").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::ConfirmLocalAccessDetails)).width(Length::Fill)
             ])
         .style(container::bordered_box).padding(10),
-        ].spacing(20)
+        ].spacing(20)].spacing(20)
     ]
     .padding(20)
     .spacing(10)
     .into()
 }
-fn insert_sd_card_into_this_computer_view(state: &SetupWizard) -> Element<Message> {
-    container(column![
-        text("Insert the SD card you want to use into this computer")
-            .width(Length::Fill)
-            .center()
-            .size(24),
-        text("This SD card will be wiped, so make sure you don't have any important data on it. It will hold the operating system for the server, but not any of the data you store on it, that is on a separate hardrive. The minimum recommended size for this card is 4GB.")
-            .width(Length::Fill)
-            .center()
-            .size(16),
-        text("Make sure you're absolutely certain you have selected the right disk, as all data will be deleted on it. The main harddrive of your computer is also displayed. If you aren't sure, remove the sd card, refresh the list, then insert it again and refresh again and check which disk is new.")
-            .style(text::danger)
-            .width(Length::Fill)
-            .center()
-            .size(16),
-        button(text("List Disks").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GetListOfDisks)).width(Length::Fill),
-        scrollable(column(state.list_of_disks.iter().map(|disk_info| button(text(format!("Name: {} Total Size: {}", disk_info.name, disk_info.total_space)).width(Length::Fill).center()).style(if state.selected_sd_card.as_ref().is_some_and(|selected| *selected == disk_info.name) {button::secondary} else {button::primary}).on_press(Message::SetupWizard(SetupWizardMessage::SelectSdCard(disk_info.clone()))).width(Length::Fill).into())).spacing(30)),
-        Space::with_height(Length::Fixed(30.0)),
-        if state.selected_sd_card.is_none() {
-            button(text("Continue").width(Length::Fill).center()).width(Length::Fill)
-        } else if state.show_sd_card_are_you_sure {
-            button(text(format!("Double check {} is the correct disk as it will be wiped, then click to continue", state.selected_sd_card.as_ref().expect("Just checked this"))).width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::SettingUpSdCard))).width(Length::Fill).style(button::danger)
-        } else {
-            button(text(format!("Selected SD card is: {}  Continue?", state.selected_sd_card.as_ref().expect("Just checked this"))).width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::ShowSdCardAreYouSureMessage)).width(Length::Fill)
-        }
-    ].max_width(800)
-    .padding(20)
-    .spacing(10)).center_x(Length::Fill)
-    .into()
-}
-fn setting_up_sd_card_view(state: &SetupWizard) -> Element<Message> {
-    container(column![
-        text("Setting up SD card")
-            .width(Length::Fill)
-            .center()
-            .size(24),
-        button(text("Test").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::SdCardSetupCompletePleaseEjectAndPlugin))).width(Length::Fill), // TODO remove this
-        text("Do not close the app. Do not turn off your device. Do not remove the SD card. This will take a few minutes. You will be asked to authorise the app to write to the SD card.")
-            .width(Length::Fill)
-            .center()
-            .size(16),
-        text(format!("Selected SD card is: {}  If this is wrong, close the app and start again, do not hit start as you will delete all data on the selected disk", state.selected_sd_card.as_ref().expect("Must have SD selected here")))
-            .style(text::danger)
-            .width(Length::Fill)
-            .center()
-            .size(16),
-            match &state.progress_bar_value {
-    SetupProgressBarValue::WaitingToStart => {
-        column![button(text("Start").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::DownloadImg)).width(Length::Fill)]
-        
-    },
-    SetupProgressBarValue::DownloadingFile(progress) => {
-            column![row![
-                text("Downloading files").height(Length::Fixed(20.0)),
-                Space::with_width(Length::Fixed(20.0)),
-                container(
-                    progress_bar(0.0..=100.0, *progress)
-                        .width(Length::Fill)
-                        .height(Length::Fixed(10.0))
-                        .style(progress_bar::primary)
-                )
-                .height(Length::Fixed(20.0))
-                .align_y(Center),
-                Space::with_width(Length::Fixed(10.0)),
-                text(format!("{:.2}%", progress))
-                    .height(Length::Fixed(20.0))
-                    .width(Length::Fixed(50.0)),
-                Space::with_width(Length::Fixed(10.0)),
-            ]
-            .padding(10)]
-        
-    },
-    SetupProgressBarValue::ExtractingImg(progress) => {
-            column![row![
-                text("Extracting IMG File").height(Length::Fixed(20.0)),
-                Space::with_width(Length::Fixed(20.0)),
-                container(
-                    progress_bar(0.0..=100.0, *progress)
-                        .width(Length::Fill)
-                        .height(Length::Fixed(10.0))
-                        .style(progress_bar::primary)
-                )
-                .height(Length::Fixed(20.0))
-                .align_y(Center),
-                Space::with_width(Length::Fixed(10.0)),
-                text(format!("{:.2}%", progress))
-                    .height(Length::Fixed(20.0))
-                    .width(Length::Fixed(50.0)),
-                Space::with_width(Length::Fixed(10.0)),
-            ]
-            .padding(10)]
-        
-    },
-    SetupProgressBarValue::FlashingSdCard => {
-            column![row![
-                text("Flashing SD Card")
-                    .width(Length::Fill)
-                    .center()
-                    .size(20),
-                Spinner::new()
-            ].spacing(10)]
-        
-    },
-    SetupProgressBarValue::Finished => {
-        column![
-            text("All Done").style(text::success),
-            button(text("Continue").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::GoToStep(SetupWizardStep::SdCardSetupCompletePleaseEjectAndPlugin))).width(Length::Fill)
-        ]
-    },
-}
-    ].max_width(1200)
-    .padding(20)
-    .spacing(10)).center_x(Length::Fill)
-    .into()
-}
-
-fn get_wifi_details(state: &SetupWizard) -> Element<Message> {
-    container(column![
-        text("Enter WiFi Details")
-            .width(Length::Fill)
-            .center()
-            .size(24),
-        text("Before you start, log onto your router and ensure there is a separate 2.4Ghz WiFi channel, and enter the SSID for that channel. The Raspberry Pi Zero only works with 2.4Ghz, not 5Ghz. If you don't set this up, the server will be unable to connect to WiFi.")
-            .width(Length::Fill).style(text::danger)
-            .center()
-            .size(20),
-        text_input("WiFi SSID", &state.work_in_progress_server_config.wifi_ssid).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateWifiSsid(s))),
-        text_input("WiFi Password", &state.work_in_progress_server_config.wifi_password).on_input(|s| Message::SetupWizard(SetupWizardMessage::UpdateWifiPassword(s))),
-        column![
-            text("Select your country"),
-            pick_list(
-                COUNTRY_CODES_FOR_WIFI_SETUP
-                    .into_iter()
-                    .map(|(country_name, _country_code)| country_name)
-                    .collect::<Vec<&'static str>>(),
-                state.work_in_progress_server_config.country_name_option,
-                |country_name| Message::SetupWizard(SetupWizardMessage::SetWifiCountryName(country_name)),
-            )
-        ]
-        .spacing(10),
-        button(text("Continue").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::SetWifiDetails)).width(Length::Fill)
-    ].max_width(800)
-    .padding(20)
-    .spacing(10)).center_x(Length::Fill)
-    .into()
-    
-}
 
 fn download_extra_app_data(state: &SetupWizard) -> Element<Message> {
     container(column![
-        button(text("Test").width(Length::Fill).center()).on_press(Message::SetupWizard(SetupWizardMessage::StartWritingConfigToSd)).width(Length::Fill), // TODO remove this
         text("Downloading extra app data")
             .width(Length::Fill)
             .center()
@@ -624,7 +534,8 @@ fn download_extra_app_data(state: &SetupWizard) -> Element<Message> {
     _ => {column![
             text("All Done").style(text::success), 
             button(text("Continue").width(Length::Fill).center()).on_press(Message::SetupWizard(
-                if matches!(state.setup_type, SetupType::FullServerSetup) {SetupWizardMessage::StartWritingConfigToSd} else {SetupWizardMessage::GoToStep(
+                if matches!(state.setup_type, SetupType::FullServerSetup) {SetupWizardMessage::GoToStep(
+             SetupWizardStep::SshConnectionStepsRunScript)} else {SetupWizardMessage::GoToStep(
              SetupWizardStep::CloseWizard   
             )}
         )).width(Length::Fill)

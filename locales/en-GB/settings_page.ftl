@@ -1,6 +1,7 @@
 settings-are-being-saved = Settings are being saved
 settings = Settings
 server-url = Server Url
+new-server-url = New Server Url
 set-url = Set Url
 default-data-folder = Default Data Folder
 select-default-data-folder = Select Default Data Folder

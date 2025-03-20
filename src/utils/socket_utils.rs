@@ -33,7 +33,7 @@ pub fn connect(
     stream::channel(100, |mut output| async move {
         let mut state = ConnectionState::Disconnected;
 
-        let mut post_server_url_with_auth = Url::parse(&(String::from("http://") + &server_url)) // TODO Change to https for prod
+        let mut post_server_url_with_auth = Url::parse(&(String::from("https://") + &server_url))
             .unwrap()
             .join("/sync/initialise")
             .unwrap();
@@ -78,7 +78,7 @@ pub fn connect(
         let mut server_file_requests_stream =
             futures::stream::iter(server_file_requests_vec).fuse();
 
-        let mut socket_server_url_with_auth = Url::parse(&(String::from("ws://") + &server_url)) // TODO Change to wss for prod
+        let mut socket_server_url_with_auth = Url::parse(&(String::from("wss://") + &server_url))
             .unwrap()
             .join("sync/stream")
             .unwrap();

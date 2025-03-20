@@ -14,15 +14,7 @@ use super::view::main_view;
 pub enum SetupProgressBarValue {
     WaitingToStart,
     DownloadingFile(f32),
-    ExtractingImg(f32),
-    FlashingSdCard,
     Finished,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DiskInfo {
-    pub name: String,
-    pub total_space: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,35 +27,25 @@ pub enum SetupType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
-    pub port: u32,
     pub static_ip: String,
     pub users_list: HashMap<String, Vec<u8>>,
     pub is_lan_only: bool,
     pub duckdns_domain: String,
     pub duckdns_token: String,
-    pub storage_harddrive_uuid: String,
-    pub wifi_ssid: String,
-    pub wifi_password: String,
-    pub country_name_option: Option<&'static str>,
-    pub server_password: String,
     pub certbot_email: String,
+    pub gateway_ip: String,
 }
 
 impl Default for ServerConfig {
     fn default() -> Self {
         Self {
-            port: 1987,
             static_ip: String::new(),
             users_list: HashMap::new(),
             is_lan_only: true,
-            storage_harddrive_uuid: String::new(),
             duckdns_domain: String::new(),
             duckdns_token: String::new(),
-            wifi_ssid: String::new(),
-            wifi_password: String::new(),
-            country_name_option: None,
-            server_password: String::new(),
             certbot_email: String::new(),
+            gateway_ip: String::new(),
         }
     }
 }
@@ -81,18 +63,14 @@ pub struct SetupWizard {
     pub remote_folders_info: Option<HashMap<String, Vec<String>>>,
     pub selected_remote_folder: Option<String>,
     pub setup_type: SetupType,
-    pub list_of_disks: Vec<DiskInfo>,
     pub progress_bar_value: SetupProgressBarValue,
-    pub selected_sd_card: Option<String>,
-    pub is_writing_config: bool,
-    pub show_sd_card_are_you_sure: bool,
-    pub wpa_supplicant_file_content: String,
 }
 
 #[derive(Debug, Clone)]
 pub enum SetupWizardMessage {
     GoToStep(SetupWizardStep),
     UpdateServerStaticIp(String),
+    UpdateServerGatewayIp(String),
     AddNewUser,
     UpdateNewUserNameInputText(String),
     SetIsLanOnly(bool),
@@ -107,27 +85,19 @@ pub enum SetupWizardMessage {
     UnignoreFolderId(usize),
     SetSyncFrequency(SyncFrequencySettings),
     SetSetupType(SetupType),
-    GetListOfDisks,
     SetProgressBarValue(SetupProgressBarValue),
-    DownloadImg,
-    ExtractImg,
-    FlashSdCard,
     DownloadExtraData,
     ConfirmRemoteAccessDetails,
     LinkClicked(&'static str),
     UpdateServerDuckDnsDomain(String),
     UpdateServerDuckDnsToken(String),
     UpdateServerCertbotEmail(String),
-    UpdateWifiSsid(String),
-    UpdateWifiPassword(String),
-    SetWifiCountryName(&'static str),
-    SetWifiDetails,
-    UpdateServerPassword(String),
-    StartWritingConfigToSd,
-    FinishWritingConfigToSd,
-    SetListOfDisks(Vec<DiskInfo>),
-    SelectSdCard(DiskInfo),
-    ShowSdCardAreYouSureMessage,
+    SetUserForThisDevice {
+        username: String,
+        auth_token: String,
+    },
+    CopySetupScript,
+    ConfirmLocalAccessDetails,
 }
 
 // Offline setup
@@ -150,15 +120,11 @@ pub enum SetupWizardMessage {
 // Full server setup
 //
 // DecideWhetherToSetupServer
-// GetWifiDetails
-// InsertSdCardIntoThisComputer
-// SettingUpSdCard
-// SdCardSetupCompletePleaseEjectAndPlugin
+// ImagerSetupSteps
 // OptionalSetupRemoteAccess
-// SetRpiServerPassword
 // CreateServerUsers
 // DownloadExtraAppData
-// WriteConfigToSd
+// SshConnectionStepsRunScript
 // ListUsersChooseYours
 // ConfirmConnection
 // CloseWizard
@@ -177,33 +143,20 @@ pub enum SetupWizardStep {
     ChooseRemoteFoldersToSync,
 
     // Full server setup path
-    /// Say to setup 2.4ghz, get wifi ssid and password and country code, create wpa_supplicant file which gets written
-    GetWifiDetails,
-
-    /// Tells user to insert SD card into computer, user clicks to confirm they have
-    InsertSdCardIntoThisComputer,
-    /// Please wait while we setup your device, flash OS
-    SettingUpSdCard,
-
-    /// SD card setup is complete, it has been ejected and is safe to remove, plug it in, we will display a 1 minute timer, then unplug it and plug it back it back
-    SdCardSetupCompletePleaseEjectAndPlugin,
-
     /// Ask if the user wants to setup external WLAN access, explain what this means
     /// Prompts user to set up port forwarding, give links to guides, says what port to use, confirm when done
     /// Prompts user to go to DuckDNS and set up credentials, enter when done
     OptionalSetupRemoteAccess,
-
-    /// Get the user to set the passwords for the raspberry pi server
-    SetRpiServerPassword,
 
     /// Get the user to create the list of users for server syncing
     CreateServerUsers,
 
     /// Downloading extra data
     DownloadExtraAppData,
-    WriteConfigToSd,
     CloseWizard,
     ListUsersChooseYours,
+    ImagerSetupSteps,
+    SshConnectionStepsRunScript,
 }
 
 impl SetupWizard {
@@ -226,12 +179,7 @@ impl SetupWizard {
             remote_folders_info: None,
             selected_remote_folder: None,
             setup_type: SetupType::NoneSelectedYet,
-            list_of_disks: vec![],
             progress_bar_value: SetupProgressBarValue::WaitingToStart,
-            selected_sd_card: None,
-            is_writing_config: false,
-            show_sd_card_are_you_sure: false,
-            wpa_supplicant_file_content: String::new(),
         }
     }
 

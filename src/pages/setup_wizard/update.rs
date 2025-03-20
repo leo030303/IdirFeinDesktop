@@ -1,29 +1,27 @@
 use std::{collections::HashMap, time::Duration};
 
+use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use iced::Task;
 use url::Url;
 
 use crate::app::Message;
-use crate::constants::APP_ID;
 use crate::utils::auth_utils::AuthCredentials;
 
-use super::constants::COUNTRY_CODES_FOR_WIFI_SETUP;
-use super::setup_wizard_utils::{get_list_of_disks, is_valid_ip, write_config_to_rpi};
+use super::setup_wizard_utils::is_valid_ip;
 use super::{
     page::{SetupWizard, SetupWizardMessage, SetupWizardStep},
     setup_wizard_utils,
 };
-
-pub const RPI_OS_IMAGE_ARCHIVE_FILENAME: &str = "rpi_os_lite.img.xz";
-pub const RPI_OS_IMAGE_EXTRACTED_FILENAME: &str = "rpi_os_lite.img";
-const RASPBERRY_PI_OS_LITE_DOWNLOAD_LINK: &str = "https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-11-19/2024-11-19-raspios-bookworm-arm64-lite.img.xz";
 
 pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Message> {
     match message {
         SetupWizardMessage::GoToStep(step_to_go_to) => {
             state.current_step = step_to_go_to;
             state.connection_has_been_attempted = false;
+            if matches!(state.current_step, SetupWizardStep::ConfirmConnection) {
+                return Task::done(Message::SetupWizard(SetupWizardMessage::TestConnection));
+            }
         }
 
         SetupWizardMessage::UpdateServerStaticIp(s) => {
@@ -79,6 +77,7 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                         .map(|item| item.to_string())
                     {
                         state.work_in_progress_client_config.sync_config.server_url = parsed_url;
+                        state.work_in_progress_client_config.sync_config.should_sync = true;
                         state
                             .work_in_progress_client_config
                             .sync_config
@@ -88,9 +87,6 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                         });
                         return Task::done(Message::SetupWizard(SetupWizardMessage::GoToStep(
                             SetupWizardStep::ConfirmConnection,
-                        )))
-                        .chain(Task::done(Message::SetupWizard(
-                            SetupWizardMessage::TestConnection,
                         )));
                     }
                 } else {
@@ -126,7 +122,7 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
             return Task::perform(
                 async move {
                     let mut server_url_with_auth =
-                        Url::parse(&(String::from("http://") + &server_url)) // TODO Change to https for prod
+                        Url::parse(&(String::from("https://") + &server_url))
                             .unwrap()
                             .join("/sync/first_sync")
                             .unwrap();
@@ -199,83 +195,8 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
         SetupWizardMessage::SetSetupType(setup_type) => {
             state.setup_type = setup_type;
         }
-        SetupWizardMessage::GetListOfDisks => {
-            return Task::perform(get_list_of_disks(), |list_of_disks| {
-                Message::SetupWizard(SetupWizardMessage::SetListOfDisks(list_of_disks))
-            });
-        }
         SetupWizardMessage::SetProgressBarValue(progress) => {
             state.progress_bar_value = progress;
-        }
-        SetupWizardMessage::DownloadImg => {
-            let mut iso_download_file_path =
-                dirs::data_local_dir().expect("No config directory, big problem");
-            iso_download_file_path.push(APP_ID);
-            iso_download_file_path.push("rpi_os_lite.img.xz");
-            return Task::run(
-                setup_wizard_utils::download_file(
-                    RASPBERRY_PI_OS_LITE_DOWNLOAD_LINK.to_owned(),
-                    iso_download_file_path,
-                ),
-                |progress_result| match progress_result {
-                    Ok(progress) => {
-                        Message::SetupWizard(SetupWizardMessage::SetProgressBarValue(progress))
-                    }
-                    Err(err) => Message::ShowToast(false, format!("Error with download: {err}")),
-                },
-            )
-            .chain(Task::done(Message::SetupWizard(
-                SetupWizardMessage::ExtractImg,
-            )));
-        }
-        SetupWizardMessage::ExtractImg => {
-            let mut img_archive_download_file_path =
-                dirs::data_local_dir().expect("No config directory, big problem");
-            img_archive_download_file_path.push(APP_ID);
-            img_archive_download_file_path.push(RPI_OS_IMAGE_ARCHIVE_FILENAME);
-            let mut extracted_img_file_path =
-                dirs::data_local_dir().expect("No config directory, big problem");
-            extracted_img_file_path.push(APP_ID);
-            extracted_img_file_path.push(RPI_OS_IMAGE_EXTRACTED_FILENAME);
-            return Task::run(
-                setup_wizard_utils::extract_img(
-                    img_archive_download_file_path,
-                    extracted_img_file_path,
-                ),
-                |progress_result| match progress_result {
-                    Ok(progress) => {
-                        Message::SetupWizard(SetupWizardMessage::SetProgressBarValue(progress))
-                    }
-                    Err(err) => Message::ShowToast(false, format!("Error with download: {err}")),
-                },
-            )
-            .chain(Task::done(Message::SetupWizard(
-                SetupWizardMessage::FlashSdCard,
-            )));
-        }
-        SetupWizardMessage::FlashSdCard => {
-            let mut extracted_img_file_path =
-                dirs::data_local_dir().expect("No config directory, big problem");
-            extracted_img_file_path.push(APP_ID);
-            extracted_img_file_path.push(RPI_OS_IMAGE_EXTRACTED_FILENAME);
-            let temp_target_name = state
-                .selected_sd_card
-                .clone()
-                .expect("Must have SD selected");
-            let wpa_supplicant_file_content = state.wpa_supplicant_file_content.clone();
-            return Task::run(
-                setup_wizard_utils::flash_img_to_sd_card(
-                    extracted_img_file_path,
-                    temp_target_name,
-                    wpa_supplicant_file_content,
-                ),
-                |progress_result| match progress_result {
-                    Ok(progress) => {
-                        Message::SetupWizard(SetupWizardMessage::SetProgressBarValue(progress))
-                    }
-                    Err(err) => Message::ShowToast(false, format!("Error with flashing: {err}")),
-                },
-            );
         }
         SetupWizardMessage::DownloadExtraData => {
             return Task::run(
@@ -299,6 +220,18 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
                 return Task::done(Message::ShowToast(
                     false,
                     String::from("Static IP has invalid format"),
+                ));
+            }
+            if state.work_in_progress_server_config.gateway_ip.is_empty() {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Gateway IP can't be blank"),
+                ));
+            }
+            if !is_valid_ip(&state.work_in_progress_server_config.gateway_ip) {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Gateway IP has invalid format"),
                 ));
             }
             if state
@@ -333,7 +266,7 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
             }
             state.work_in_progress_server_config.is_lan_only = false;
             return Task::done(Message::SetupWizard(SetupWizardMessage::GoToStep(
-                SetupWizardStep::SetRpiServerPassword,
+                SetupWizardStep::CreateServerUsers,
             )));
         }
         SetupWizardMessage::LinkClicked(link) => {
@@ -345,110 +278,195 @@ pub fn update(state: &mut SetupWizard, message: SetupWizardMessage) -> Task<Mess
         SetupWizardMessage::UpdateServerDuckDnsToken(s) => {
             state.work_in_progress_server_config.duckdns_token = s;
         }
-        SetupWizardMessage::UpdateWifiSsid(s) => {
-            state.work_in_progress_server_config.wifi_ssid = s;
-        }
-        SetupWizardMessage::UpdateWifiPassword(s) => {
-            state.work_in_progress_server_config.wifi_password = s;
-        }
-        SetupWizardMessage::SetWifiCountryName(selected_country_name) => {
-            state.work_in_progress_server_config.country_name_option = Some(selected_country_name);
-        }
-        SetupWizardMessage::SetWifiDetails => {
-            if state.work_in_progress_server_config.wifi_ssid.is_empty() {
-                return Task::done(Message::ShowToast(
-                    false,
-                    String::from("SSID can't be blank"),
-                ));
-            }
-            if state
-                .work_in_progress_server_config
-                .wifi_password
-                .is_empty()
-            {
-                return Task::done(Message::ShowToast(
-                    false,
-                    String::from("Password can't be blank"),
-                ));
-            }
-            if state
-                .work_in_progress_server_config
-                .country_name_option
-                .is_none()
-            {
-                return Task::done(Message::ShowToast(
-                    false,
-                    String::from("Country can't be blank"),
-                ));
-            }
-
-            let country_code = COUNTRY_CODES_FOR_WIFI_SETUP
-                .iter()
-                .find_map(|(country_name, country_code)| {
-                    if *country_name
-                        == state
-                            .work_in_progress_server_config
-                            .country_name_option
-                            .expect("Has to be some, just checked this")
-                    {
-                        Some(country_code)
-                    } else {
-                        None
-                    }
-                })
-                .expect("All country names have to be in list");
-            state.wpa_supplicant_file_content = format!(
-                r#"country={}
-update_config=1
-ctrl_interface=/var/run/wpa_supplicant
-
-network={{
- scan_ssid=1
- ssid="{}"
- psk="{}"
-}}"#,
-                country_code,
-                state.work_in_progress_server_config.wifi_ssid,
-                state.work_in_progress_server_config.wifi_password
-            );
-            return Task::done(Message::SetupWizard(SetupWizardMessage::GoToStep(
-                SetupWizardStep::InsertSdCardIntoThisComputer,
-            )));
-        }
-        SetupWizardMessage::UpdateServerPassword(s) => {
-            state.work_in_progress_server_config.server_password = s;
-        }
-        SetupWizardMessage::StartWritingConfigToSd => {
-            state.current_step = SetupWizardStep::WriteConfigToSd;
-            state.is_writing_config = true;
-            let sd_card_to_write_to = state.selected_sd_card.clone().expect("has to be selected");
-            let server_config = state.work_in_progress_server_config.clone();
-            return Task::perform(
-                write_config_to_rpi(sd_card_to_write_to, server_config),
-                |function_result| {
-                    if let Err(err) = function_result {
-                        Message::ShowToast(false, format!("Error while writing config: {err}"))
-                    } else {
-                        Message::SetupWizard(SetupWizardMessage::FinishWritingConfigToSd)
-                    }
-                },
-            );
-        }
-        SetupWizardMessage::SetListOfDisks(list_of_disks) => {
-            state.list_of_disks = list_of_disks;
-        }
-        SetupWizardMessage::SelectSdCard(disk_info) => {
-            state.selected_sd_card = Some(disk_info.name);
-            state.show_sd_card_are_you_sure = false;
-        }
-        SetupWizardMessage::ShowSdCardAreYouSureMessage => {
-            state.show_sd_card_are_you_sure = true;
-        }
         SetupWizardMessage::UpdateServerCertbotEmail(s) => {
             state.work_in_progress_server_config.certbot_email = s;
         }
-        SetupWizardMessage::FinishWritingConfigToSd => {
-            state.is_writing_config = false;
+        SetupWizardMessage::SetUserForThisDevice {
+            username,
+            auth_token,
+        } => {
+            if let Ok(client_secret) = BASE64_STANDARD.decode(auth_token) {
+                state
+                    .work_in_progress_client_config
+                    .sync_config
+                    .client_credentials = Some(AuthCredentials {
+                    client_id: username,
+                    client_secret,
+                })
+            }
+        }
+        SetupWizardMessage::CopySetupScript => {
+            let setup_script = format!(
+                r#"
+#!/bin/bash
+
+# Update the system
+sudo apt update -y
+sudo apt upgrade -y
+
+# Create data dir
+sudo mkdir -p /mnt/idirfein_data
+sudo chown "$USER":"$(id -gn)" /mnt/idirfein_data
+
+# Automount harddrive on start and set static ip
+sudo tee /usr/local/bin/automount.sh > /dev/null << 'EOF'
+#!/bin/bash
+
+MOUNT_POINT="/mnt/idirfein_data"
+
+sudo ip addr add {0}/24 dev eth0 && sudo ip route add default via {6}
+# Find the first external disk (typically sda, sdb, etc)
+# Excluding mmcblk (SD card) and loop devices
+external_drive=$(lsblk -pnlo NAME,TYPE | grep -E 'disk' | grep -v 'mmcblk' | grep -v 'loop' | head -n 1 | awk '{{print $1}}')
+
+if [ -z "$external_drive" ]; then
+    exit 1
+fi
+
+# Find the first partition on the external drive
+external_partition="${{external_drive}}1"
+
+# Check if the partition exists
+if [ ! -b "$external_partition" ]; then
+    # If partition 1 doesn't exist, try using the whole disk
+    external_partition="$external_drive"
+fi
+
+mount "$external_partition" "$MOUNT_POINT"
+EOF
+sudo chown "$USER":"$(id -gn)" /usr/local/bin/automount.sh
+chmod +x /usr/local/bin/automount.sh
+
+sudo tee /etc/systemd/system/automount.service > /dev/null << 'EOF'
+[Unit]
+Description=Automatic mounting of external drives
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/automount.sh
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl enable automount.service
+sudo systemctl start automount.service
+
+# Download the server file
+sudo wget -O "/mnt/idirfein_data/idirfein_server" "https://raw.githubusercontent.com/leo030303/idirfein-resources/refs/heads/main/idirfein_server"
+sudo chmod +x /mnt/idirfein_data/idirfein_server
+sudo mkdir -p /mnt/idirfein_data/blog_content/www
+
+
+# Automatically run the binary 'idirfein_server' on startup
+sudo tee /usr/local/bin/idirfein_start.sh > /dev/null << 'EOF'
+#!/bin/bash
+cd /mnt/idirfein_data && ./idirfein_server
+EOF
+sudo chown "$USER":"$(id -gn)" /usr/local/bin/idirfein_start.sh
+chmod +x /usr/local/bin/idirfein_start.sh
+
+
+sudo tee /etc/systemd/system/idirfein.service > /dev/null << 'EOF'
+[Unit]
+Description=Idirfein web server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/idirfein_start.sh
+Restart=always
+RestartSec=5
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl enable idirfein.service
+
+sudo mkdir -p /usr/local/share/idirfein_server/
+sudo tee /usr/local/share/idirfein_server/users.json > /dev/null << 'EOF'
+{5}
+EOF
+
+if {1}; then
+    echo "All Done"
+    exit 1
+fi
+
+# Set up DuckDNS
+mkdir -p ~/duckdns
+cd ~/duckdns
+
+cat <<EOL > duck.sh
+#!/bin/bash
+echo url="https://www.duckdns.org/update?domains={2}&token={3}&ip=" | curl -k -o ~/duckdns/duck.log -K -
+EOL
+
+chmod 700 duck.sh
+
+# Add the DuckDNS script to crontab
+(crontab -l 2>/dev/null; echo "*/5 * * * * ~/duckdns/duck.sh >/dev/null 2>&1") | crontab -
+
+# Set up SSL certificates using Let's Encrypt
+sudo apt install -y certbot
+sudo certbot certonly --standalone --http-01-port 8000 -d {2}.duckdns.org --non-interactive --agree-tos --email {4}
+(crontab -l 2>/dev/null; echo "0 0 * * * sudo systemctl stop idirfein.service && certbot renew --http-01-port 8000 --quiet && sudo systemctl start idirfein.service
+") | crontab -
+
+mkdir ~/.certs
+ln -s /etc/letsencrypt/live/{2}.duckdns.org/fullchain.pem ~/.certs/fullchain
+ln -s /etc/letsencrypt/live/{2}.duckdns.org/privkey.pem ~/.certs/privkey
+
+
+echo "All Done"
+                "#,
+                state.work_in_progress_server_config.static_ip,
+                state.work_in_progress_server_config.is_lan_only,
+                state.work_in_progress_server_config.duckdns_domain,
+                state.work_in_progress_server_config.duckdns_token,
+                state.work_in_progress_server_config.certbot_email,
+                serde_json::to_string(&state.work_in_progress_server_config.users_list)
+                    .expect("Malformed Users List"),
+                state.work_in_progress_server_config.gateway_ip
+            );
+            return Task::done(Message::CopyValueToClipboard(setup_script));
+        }
+        SetupWizardMessage::UpdateServerGatewayIp(s) => {
+            state.work_in_progress_server_config.gateway_ip = s;
+        }
+        SetupWizardMessage::ConfirmLocalAccessDetails => {
+            if state.work_in_progress_server_config.static_ip.is_empty() {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Static IP can't be blank"),
+                ));
+            }
+            if !is_valid_ip(&state.work_in_progress_server_config.static_ip) {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Static IP has invalid format"),
+                ));
+            }
+            if state.work_in_progress_server_config.gateway_ip.is_empty() {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Gateway IP can't be blank"),
+                ));
+            }
+            if !is_valid_ip(&state.work_in_progress_server_config.gateway_ip) {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Gateway IP has invalid format"),
+                ));
+            }
+            state.work_in_progress_server_config.is_lan_only = true;
+            state.work_in_progress_client_config.sync_config.server_url =
+                format!("{}:8000", state.work_in_progress_server_config.static_ip);
+            return Task::done(Message::SetupWizard(SetupWizardMessage::GoToStep(
+                SetupWizardStep::CreateServerUsers,
+            )));
         }
     }
     Task::none()
