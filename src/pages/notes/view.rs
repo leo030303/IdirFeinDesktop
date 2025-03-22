@@ -2,14 +2,14 @@ use crate::pages::notes::notes_utils::get_colour_for_category;
 use crate::LOCALES;
 use fluent_templates::Loader;
 use iced::Alignment::Center;
-use iced_aw::{badge, color_picker, drop_down, DropDown};
+use iced_aw::{drop_down, DropDown};
 
 use iced::alignment::Horizontal;
 use iced::widget::{
     button, column, container, markdown, row, scrollable, svg, text, text_editor, text_input,
     Scrollable, Space, Svg, Tooltip,
 };
-use iced::{highlighter, Background, Length};
+use iced::{highlighter, Length};
 use iced::{Element, Fill, Font};
 
 use crate::app::Message;
@@ -31,26 +31,15 @@ pub fn main_view(state: &NotesPage) -> Element<Message> {
             column![]
         }],
         column![
-            row![
-                if state.show_document_statistics_view {
-                    if state.is_loading_note {
-                        loading_note_view(state)
-                    } else {
-                        document_statistics_view(state)
-                    }
+            row![if state.show_document_statistics_view {
+                if state.is_loading_note {
+                    loading_note_view(state)
                 } else {
-                    column![].into()
-                },
-                if state.show_manage_categories_view {
-                    if state.is_loading_note {
-                        loading_note_view(state)
-                    } else {
-                        manage_categories_view(state)
-                    }
-                } else {
-                    column![].into()
-                },
-            ]
+                    document_statistics_view(state)
+                }
+            } else {
+                column![].into()
+            },]
             .spacing(10),
             if state.current_file.is_some() {
                 row![
@@ -572,60 +561,6 @@ fn document_statistics_view(state: &NotesPage) -> Element<Message> {
     .into()
 }
 
-fn manage_categories_view(state: &NotesPage) -> Element<Message> {
-    column![
-        row![
-            text(LOCALES.lookup(&state.locale, "manage-categories"))
-                .width(Length::Fill)
-                .size(24),
-            Tooltip::new(
-                button(Svg::new(svg::Handle::from_memory(include_bytes!(
-                    "../../../icons/close.svg"
-                ))))
-                .on_press(Message::Notes(NotesPageMessage::ToggleManageCategoriesView))
-                .width(Length::Fixed(50.0)),
-                text(LOCALES.lookup(&state.locale, "close-categories-manager")),
-                iced::widget::tooltip::Position::Bottom
-            ),
-        ],
-        text_input(
-            &LOCALES.lookup(&state.locale, "add-new-category"),
-            &state.new_category_entry_text
-        )
-        .on_input(|s| Message::Notes(NotesPageMessage::SetNewCategoryText(s))),
-        row![
-            color_picker(
-                state.show_colour_picker,
-                state.current_color_picker_colour,
-                button(text(LOCALES.lookup(&state.locale, "pick-colour")))
-                    .on_press(Message::Notes(NotesPageMessage::ToggleColourPicker)),
-                Message::Notes(NotesPageMessage::ToggleColourPicker),
-                |colour| Message::Notes(NotesPageMessage::SetColourPickerColour(colour)),
-                LOCALES.lookup(&state.locale, "cancel"),
-                LOCALES.lookup(&state.locale, "submit")
-            ),
-            container(Space::with_width(20.0).height(Length::Fixed(20.0))).style(move |_| {
-                container::Style::default()
-                    .background(state.current_color_picker_colour)
-                    .border(iced::Border::default().rounded(5.0))
-            }),
-            button(text(LOCALES.lookup(&state.locale, "add-category")))
-                .on_press(Message::Notes(NotesPageMessage::AddCategory))
-        ]
-        .align_y(Center)
-        .spacing(20),
-        row(state.categories_list.iter().map(|category| {
-            badge(text(&category.name))
-                .style(|_, _| badge::Style {
-                    background: Background::Color(category.colour.to_iced_colour()),
-                    ..badge::Style::default()
-                })
-                .into()
-        }))
-    ]
-    .into()
-}
-
 fn markdown_guide_view(state: &NotesPage) -> Element<Message> {
     // TODO
     row![text(LOCALES.lookup(&state.locale, "markdown-guide"))].into()
@@ -673,17 +608,6 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
         .on_press(Message::Notes(
             NotesPageMessage::ToggleDocumentStatisticsView
         ))
-        .width(Length::Fill),
-        button(
-            text(if !state.show_manage_categories_view {
-                LOCALES.lookup(&state.locale, "manage-categories")
-            } else {
-                LOCALES.lookup(&state.locale, "hide-categories-manager")
-            })
-            .width(Length::Fill)
-            .align_x(Center)
-        )
-        .on_press(Message::Notes(NotesPageMessage::ToggleManageCategoriesView))
         .width(Length::Fill),
     ]
     .width(Length::Fixed(200.0));

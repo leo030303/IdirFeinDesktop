@@ -1,11 +1,11 @@
 use iced::widget::text_editor;
 use regex::Regex;
+use shiva::core::TransformerTrait;
 use std::{
     collections::HashMap,
     error::Error,
     ffi::OsStr,
-    fs::{self, File},
-    io::BufWriter,
+    fs::{self},
     os::linux::fs::MetadataExt,
     path::PathBuf,
 };
@@ -413,30 +413,29 @@ pub fn take_first_n_chars(input: &str, n: usize) -> String {
 }
 
 pub async fn export_pdf(text_to_convert: String, md_file_path: Option<PathBuf>) -> (bool, String) {
-    let mut pdf_config = mdproof::Config::default();
-    let export_path = md_file_path
-        .clone()
-        .unwrap_or(PathBuf::from("export.md"))
-        .with_extension("pdf");
-    pdf_config.title = String::from(
-        export_path
-            .file_stem()
-            .and_then(|os_str| os_str.to_str())
-            .unwrap_or("Title"),
-    );
-    if let Ok(pdf_document) = mdproof::markdown_to_pdf(&text_to_convert, &pdf_config) {
-        match File::create(&export_path) {
-            Ok(result_file) => match pdf_document.save(&mut BufWriter::new(result_file)) {
-                Ok(_) => (
-                    true,
-                    format!("PDF successfully exported to {export_path:?}"),
-                ),
-                Err(err) => (false, format!("PDF export failed: {err:?}")),
-            },
+    let input_bytes = bytes::Bytes::from(text_to_convert);
+
+    match shiva::markdown::Transformer::parse(&input_bytes) {
+        Ok(document) => match shiva::pdf::Transformer::generate(&document) {
+            Ok(output_bytes) => {
+                let export_path = md_file_path
+                    .unwrap_or(PathBuf::from("export.md"))
+                    .with_extension("pdf");
+
+                match std::fs::write(export_path.clone(), output_bytes) {
+                    Ok(_) => (
+                        true,
+                        format!("PDF successfully exported to {export_path:?}"),
+                    ),
+
+                    Err(err) => (false, format!("PDF export failed: {err:?}")),
+                }
+            }
+
             Err(err) => (false, format!("PDF export failed: {err:?}")),
-        }
-    } else {
-        (false, String::from("Failed to init PDF application"))
+        },
+
+        Err(err) => (false, format!("PDF export failed: {err:?}")),
     }
 }
 

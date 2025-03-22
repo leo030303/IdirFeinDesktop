@@ -26,8 +26,9 @@ use super::{
     },
     utils::{
         common::{
-            get_all_photos_by_name, get_detected_faces_for_image, get_named_people_for_display,
-            get_parent_folders, update_face_data, PhotoProcessingProgress,
+            get_all_photos_by_name, get_capture_time_of_image, get_detected_faces_for_image,
+            get_named_people_for_display, get_parent_folders, update_face_data,
+            PhotoProcessingProgress,
         },
         face_extraction::extract_all_faces,
         face_recognition::group_all_faces,
@@ -84,16 +85,8 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                                 })
                                 .collect::<Vec<PathBuf>>();
                             all_image_files.sort_unstable_by(|file_path1, file_path2| {
-                                file_path1
-                                    .metadata()
-                                    .map(|metadata| metadata.st_mtime())
-                                    .unwrap_or_default()
-                                    .cmp(
-                                        &file_path2
-                                            .metadata()
-                                            .map(|metadata| metadata.st_mtime())
-                                            .unwrap_or_default(),
-                                    )
+                                get_capture_time_of_image(file_path1)
+                                    .cmp(&get_capture_time_of_image(file_path2))
                                     .reverse()
                             });
                             all_image_files

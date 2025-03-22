@@ -299,9 +299,6 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                 return Task::done(Message::Notes(NotesPageMessage::CalculateNoteStatistics));
             }
         }
-        NotesPageMessage::ToggleManageCategoriesView => {
-            state.show_manage_categories_view = !state.show_manage_categories_view
-        }
         NotesPageMessage::CalculateNoteStatistics => {
             let note_text = state.editor_content.text();
             return Task::perform(

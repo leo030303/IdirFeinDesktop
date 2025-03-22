@@ -1,3 +1,5 @@
+use chrono::NaiveDateTime;
+use exif::{Reader, Tag};
 use image::DynamicImage;
 use opencv::{
     core::{Mat, MatTraitConstManual},
@@ -5,6 +7,8 @@ use opencv::{
     objdetect::{FaceRecognizerSF, FaceRecognizerSFTrait, FaceRecognizerSFTraitConst},
 };
 use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::BufReader;
 use std::{
     error::Error,
     ffi::OsString,
@@ -275,4 +279,41 @@ pub fn get_all_photos_by_name(target_name: String, parent_folders: &[PathBuf]) -
     all_pictures_of_target_person.sort_unstable();
     all_pictures_of_target_person.dedup();
     all_pictures_of_target_person
+}
+
+pub fn get_capture_time_of_image(image_path: &Path) -> i64 {
+    if let Ok(file) = File::open(image_path) {
+        let mut bufreader = BufReader::new(&file);
+        let exifreader = Reader::new();
+
+        if let Ok(exif) = exifreader.read_from_container(&mut bufreader) {
+            for field in exif.fields() {
+                if field.tag == Tag::DateTime {
+                    match field.value {
+                        exif::Value::Ascii(ref vec) if !vec.is_empty() => {
+                            if let Ok(datetime_values) = exif::DateTime::from_ascii(&vec[0]) {
+                                return NaiveDateTime::parse_from_str(
+                                    &format!(
+                                        "{}-{}-{} {}:{}:{}",
+                                        datetime_values.year,
+                                        datetime_values.month,
+                                        datetime_values.day,
+                                        datetime_values.hour,
+                                        datetime_values.minute,
+                                        datetime_values.second
+                                    ),
+                                    "%Y-%m-%d %H:%M:%S",
+                                )
+                                .map(|datetime_parsed| datetime_parsed.and_utc().timestamp())
+                                .unwrap_or_default();
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+    };
+    // Default to zero
+    0
 }
