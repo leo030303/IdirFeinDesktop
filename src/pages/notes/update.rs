@@ -4,7 +4,7 @@ use iced::{
 };
 use loro::{LoroDoc, UndoManager, VersionVector};
 use rfd::FileDialog;
-use std::{collections::HashMap, fs};
+use std::fs;
 
 use crate::{
     app::Message,
@@ -13,14 +13,12 @@ use crate::{
 
 use super::{
     notes_utils::{
-        apply_edit_to_note, export_pdf, export_to_website, get_category_for_note,
-        read_file_to_note, read_notes_from_folder, select_specific_string_in_editor,
-        NoteStatistics,
+        apply_edit_to_note, export_pdf, export_to_website, read_file_to_note,
+        read_notes_from_folder, select_specific_string_in_editor, NoteStatistics,
     },
     page::{
-        NoteCategory, NotesPage, NotesPageMessage, SerializableColour, ARCHIVED_FILE_NAME,
-        CATEGORIES_FILE_NAME, INITIAL_ORIGIN_STR, LORO_NOTE_ID, MAX_UNDO_STEPS,
-        NEW_NOTE_TEXT_INPUT_ID, RENAME_NOTE_TEXT_INPUT_ID,
+        NotesPage, NotesPageMessage, ARCHIVED_FILE_NAME, INITIAL_ORIGIN_STR, LORO_NOTE_ID,
+        MAX_UNDO_STEPS, NEW_NOTE_TEXT_INPUT_ID, RENAME_NOTE_TEXT_INPUT_ID,
     },
 };
 
@@ -213,7 +211,6 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             return Task::perform(
                 async {
                     FileDialog::new()
-                        .set_directory("/")
                         .set_can_create_directories(true)
                         .pick_folder()
                 },
@@ -222,8 +219,7 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         }
         NotesPageMessage::SetNotesFolder(selected_folder) => {
             state.selected_folder = selected_folder;
-            return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList))
-                .chain(Task::done(Message::Notes(NotesPageMessage::LoadCategories)));
+            return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList));
         }
         NotesPageMessage::LoadFolderAsNotesList => {
             if let Some(selected_folder) = state.selected_folder.clone() {
@@ -240,6 +236,7 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             // Save current file content
             let old_filepath = state.current_file.take();
             state.current_file = Some(new_filepath.clone());
+            state.spelling_corrections_list = vec![];
             return Task::perform(
                 read_file_to_note(new_filepath, old_filepath, state.editor_content.text()),
                 |new_content| Message::Notes(NotesPageMessage::SetTextEditorContent(new_content)),
@@ -435,109 +432,6 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             state.display_delete_view = false;
             state.current_note_being_managed_path = note_path;
         }
-        NotesPageMessage::LoadCategories => {
-            if let Some(mut selected_folder) = state.selected_folder.clone() {
-                return Task::perform(
-                    async move {
-                        selected_folder.push(CATEGORIES_FILE_NAME);
-                        let categories_file = selected_folder;
-                        if let Ok(categories_json) = fs::read_to_string(categories_file) {
-                            let categories_list: (Vec<NoteCategory>, HashMap<String, Vec<String>>) =
-                                serde_json::from_str(&categories_json).unwrap_or_default();
-                            categories_list
-                        } else {
-                            (vec![], HashMap::new())
-                        }
-                    },
-                    |categories_list| {
-                        Message::Notes(NotesPageMessage::SetCategoriesList(categories_list))
-                    },
-                );
-            }
-        }
-        NotesPageMessage::SetCategoriesList(categories_list) => {
-            state.categories_list = categories_list.0;
-            state.categorised_notes_list = categories_list.1;
-        }
-        NotesPageMessage::SaveCategoriesList => {
-            let categories_list = (
-                state.categories_list.clone(),
-                state.categorised_notes_list.clone(),
-            );
-            if let Some(mut selected_folder) = state.selected_folder.clone() {
-                return Task::perform(
-                    async move {
-                        selected_folder.push(CATEGORIES_FILE_NAME);
-                        let categories_file = selected_folder;
-                        match serde_json::to_string(&categories_list) {
-                            Ok(serialised_categories) => {
-                                match fs::write(categories_file, serialised_categories) {
-                                    Ok(_) => (true, String::new()),
-                                    Err(err) => {
-                                        (false, format!("Failed to save categories: {err:?}"))
-                                    }
-                                }
-                            }
-                            Err(err) => (false, format!("Failed to save categories: {err:?}")),
-                        }
-                    },
-                    |(success, toast_message)| {
-                        if success {
-                            Message::None
-                        } else {
-                            Message::ShowToast(success, toast_message)
-                        }
-                    },
-                );
-            }
-        }
-        NotesPageMessage::AddCategory => {
-            let serializable_colour =
-                SerializableColour::from_iced_color(state.current_color_picker_colour);
-            if serializable_colour != SerializableColour::default() {
-                if !state.new_category_entry_text.is_empty() {
-                    state.categories_list.push(NoteCategory {
-                        name: state.new_category_entry_text.clone(),
-                        colour: serializable_colour,
-                    });
-                    return Task::done(Message::Notes(NotesPageMessage::SaveCategoriesList));
-                } else {
-                    return Task::done(Message::ShowToast(
-                        false,
-                        String::from("Choose a name for the category"),
-                    ));
-                }
-            } else {
-                return Task::done(Message::ShowToast(
-                    false,
-                    String::from("Select a colour for the category"),
-                ));
-            }
-        }
-        NotesPageMessage::DeleteCategory(category_name_to_remove) => {
-            state.categories_list.remove(
-                state
-                    .categories_list
-                    .iter()
-                    .position(|category| category.name == category_name_to_remove)
-                    .unwrap(),
-            );
-            state
-                .categorised_notes_list
-                .remove(&category_name_to_remove);
-            return Task::done(Message::Notes(NotesPageMessage::SaveCategoriesList));
-        }
-        NotesPageMessage::SetNewCategoryText(s) => state.new_category_entry_text = s,
-        NotesPageMessage::SetColourPickerColour(colour) => {
-            state.current_color_picker_colour = colour;
-            state.show_colour_picker = false;
-        }
-        NotesPageMessage::ToggleColourPicker => {
-            state.show_colour_picker = !state.show_colour_picker;
-        }
-        NotesPageMessage::SetWebsiteFolder(selected_folder) => {
-            state.website_folder = selected_folder
-        }
         NotesPageMessage::Undo => {
             if state.undo_manager.undo(&state.note_crdt).is_ok() {
                 let (cursor_y, cursor_x) = state.editor_content.cursor_position();
@@ -572,7 +466,13 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                 async move {
                     dictionary
                         .check_indices(&editor_content)
-                        .map(|(index, str_value)| (index, str_value.to_string()))
+                        .filter_map(|(_, str_value)| {
+                            if str_value.chars().all(|c| c.is_alphabetic()) {
+                                Some(str_value.to_string())
+                            } else {
+                                None
+                            }
+                        })
                         .collect()
                 },
                 |spelling_corrections_list| {
@@ -656,35 +556,29 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
                 };
             state.archived_notes_list = archived_notes_list;
         }
-        NotesPageMessage::CategoriseNote(category_option) => {
-            let target_note_name = state
-                .current_note_being_managed_path
-                .as_ref()
-                .unwrap()
-                .file_stem()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or("Couldn't read filename")
-                .to_lowercase();
-            if let Some(category_name) = category_option {
-                state
-                    .categorised_notes_list
-                    .get_mut(&category_name)
-                    .unwrap()
-                    .push(target_note_name);
-            } else if let Some(category_name) =
-                get_category_for_note(&state.categorised_notes_list, &target_note_name)
-            {
-                if let Some(notes_list) = state.categorised_notes_list.get_mut(&category_name) {
-                    notes_list.remove(
-                        notes_list
-                            .iter()
-                            .position(|note_name| *note_name == target_note_name)
-                            .unwrap(),
+        NotesPageMessage::OpenWebsiteStylesFile => {
+            if let Some(website_folder) = state.website_folder.as_ref() {
+                let css_file = website_folder.join("www").join("styles.css");
+                if css_file.exists() {
+                    state.is_loading_note = true;
+                    // Save current file content
+                    let old_filepath = state.current_file.take();
+                    state.current_file = Some(css_file.clone());
+                    state.spelling_corrections_list = vec![];
+                    state.show_markdown = false;
+                    return Task::perform(
+                        read_file_to_note(css_file, old_filepath, state.editor_content.text()),
+                        |new_content| {
+                            Message::Notes(NotesPageMessage::SetTextEditorContent(new_content))
+                        },
                     );
                 }
+            } else {
+                return Task::done(Message::ShowToast(
+                    false,
+                    String::from("Can't open styles file, folder for website files is not set"),
+                ));
             }
-            return Task::done(Message::Notes(NotesPageMessage::SaveCategoriesList));
         }
     }
     Task::none()

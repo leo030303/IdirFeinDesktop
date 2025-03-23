@@ -1,9 +1,7 @@
-use iced::widget::text_editor;
+use iced::widget::{markdown, text_editor};
 use regex::Regex;
 use shiva::core::TransformerTrait;
 use std::{
-    collections::HashMap,
-    error::Error,
     ffi::OsStr,
     fs::{self},
     os::linux::fs::MetadataExt,
@@ -13,7 +11,7 @@ use std::{
 use pulldown_cmark::Options;
 use walkdir::WalkDir;
 
-use super::page::{Note, NoteCategory, NotesPage, SerializableColour, LORO_NOTE_ID};
+use super::page::{Note, NotesPage, LORO_NOTE_ID};
 
 #[derive(Debug, Clone)]
 pub struct NoteStatistics {
@@ -389,19 +387,6 @@ pub async fn read_notes_from_folder(selected_folder: PathBuf) -> Vec<Note> {
     notes_list
 }
 
-pub fn get_colour_for_category(
-    categories_list: &[NoteCategory],
-    category_name: &str,
-) -> iced::Color {
-    categories_list
-        .iter()
-        .find(|category| category.name == category_name)
-        .map_or(SerializableColour::default(), |category| {
-            category.colour.clone()
-        })
-        .to_iced_colour()
-}
-
 pub fn take_first_n_chars(input: &str, n: usize) -> String {
     let end_index = input
         .char_indices()
@@ -439,14 +424,32 @@ pub async fn export_pdf(text_to_convert: String, md_file_path: Option<PathBuf>) 
     }
 }
 
-fn add_html_to_template(
-    html_content: &str,
-    mut website_folder: PathBuf,
-) -> Result<String, Box<dyn Error>> {
-    website_folder.push("template.html");
-    let template_file_content = fs::read_to_string(website_folder)?;
-    let re = Regex::new(r"__CONTENT__")?;
-    Ok(re.replace(&template_file_content, html_content).to_string())
+fn add_html_to_template(html_content: &str, page_title: &str) -> String {
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>{page_title}</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <header>
+    <h1>{page_title}</h1>
+  </header>
+
+  <main>
+    {html_content}
+  </main>
+</body>
+
+</html>"#,
+    )
 }
 
 pub fn convert_to_html(text_to_convert: &str) -> String {
@@ -483,14 +486,13 @@ pub async fn export_to_website(
     let mut html_export_path = website_folder.clone();
     let mut markdown_export_path = website_folder.clone();
     let initial_html = convert_to_html(&text_to_convert);
-    let converted_html_result = add_html_to_template(&initial_html, website_folder);
-    if let Err(err) = converted_html_result {
-        return (
-            false,
-            format!("Error inserting HTML into template: {err:?}"),
-        );
-    }
-    let converted_html = converted_html_result.expect("Can't fail");
+    let converted_html = add_html_to_template(
+        &initial_html,
+        &md_file_path
+            .file_stem()
+            .map(|file_stem| file_stem.to_string_lossy())
+            .unwrap_or_default(),
+    );
 
     if let Some(file_export_filestem) = md_file_path.file_stem() {
         let mut html_export_filename = file_export_filestem.to_os_string();
@@ -537,16 +539,266 @@ pub async fn export_to_website(
     }
 }
 
-pub fn get_category_for_note(
-    categorised_notes_list: &HashMap<String, Vec<String>>,
-    note_name: &String,
-) -> Option<String> {
-    for (key, notes_list) in categorised_notes_list.iter() {
-        if notes_list.contains(note_name) {
-            return Some(key.clone());
-        }
+pub fn get_markdown_guide_items() -> Vec<markdown::Item> {
+    markdown::parse(r#"# Guide to Markdown
+
+## Paragraph
+By writing regular text you are basically writing a paragraph.
+
+```
+This is a paragraph.
+```
+This is a paragraph.
+
+---
+
+
+## Headings
+There are 6 heading variants. The number of '#' symbols, followed by text, indicates the importance of the heading.
+
+```
+# Heading 1
+## Heading 2
+### Heading 3
+#### Heading 4
+##### Heading 5
+###### Heading 6
+```
+
+# Heading 1
+## Heading 2
+### Heading 3
+#### Heading 4
+##### Heading 5
+###### Heading 6
+
+---
+
+
+## Emphasis
+Modifying text is so neat and easy. You can make your text bold, italic and strikethrough.
+
+```
+Using two asterisks **this text is bold**.  
+Two underscores __work as well__.  
+Let's make it *italic now*.  
+You guessed it, _one underscore is also enough_.  
+Can we combine **_both of that_?** Absolutely.
+What if I want to ~~strikethrough~~?
+```
+
+Using two asterisks **this text is bold**.  
+Two underscores __work as well__.  
+Let's make it *italic now*.  
+You guessed it, _one underscore is also enough_.  
+Can we combine **_both of that_?** Absolutely.  
+What if I want to ~~strikethrough~~?
+
+---
+
+
+## Blockquote
+Want to emphasise importance of the text? Say no more.
+
+```
+> This is a blockquote.
+> Want to write on a new line with space between?
+>
+> > And nested? No problem at all.
+> >
+> > > PS. you can **style** your text _as you want_.
+```
+
+> This is a blockquote.
+> Want to write on a new line with space between?
+>
+> > And nested? No problem at all.
+> >
+> > > PS. you can **style** your text _as you want_. :
+
+---
+
+
+## Images
+The best way is to simply drag & drop image from your computer directly. You can also create reference to image and assign it that way.  
+Here is the syntax.
+
+```
+![text if the image fails to load](auto-generated-path-to-file-when-you-upload-image "Text displayed on hover")
+
+[logo]: auto-generated-path-to-file-when-you-upload-image "Hover me"
+![error text][logo]
+```
+
+![text if the image fails to load](path/to/file)
+
+---
+
+
+## Links
+Similar to images, links can also be inserted directly or by creating a reference. You can create both inline and block links.
+
+[markdown-cheatsheet]: https://github.com/im-luka/markdown-cheatsheet
+[docs]: https://github.com/adam-p/markdown-here
+
+[Like it so far? Follow me on GitHub](https://github.com/im-luka)  
+[My Markdown Cheatsheet - star it if you like it][markdown-cheatsheet]  
+Find some great docs [here][docs]
+
+---
+
+## Code
+You can cerate both inline and full block code snippets. You can also define programming language you were using in your snippet. All by using backticks.
+
+```
+    I created `.env` file at the root.
+    Backticks inside backticks? `` `No problem.` ``
+
+    ```
+    {
+      learning: "Markdown",
+      showing: "block code snippet"
     }
-    None
+    ```
+
+    ```js
+    const x = "Block code snippet in JS";
+    console.log(x);
+    ```
+```
+
+I created `.env` file at the root.
+Backticks inside backticks? `` `No problem.` ``
+
+```
+{
+  learning: "Markdown",
+  showing: "block code snippet"
+}
+```
+
+```js
+const x = "Block code snippet in JS";
+console.log(x);
+```
+
+---
+
+## Lists
+As you can do in HTML, Markdown allows creating of both ordered and unordered lists.
+
+
+### Ordered List
+
+```
+1. HTML
+2. CSS
+3. Javascript
+4. React
+7. I'm Frontend Dev now 👨🏼‍🎨
+```
+
+1. HTML
+2. CSS
+3. Javascript
+4. React
+7. I'm Frontend Dev now 👨🏼‍🎨
+
+### Unordered List
+
+```
+- Node.js
++ Express
+* Nest.js
+- Learning Backend ⌛️
+```
+
+- Node.js
++ Express
+* Nest.js
+- Learning Backend ⌛️
+
+### Mixed List
+You can also mix both of the lists and create sublists.  
+**PS.** Try not to create lists deeper than two levels. It is the best practice.
+
+```
+1. Learn Basics
+   1. HTML
+   2. CSS
+   7. Javascript
+2. Learn One Framework
+   - React 
+     - Router
+     - Redux
+   * Vue
+   + Svelte
+```
+
+1. Learn Basics
+   1. HTML
+   2. CSS
+   7. Javascript
+2. Learn One Framework
+   - React 
+     - Router
+     - Redux
+   * Vue
+   + Svelte
+
+---
+
+## Task List
+Keeping track of the tasks that are done, and those that need to be done.
+
+```
+- [x] Learn Markdown
+- [ ] Learn Frontend Development
+- [ ] Learn Full Stack Development
+```
+
+- [x] Learn Markdown
+- [ ] Learn Frontend Development
+- [ ] Learn Full Stack Development
+
+---
+
+## Horizontal Line
+You can use asterisks, hyphens or underlines (*, -, _) to create horizontal line.  
+The only rule is that you must include at least three chars of the symbol.
+
+```
+First Horizontal Line
+
+***
+
+Second One
+
+-----
+
+Third
+
+_________
+```
+
+First Horizontal Line
+
+***
+
+Second One
+
+-----
+
+Third
+
+_________
+
+
+---
+
+
+
+"#).collect()
 }
 
 #[cfg(test)]
@@ -560,7 +812,7 @@ mod tests {
     use super::*;
     #[test]
     fn loro_state_matches_editor_state() {
-        let mut test_state = NotesPage::new(&NotesPageConfig::default());
+        let mut test_state = NotesPage::new(&NotesPageConfig::default(), None);
         let list_of_actions = vec![
             text_editor::Action::Edit(Edit::Insert('e')),
             text_editor::Action::Edit(Edit::Insert('e')),

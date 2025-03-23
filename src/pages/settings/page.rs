@@ -66,8 +66,6 @@ pub enum SettingsPageMessage {
     NotesSetShowConfirmDelete(bool),
     NotesSetAutocompleteBrackets(bool),
     NotesSetAutocompleteLists(bool),
-    NotesPickWebsiteFolder,
-    NotesSetWebsiteFolder(Option<PathBuf>),
     PasswordsPickDefaultDatabase,
     PasswordsSetDefaultDatabase(Option<PathBuf>),
     PasswordsSetShowSidebarOnStart(bool),
@@ -89,6 +87,8 @@ pub enum SettingsPageMessage {
     SyncSetServerUrl,
     SyncPickDefaultFolder,
     SyncSetDefaultFolder(Option<PathBuf>),
+    SyncPickWebsiteFolder,
+    SyncSetWebsiteFolder(Option<PathBuf>),
     SyncSetShouldSync(bool),
 }
 

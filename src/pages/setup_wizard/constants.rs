@@ -1,5 +1,5 @@
 // Source URL and destination filename
-pub const APP_DATA_URLS: [(&str, &str); 191] = [
+pub const APP_DATA_URLS: [(&str, &str); 190] = [
     (
         "https://raw.githubusercontent.com/leo030303/idirfein-resources/refs/heads/main/idirfein_server",
         "idirfein_server",
@@ -7,10 +7,6 @@ pub const APP_DATA_URLS: [(&str, &str); 191] = [
     (
         "https://raw.githubusercontent.com/leo030303/idirfein-resources/refs/heads/main/web/styles.css",
         "web/styles.css",
-    ),
-    (
-        "https://raw.githubusercontent.com/leo030303/idirfein-resources/refs/heads/main/web/template.html",
-        "web/template.html",
     ),
     (
         "https://raw.githubusercontent.com/leo030303/idirfein-resources/refs/heads/main/models/blazefaces-640.onnx",

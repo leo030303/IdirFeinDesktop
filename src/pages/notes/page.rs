@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -15,11 +14,10 @@ use serde::{Deserialize, Serialize};
 use crate::app::Message;
 use crate::constants::APP_ID;
 
-use super::notes_utils::NoteStatistics;
+use super::notes_utils::{self, NoteStatistics};
 use super::update::update;
 use super::view::{main_view, tool_view};
 
-pub const CATEGORIES_FILE_NAME: &str = ".categories";
 pub const ARCHIVED_FILE_NAME: &str = ".archived";
 pub const TEXT_EDITOR_ID: &str = "TEXT_EDITOR_ID";
 pub const NEW_NOTE_TEXT_INPUT_ID: &str = "NEW_NOTE_TEXT_INPUT_ID";
@@ -27,35 +25,6 @@ pub const RENAME_NOTE_TEXT_INPUT_ID: &str = "RENAME_NOTE_TEXT_INPUT_ID";
 pub const LORO_NOTE_ID: &str = "LORO_NOTE_ID";
 pub const INITIAL_ORIGIN_STR: &str = "initial";
 pub const MAX_UNDO_STEPS: usize = 10000;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NoteCategory {
-    pub name: String,
-    pub colour: SerializableColour,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
-pub struct SerializableColour {
-    pub red: f32,
-    pub green: f32,
-    pub blue: f32,
-    pub transparency: f32,
-}
-
-impl SerializableColour {
-    pub fn from_iced_color(value: iced::Color) -> Self {
-        Self {
-            red: value.r,
-            green: value.g,
-            blue: value.b,
-            transparency: value.a,
-        }
-    }
-
-    pub fn to_iced_colour(&self) -> iced::Color {
-        iced::Color::from_rgba(self.red, self.green, self.blue, self.transparency)
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct Note {
@@ -73,7 +42,6 @@ pub struct NotesPageConfig {
     pub confirm_before_delete: bool,
     pub autocomplete_brackets_etc: bool,
     pub autocomplete_lists: bool,
-    pub website_folder: Option<PathBuf>,
 }
 
 impl Default for NotesPageConfig {
@@ -86,7 +54,6 @@ impl Default for NotesPageConfig {
             confirm_before_delete: true,
             autocomplete_brackets_etc: true,
             autocomplete_lists: true,
-            website_folder: None,
         }
     }
 }
@@ -97,6 +64,7 @@ pub struct NotesPage {
     pub(crate) note_crdt: LoroDoc,
     pub(crate) undo_manager: UndoManager,
     pub(crate) markdown_preview_items: Vec<markdown::Item>,
+    pub(crate) markdown_guide_items: Vec<markdown::Item>,
     pub(crate) theme: Theme,
     pub(crate) show_sidebar: bool,
     pub(crate) show_markdown: bool,
@@ -118,14 +86,9 @@ pub struct NotesPage {
     pub(crate) display_rename_view: bool,
     pub(crate) rename_note_entry_text: String,
     pub(crate) display_delete_view: bool,
-    pub(crate) categories_list: Vec<NoteCategory>,
-    pub(crate) categorised_notes_list: HashMap<String, Vec<String>>,
-    pub(crate) new_category_entry_text: String,
-    pub(crate) current_color_picker_colour: iced::Color,
-    pub(crate) show_colour_picker: bool,
     pub(crate) website_folder: Option<PathBuf>,
     pub(crate) autocomplete_brackets_etc: bool,
-    pub(crate) spelling_corrections_list: Vec<(usize, String)>,
+    pub(crate) spelling_corrections_list: Vec<String>,
     pub(crate) show_spell_check_view: bool,
     pub(crate) spell_check_dictionary: Dictionary,
     pub(crate) display_archive_view: bool,
@@ -166,32 +129,23 @@ pub enum NotesPageMessage {
     DeleteNote,
     ToggleDeleteNoteView,
     ShowMenuForNote(Option<PathBuf>),
-    LoadCategories,
-    SetCategoriesList((Vec<NoteCategory>, HashMap<String, Vec<String>>)),
-    SaveCategoriesList,
-    AddCategory,
-    DeleteCategory(String),
-    SetNewCategoryText(String),
-    SetColourPickerColour(iced::Color),
-    ToggleColourPicker,
-    SetWebsiteFolder(Option<PathBuf>),
     SetAutocompleteBrackets(bool),
     Undo,
     Redo,
     CalculateSpellingCorrectionsList,
     ToggleSpellCheckView,
-    SetSpellingCorrectionsList(Vec<(usize, String)>),
+    SetSpellingCorrectionsList(Vec<String>),
     GoToSpellingMistake(usize, String),
     ArchiveNote,
     UnarchiveNote,
     ToggleArchiveNoteView,
     ToggleShowArchivedNotes,
     LoadArchivedList,
-    CategoriseNote(Option<String>),
+    OpenWebsiteStylesFile,
 }
 
 impl NotesPage {
-    pub fn new(config: &NotesPageConfig) -> Self {
+    pub fn new(config: &NotesPageConfig, website_folder: Option<PathBuf>) -> Self {
         let locale: fluent_templates::LanguageIdentifier = current_locale::current_locale()
             .expect("Can't get locale")
             .parse()
@@ -208,21 +162,25 @@ impl NotesPage {
             .as_path()
             .join(APP_ID);
         let locale_str = current_locale::current_locale().expect("Can't get locale");
-        let aff_content = fs::read_to_string(
-            idirfein_data_dir
-                .join("dictionaries")
-                .join(locale_str.to_uppercase())
-                .join("index.aff"),
-        )
-        .unwrap_or_default();
+        let mut locale_dictionary_dir = idirfein_data_dir
+            .join("dictionaries")
+            .join(locale_str.to_uppercase());
+        // If dictionary doesn't exist for specific region language, revert to the base language
+        if !locale_dictionary_dir.exists() {
+            if let Some(base_lang) = locale_str.to_uppercase().split('-').next() {
+                locale_dictionary_dir = idirfein_data_dir.join("dictionaries").join(base_lang);
+            }
+        }
+        // If that also fails, revert to english
+        if !locale_dictionary_dir.exists() {
+            locale_dictionary_dir = idirfein_data_dir.join("dictionaries").join("EN");
+        }
 
-        let dic_content = fs::read_to_string(
-            idirfein_data_dir
-                .join("dictionaries")
-                .join(locale_str.to_uppercase())
-                .join("index.dic"),
-        )
-        .unwrap_or_default();
+        let aff_content = fs::read_to_string(locale_dictionary_dir.join("index.aff"))
+            .expect("Failed to create dictionary, missing aff file");
+
+        let dic_content = fs::read_to_string(locale_dictionary_dir.join("index.dic"))
+            .expect("Failed to create dictionary, missing dic file");
 
         let spell_check_dictionary: Dictionary = zspell::builder()
             .config_str(&aff_content)
@@ -236,6 +194,7 @@ impl NotesPage {
             undo_manager,
             note_crdt: loro_doc,
             markdown_preview_items: markdown::parse("").collect(),
+            markdown_guide_items: notes_utils::get_markdown_guide_items(),
             theme,
             show_sidebar: config.show_sidebar_on_start,
             show_markdown: config.show_markdown_on_start,
@@ -261,11 +220,7 @@ impl NotesPage {
             display_rename_view: false,
             rename_note_entry_text: String::new(),
             display_delete_view: false,
-            categories_list: vec![],
-            new_category_entry_text: String::new(),
-            current_color_picker_colour: iced::Color::default(),
-            show_colour_picker: false,
-            website_folder: config.website_folder.clone(),
+            website_folder,
             autocomplete_brackets_etc: config.autocomplete_brackets_etc,
             spelling_corrections_list: vec![],
             show_spell_check_view: false,
@@ -273,13 +228,11 @@ impl NotesPage {
             display_archive_view: false,
             archived_notes_list: vec![],
             show_archived_notes: false,
-            categorised_notes_list: HashMap::new(),
         }
     }
 
     pub fn opening_task() -> Task<Message> {
         Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList))
-            .chain(Task::done(Message::Notes(NotesPageMessage::LoadCategories)))
     }
 
     pub fn closing_task(&mut self) -> Task<Message> {

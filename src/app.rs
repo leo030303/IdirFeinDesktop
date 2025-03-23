@@ -83,7 +83,10 @@ impl AppState {
                 config: config.clone(),
                 current_page: config.default_page_on_open.clone(),
                 is_closing: false,
-                notes_page: NotesPage::new(&config.notes_config),
+                notes_page: NotesPage::new(
+                    &config.notes_config,
+                    config.sync_config.website_folder.clone(),
+                ),
                 passwords_page: PasswordsPage::new(&config.passwords_config),
                 tasks_page: TasksPage::new(&config.tasks_config),
                 settings_page: SettingsPage::new(&config),

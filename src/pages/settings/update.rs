@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::PathBuf;
 
 use iced::Task;
@@ -5,6 +6,7 @@ use rfd::FileDialog;
 use url::Url;
 
 use crate::config::AppConfig;
+use crate::constants::APP_ID;
 use crate::pages::gallery::page::GalleryPageMessage;
 use crate::pages::notes::page::NotesPageMessage;
 use crate::pages::passwords::page::PasswordsPageMessage;
@@ -51,7 +53,6 @@ pub fn update(
             return Task::perform(
                 async {
                     FileDialog::new()
-                        .set_directory("/")
                         .set_can_create_directories(true)
                         .pick_folder()
                 },
@@ -93,25 +94,6 @@ pub fn update(
                 NotesPageMessage::SetAutoCompleteLists(b),
             )));
         }
-        SettingsPageMessage::NotesPickWebsiteFolder => {
-            return Task::perform(
-                async {
-                    FileDialog::new()
-                        .set_directory("/")
-                        .set_can_create_directories(true)
-                        .pick_folder()
-                },
-                |selected_folder| {
-                    Message::Settings(SettingsPageMessage::NotesSetWebsiteFolder(selected_folder))
-                },
-            );
-        }
-        SettingsPageMessage::NotesSetWebsiteFolder(selected_folder) => {
-            app_config.notes_config.website_folder = selected_folder.clone();
-            return Task::done(Message::SaveConfig).chain(Task::done(Message::Notes(
-                NotesPageMessage::SetWebsiteFolder(selected_folder),
-            )));
-        }
         SettingsPageMessage::PasswordsPickDefaultDatabase => {
             return Task::perform(
                 async {
@@ -139,7 +121,6 @@ pub fn update(
             return Task::perform(
                 async {
                     FileDialog::new()
-                        .set_directory("/")
                         .set_can_create_directories(true)
                         .pick_folder()
                 },
@@ -210,7 +191,6 @@ pub fn update(
             return Task::perform(
                 async {
                     FileDialog::new()
-                        .set_directory("/")
                         .set_can_create_directories(true)
                         .pick_folder()
                 },
@@ -260,7 +240,6 @@ pub fn update(
             return Task::perform(
                 async {
                     FileDialog::new()
-                        .set_directory("/")
                         .set_can_create_directories(true)
                         .pick_folder()
                 },
@@ -277,6 +256,39 @@ pub fn update(
                     String::from("Close and reopen the app to start using the new sync folder"),
                 )));
             }
+        }
+        SettingsPageMessage::SyncPickWebsiteFolder => {
+            return Task::perform(
+                async {
+                    FileDialog::new()
+                        .set_can_create_directories(true)
+                        .pick_folder()
+                },
+                |selected_folder| {
+                    Message::Settings(SettingsPageMessage::SyncSetWebsiteFolder(selected_folder))
+                },
+            );
+        }
+        SettingsPageMessage::SyncSetWebsiteFolder(selected_folder) => {
+            app_config.sync_config.website_folder = selected_folder.clone();
+            if let Some(selected_folder) = selected_folder {
+                let css_file = selected_folder.join("www").join("styles.css");
+                if !css_file.exists() {
+                    let _ = fs::create_dir_all(selected_folder.join("www"));
+                    let _ = fs::copy(
+                        dirs::data_dir()
+                            .expect("Need a data dir")
+                            .join(APP_ID)
+                            .join("web")
+                            .join("styles.css"),
+                        css_file,
+                    );
+                }
+            }
+            return Task::done(Message::SaveConfig).chain(Task::done(Message::ShowToast(
+                true,
+                String::from("Close and reopen the app to start using the new website folder"),
+            )));
         }
         SettingsPageMessage::SyncSetShouldSync(b) => {
             app_config.sync_config.should_sync = b;

@@ -72,7 +72,6 @@ pub fn update(state: &mut SyncPage, message: SyncPageMessage) -> Task<Message> {
             return Task::perform(
                 async {
                     FileDialog::new()
-                        .set_directory("/")
                         .set_can_create_directories(true)
                         .pick_folder()
                 },

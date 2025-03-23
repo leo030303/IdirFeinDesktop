@@ -1,4 +1,3 @@
-use crate::pages::notes::notes_utils::get_colour_for_category;
 use crate::LOCALES;
 use fluent_templates::Loader;
 use iced::Alignment::Center;
@@ -6,8 +5,8 @@ use iced_aw::{drop_down, DropDown};
 
 use iced::alignment::Horizontal;
 use iced::widget::{
-    button, column, container, markdown, row, scrollable, svg, text, text_editor, text_input,
-    Scrollable, Space, Svg, Tooltip,
+    button, column, markdown, row, scrollable, svg, text, text_editor, text_input, Scrollable,
+    Space, Svg, Tooltip,
 };
 use iced::{highlighter, Length};
 use iced::{Element, Fill, Font};
@@ -15,7 +14,6 @@ use iced::{Element, Fill, Font};
 use crate::app::Message;
 use crate::pages::notes::page::NEW_NOTE_TEXT_INPUT_ID;
 
-use super::notes_utils::get_category_for_note;
 use super::page::{Note, NotesPage, NotesPageMessage, RENAME_NOTE_TEXT_INPUT_ID, TEXT_EDITOR_ID};
 
 pub fn main_view(state: &NotesPage) -> Element<Message> {
@@ -231,19 +229,22 @@ fn spell_check_view(state: &NotesPage) -> Element<Message> {
                 .width(Length::Fill)
                 .align_x(Center)]
         } else {
-            column![Scrollable::new(column(
-                state
-                    .spelling_corrections_list
-                    .iter()
-                    .map(|(index, spelling_mistake_string)| {
-                        button(text(spelling_mistake_string))
-                            .on_press(Message::Notes(NotesPageMessage::GoToSpellingMistake(
-                                *index,
-                                spelling_mistake_string.to_string(),
-                            )))
-                            .into()
-                    },)
-            ))]
+            column![Scrollable::new(
+                column(
+                    state
+                        .spelling_corrections_list
+                        .iter()
+                        .map(|spelling_mistake_string| {
+                            text(format!("\n{spelling_mistake_string}"))
+                                .font(Font {
+                                    style: iced::font::Style::Italic,
+                                    ..Default::default()
+                                })
+                                .into()
+                        },)
+                )
+                .width(Length::Fill)
+            )]
         },
     ]
     .into()
@@ -295,38 +296,13 @@ fn manage_note_options_view(state: &NotesPage) -> Element<Message> {
 fn sidebar_note_button<'a>(state: &'a NotesPage, note: &'a Note) -> Element<'a, Message> {
     row![
         button(
-            row![
-                if let Some(category_name) = get_category_for_note(
-                    &state.categorised_notes_list,
-                    &note
-                        .file_path
-                        .file_stem()
-                        .unwrap_or_default()
-                        .to_str()
-                        .unwrap_or(&LOCALES.lookup(&state.locale, "couldnt-read-filename"))
-                        .to_lowercase()
-                ) {
-                    column![
-                        container(Space::with_width(20.0).height(Length::Fixed(20.0))).style(
-                            move |_| container::Style::default()
-                                .background(get_colour_for_category(
-                                    &state.categories_list,
-                                    &category_name
-                                ))
-                                .border(iced::Border::default().rounded(5.0))
-                        )
-                    ]
-                } else {
-                    column![]
-                },
-                text(note.button_title.clone())
-                    .font(Font {
-                        weight: iced::font::Weight::Semibold,
-                        ..Default::default()
-                    })
-                    .width(Length::Fill)
-                    .align_x(Horizontal::Center)
-            ]
+            row![text(note.button_title.clone())
+                .font(Font {
+                    weight: iced::font::Weight::Semibold,
+                    ..Default::default()
+                })
+                .width(Length::Fill)
+                .align_x(Horizontal::Center)]
             .align_y(Center)
         )
         .on_press(Message::Notes(NotesPageMessage::OpenFile(
@@ -562,8 +538,17 @@ fn document_statistics_view(state: &NotesPage) -> Element<Message> {
 }
 
 fn markdown_guide_view(state: &NotesPage) -> Element<Message> {
-    // TODO
-    row![text(LOCALES.lookup(&state.locale, "markdown-guide"))].into()
+    scrollable(
+        markdown(
+            &state.markdown_guide_items,
+            markdown::Settings::default(),
+            markdown::Style::from_palette(state.theme.palette()),
+        )
+        .map(|url| Message::Notes(NotesPageMessage::LinkClicked(url))),
+    )
+    .spacing(10)
+    .height(Fill)
+    .into()
 }
 
 pub fn tool_view(state: &NotesPage) -> Element<Message> {
@@ -595,6 +580,13 @@ pub fn tool_view(state: &NotesPage) -> Element<Message> {
                 .align_x(Center)
         )
         .on_press(Message::Notes(NotesPageMessage::ExportToWebsite))
+        .width(Length::Fill),
+        button(
+            text(LOCALES.lookup(&state.locale, "open-website-styles-file"))
+                .width(Length::Fill)
+                .align_x(Center)
+        )
+        .on_press(Message::Notes(NotesPageMessage::OpenWebsiteStylesFile))
         .width(Length::Fill),
         button(
             text(if !state.show_document_statistics_view {

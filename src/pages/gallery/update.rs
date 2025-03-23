@@ -43,7 +43,6 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
             return Task::perform(
                 async {
                     FileDialog::new()
-                        .set_directory("/")
                         .set_can_create_directories(true)
                         .pick_folder()
                 },
