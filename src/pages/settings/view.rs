@@ -104,32 +104,6 @@ fn sync_tab<'a>(state: &'a SettingsPage, app_config: &'a AppConfig) -> Element<'
                     ))
                 ]
                 .width(Length::Fill),
-                row![
-                    text(
-                        app_config
-                            .sync_config
-                            .website_folder
-                            .as_ref()
-                            .map(|value| format!(
-                                "{}: {value:?}",
-                                LOCALES.lookup(&state.locale, "website-data-folder"),
-                            ))
-                            .unwrap_or(
-                                LOCALES.lookup(&state.locale, "no-website-data-folder-selected")
-                            )
-                    )
-                    .align_x(Alignment::Center)
-                    .width(Length::Fill),
-                    button(
-                        text(LOCALES.lookup(&state.locale, "select-website-data-folder"))
-                            .width(Length::Fill)
-                            .align_x(Alignment::Center)
-                    )
-                    .on_press(Message::Settings(
-                        SettingsPageMessage::SyncPickWebsiteFolder
-                    ))
-                ]
-                .width(Length::Fill),
                 toggler(app_config.sync_config.should_sync)
                     .label(LOCALES.lookup(&state.locale, "whether-syncing-should-run"))
                     .on_toggle(|b| Message::Settings(SettingsPageMessage::SyncSetShouldSync(b))),

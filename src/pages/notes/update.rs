@@ -8,6 +8,7 @@ use std::fs;
 
 use crate::{
     app::Message,
+    constants::APP_ID,
     pages::notes::notes_utils::{move_cursor_to_position, parse_markdown_lists},
 };
 
@@ -557,28 +558,28 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
             state.archived_notes_list = archived_notes_list;
         }
         NotesPageMessage::OpenWebsiteStylesFile => {
-            if let Some(website_folder) = state.website_folder.as_ref() {
-                let css_file = website_folder.join("www").join("styles.css");
-                if css_file.exists() {
-                    state.is_loading_note = true;
-                    // Save current file content
-                    let old_filepath = state.current_file.take();
-                    state.current_file = Some(css_file.clone());
-                    state.spelling_corrections_list = vec![];
-                    state.show_markdown = false;
-                    return Task::perform(
-                        read_file_to_note(css_file, old_filepath, state.editor_content.text()),
-                        |new_content| {
-                            Message::Notes(NotesPageMessage::SetTextEditorContent(new_content))
-                        },
-                    );
-                }
-            } else {
-                return Task::done(Message::ShowToast(
-                    false,
-                    String::from("Can't open styles file, folder for website files is not set"),
-                ));
+            let css_file = state.website_folder.join("styles.css");
+            if !css_file.exists() {
+                let _ = fs::create_dir_all(&state.website_folder);
+                let _ = fs::copy(
+                    dirs::data_dir()
+                        .expect("Need a data dir")
+                        .join(APP_ID)
+                        .join("web")
+                        .join("styles.css"),
+                    &css_file,
+                );
             }
+            state.is_loading_note = true;
+            // Save current file content
+            let old_filepath = state.current_file.take();
+            state.current_file = Some(css_file.clone());
+            state.spelling_corrections_list = vec![];
+            state.show_markdown = false;
+            return Task::perform(
+                read_file_to_note(css_file, old_filepath, state.editor_content.text()),
+                |new_content| Message::Notes(NotesPageMessage::SetTextEditorContent(new_content)),
+            );
         }
     }
     Task::none()

@@ -87,8 +87,6 @@ pub enum SettingsPageMessage {
     SyncSetServerUrl,
     SyncPickDefaultFolder,
     SyncSetDefaultFolder(Option<PathBuf>),
-    SyncPickWebsiteFolder,
-    SyncSetWebsiteFolder(Option<PathBuf>),
     SyncSetShouldSync(bool),
 }
 

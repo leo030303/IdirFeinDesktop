@@ -29,7 +29,6 @@ pub enum SyncFrequencySettings {
 pub struct SyncPageConfig {
     pub server_url: String,
     pub default_data_storage_folder: PathBuf,
-    pub website_folder: Option<PathBuf>,
     pub should_sync: bool,
     pub client_credentials: Option<AuthCredentials>,
     pub ignored_remote_folder_ids: Vec<String>,
@@ -41,7 +40,6 @@ impl Default for SyncPageConfig {
         Self {
             server_url: String::new(),
             default_data_storage_folder: dirs::home_dir().unwrap().join("idirfein"),
-            website_folder: None,
             should_sync: false,
             client_credentials: None,
             ignored_remote_folder_ids: vec![],

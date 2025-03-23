@@ -467,7 +467,7 @@ pub fn convert_to_html(text_to_convert: &str) -> String {
 pub async fn export_to_website(
     text_to_convert: String,
     md_file_path_option: Option<PathBuf>,
-    website_folder_option: Option<PathBuf>,
+    website_folder: PathBuf,
 ) -> (bool, String) {
     if md_file_path_option.is_none() {
         return (
@@ -475,16 +475,8 @@ pub async fn export_to_website(
             String::from("Can't export, filename for doc is not set"),
         );
     }
-    if website_folder_option.is_none() {
-        return (
-            false,
-            String::from("Can't export, folder for website files is not set"),
-        );
-    }
     let md_file_path = md_file_path_option.expect("Can't fail");
-    let website_folder = website_folder_option.expect("Can't fail");
     let mut html_export_path = website_folder.clone();
-    let mut markdown_export_path = website_folder.clone();
     let initial_html = convert_to_html(&text_to_convert);
     let converted_html = add_html_to_template(
         &initial_html,
@@ -497,7 +489,6 @@ pub async fn export_to_website(
     if let Some(file_export_filestem) = md_file_path.file_stem() {
         let mut html_export_filename = file_export_filestem.to_os_string();
         html_export_filename.push(OsStr::new(".html"));
-        html_export_path.push("www");
 
         if let Err(err) = fs::create_dir_all(&html_export_path) {
             return (
@@ -507,27 +498,10 @@ pub async fn export_to_website(
         };
         html_export_path.push(html_export_filename);
 
-        let mut markdown_export_filename = file_export_filestem.to_os_string();
-        markdown_export_filename.push(OsStr::new(".md"));
-        markdown_export_path.push("markdown");
-        if let Err(err) = fs::create_dir_all(&markdown_export_path) {
-            return (
-                false,
-                format!("Can't export, failed to create folder for markdown files: {err:?}"),
-            );
-        };
-        markdown_export_path.push(markdown_export_filename);
-
         if let Err(err) = fs::write(html_export_path, converted_html) {
             return (
                 false,
                 format!("Can't export, failed to write html file: {err:?}"),
-            );
-        }
-        if let Err(err) = fs::write(markdown_export_path, text_to_convert) {
-            return (
-                false,
-                format!("Can't export, failed to write markdown file: {err:?}"),
             );
         }
         (true, String::from("Successfully exported to website"))
@@ -812,7 +786,7 @@ mod tests {
     use super::*;
     #[test]
     fn loro_state_matches_editor_state() {
-        let mut test_state = NotesPage::new(&NotesPageConfig::default(), None);
+        let mut test_state = NotesPage::new(&NotesPageConfig::default(), PathBuf::new());
         let list_of_actions = vec![
             text_editor::Action::Edit(Edit::Insert('e')),
             text_editor::Action::Edit(Edit::Insert('e')),

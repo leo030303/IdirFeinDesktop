@@ -86,7 +86,7 @@ pub struct NotesPage {
     pub(crate) display_rename_view: bool,
     pub(crate) rename_note_entry_text: String,
     pub(crate) display_delete_view: bool,
-    pub(crate) website_folder: Option<PathBuf>,
+    pub(crate) website_folder: PathBuf,
     pub(crate) autocomplete_brackets_etc: bool,
     pub(crate) spelling_corrections_list: Vec<String>,
     pub(crate) show_spell_check_view: bool,
@@ -145,7 +145,7 @@ pub enum NotesPageMessage {
 }
 
 impl NotesPage {
-    pub fn new(config: &NotesPageConfig, website_folder: Option<PathBuf>) -> Self {
+    pub fn new(config: &NotesPageConfig, website_folder: PathBuf) -> Self {
         let locale: fluent_templates::LanguageIdentifier = current_locale::current_locale()
             .expect("Can't get locale")
             .parse()

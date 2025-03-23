@@ -85,7 +85,11 @@ impl AppState {
                 is_closing: false,
                 notes_page: NotesPage::new(
                     &config.notes_config,
-                    config.sync_config.website_folder.clone(),
+                    config
+                        .sync_config
+                        .default_data_storage_folder
+                        .join("web_data")
+                        .join("www"),
                 ),
                 passwords_page: PasswordsPage::new(&config.passwords_config),
                 tasks_page: TasksPage::new(&config.tasks_config),
