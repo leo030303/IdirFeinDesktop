@@ -6,10 +6,11 @@ use std::{
 };
 
 use fast_rsync::{Signature, SignatureOptions};
+use loro::LoroDoc;
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
-use crate::constants::APP_ID;
+use crate::constants::{APP_ID, LORO_NOTE_ID};
 use crate::pages::sync::page::SYNC_LIST_FILE_NAME;
 
 const DEFAULT_CRYPTO_HASH_SIZE: u32 = 16;
@@ -30,18 +31,21 @@ pub enum ServerFileRequest {
     CreateFile(Vec<u8>, PathBuf, String),
     /// The file at the given index should be deleted on the client
     Delete(usize),
+    /// The loro file at the given index is being requested to update the server file, and the server loro file is given to update the client version
+    RequestLoroUpdate(usize, Vec<u8>),
 }
 
 impl ServerFileRequest {
     /// Important for ordering the requests, as its important some requests are handled before others
     fn get_ordering_val(&self) -> usize {
         match self {
-            ServerFileRequest::RequestNewFile(_) => 6,
+            ServerFileRequest::RequestNewFile(_) => 7,
             ServerFileRequest::CreateFolder(_) => 1,
             ServerFileRequest::RequestSignature(_) => 3,
-            ServerFileRequest::ApplyDiff(_, _) => 5,
+            ServerFileRequest::ApplyDiff(_, _) => 6,
+            ServerFileRequest::RequestLoroUpdate(_, _) => 5,
             ServerFileRequest::RequestDiff(_, _) => 4,
-            ServerFileRequest::CreateFile(_, _, _) => 7,
+            ServerFileRequest::CreateFile(_, _, _) => 8,
             ServerFileRequest::Delete(_) => 2,
         }
     }
@@ -75,6 +79,8 @@ pub enum ClientFileResponse {
     Signature(usize, Vec<u8>),
     /// The response to RequestDiff
     Diff(usize, Vec<u8>),
+    /// The response to RequestLoroUpdate
+    LoroUpdate(usize, Vec<u8>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -284,6 +290,37 @@ impl SyncManager {
                     .and_then(|file_data| file_data.get_absolute_path(&self.list_of_folders))
                 {
                     let _ = fs::remove_file(path_to_delete);
+                }
+            }
+            ServerFileRequest::RequestLoroUpdate(file_index, server_loro_bytes) => {
+                if let Some(path_to_apply) = self
+                    .client_file_list
+                    .get(file_index)
+                    .and_then(|file_data| file_data.get_absolute_path(&self.list_of_folders))
+                {
+                    let client_loro_file_bytes = fs::read(&path_to_apply).unwrap();
+                    let server_doc = LoroDoc::new();
+                    let _ = server_doc.import(&server_loro_bytes);
+                    let client_doc = LoroDoc::new();
+                    let _ = client_doc.import_batch(&[client_loro_file_bytes, server_loro_bytes]);
+                    let client_export_bytes = client_doc.export_from(&server_doc.oplog_vv());
+                    let new_client_bytes = client_doc.export_snapshot();
+                    let _ = fs::write(&path_to_apply, new_client_bytes);
+                    let base_file_path = path_to_apply.parent().unwrap().join(
+                        path_to_apply
+                            .file_stem()
+                            .unwrap()
+                            .to_string_lossy()
+                            .chars()
+                            .skip(1)
+                            .collect::<String>(),
+                    );
+                    let updated_base_file_text = client_doc.get_text(LORO_NOTE_ID).to_string();
+                    let _ = fs::write(base_file_path, updated_base_file_text);
+                    return Some(ClientFileResponse::LoroUpdate(
+                        file_index,
+                        client_export_bytes,
+                    ));
                 }
             }
         }

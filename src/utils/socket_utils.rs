@@ -20,8 +20,6 @@ use crate::utils::sync_utils::ServerFileRequest;
 use super::auth_utils::AuthCredentials;
 use super::sync_utils::SyncManager;
 
-// const LORO_SERVER: &str = "ws://127.0.0.1:8000/loro";
-
 pub fn connect(
     server_url: String,
     folders_to_sync: HashMap<String, PathBuf>,

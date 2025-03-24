@@ -22,7 +22,6 @@ pub const ARCHIVED_FILE_NAME: &str = ".archived";
 pub const TEXT_EDITOR_ID: &str = "TEXT_EDITOR_ID";
 pub const NEW_NOTE_TEXT_INPUT_ID: &str = "NEW_NOTE_TEXT_INPUT_ID";
 pub const RENAME_NOTE_TEXT_INPUT_ID: &str = "RENAME_NOTE_TEXT_INPUT_ID";
-pub const LORO_NOTE_ID: &str = "LORO_NOTE_ID";
 pub const INITIAL_ORIGIN_STR: &str = "initial";
 pub const MAX_UNDO_STEPS: usize = 10000;
 

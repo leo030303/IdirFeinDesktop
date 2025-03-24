@@ -11,7 +11,9 @@ use std::{
 use pulldown_cmark::Options;
 use walkdir::WalkDir;
 
-use super::page::{Note, NotesPage, LORO_NOTE_ID};
+use crate::constants::LORO_NOTE_ID;
+
+use super::page::{Note, NotesPage};
 
 #[derive(Debug, Clone)]
 pub struct NoteStatistics {
@@ -441,6 +443,9 @@ fn add_html_to_template(html_content: &str, page_title: &str) -> String {
 
   <header>
     <h1>{page_title}</h1>
+    <nav>
+      <a href="/blog/index.html">Home</a>
+    </nav>
   </header>
 
   <main>
@@ -504,6 +509,7 @@ pub async fn export_to_website(
                 format!("Can't export, failed to write html file: {err:?}"),
             );
         }
+        update_blog_index_file(website_folder);
         (true, String::from("Successfully exported to website"))
     } else {
         (
@@ -511,6 +517,35 @@ pub async fn export_to_website(
             String::from("Can't export, markdown filename is not set"),
         )
     }
+}
+
+pub fn update_blog_index_file(website_folder: PathBuf) {
+    let list_of_file_links_block: String = WalkDir::new(&website_folder)
+        .into_iter()
+        .filter_map(|dir_entry_result| dir_entry_result.ok())
+        .map(|dir_entry| dir_entry.into_path())
+        .filter(|filepath| filepath.is_file())
+        .filter(|filepath| {
+            filepath.to_str().is_some_and(|path_str| {
+                !path_str.ends_with("styles.css") && !path_str.ends_with(".styles.css.loro")
+            })
+        })
+        .map(|filepath| {
+            format!(
+                r#"<a href="/blog/{0}">{0}</a><br>"#,
+                filepath
+                    .strip_prefix(&website_folder)
+                    .map(|path_item| path_item.to_path_buf())
+                    .unwrap_or_default()
+                    .to_string_lossy()
+            )
+        })
+        .fold(String::new(), |mut acc, link_content| {
+            acc.push_str(&link_content);
+            acc
+        });
+    let index_file_content = add_html_to_template(&list_of_file_links_block, "Index");
+    let _ = fs::write(website_folder.join("index.html"), index_file_content);
 }
 
 pub fn get_markdown_guide_items() -> Vec<markdown::Item> {

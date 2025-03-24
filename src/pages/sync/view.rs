@@ -9,17 +9,10 @@ use crate::app::Message;
 use super::page::{SyncPage, SyncPageMessage};
 
 pub fn main_view(state: &SyncPage) -> Element<Message> {
-    column![
-        syncing_progress_bar(state),
-        row![ignore_list_manager(state), sync_folder_manager(state)]
-            .spacing(20)
-            .padding(20),
-    ]
+    column![row![ignore_list_manager(state), sync_folder_manager(state)]
+        .spacing(20)
+        .padding(20),]
     .into()
-}
-
-fn syncing_progress_bar(_state: &SyncPage) -> Element<Message> {
-    row!["Progress bar"].width(Length::Fill).into()
 }
 
 fn sync_status_indicator(state: &SyncPage) -> Element<Message> {

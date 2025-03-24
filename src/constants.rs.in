@@ -4,3 +4,4 @@ pub const LOCALEDIR: &str = @LOCALEDIR@;
 pub const PKGDATADIR: &str = @PKGDATADIR@;
 pub const PROFILE: &str = @PROFILE@;
 pub const VERSION: &str = @VERSION@;
+pub const LORO_NOTE_ID: &str = "LORO_NOTE_ID";

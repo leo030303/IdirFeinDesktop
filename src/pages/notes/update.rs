@@ -8,7 +8,7 @@ use std::fs;
 
 use crate::{
     app::Message,
-    constants::APP_ID,
+    constants::{APP_ID, LORO_NOTE_ID},
     pages::notes::notes_utils::{move_cursor_to_position, parse_markdown_lists},
 };
 
@@ -18,8 +18,8 @@ use super::{
         read_notes_from_folder, select_specific_string_in_editor, NoteStatistics,
     },
     page::{
-        NotesPage, NotesPageMessage, ARCHIVED_FILE_NAME, INITIAL_ORIGIN_STR, LORO_NOTE_ID,
-        MAX_UNDO_STEPS, NEW_NOTE_TEXT_INPUT_ID, RENAME_NOTE_TEXT_INPUT_ID,
+        NotesPage, NotesPageMessage, ARCHIVED_FILE_NAME, INITIAL_ORIGIN_STR, MAX_UNDO_STEPS,
+        NEW_NOTE_TEXT_INPUT_ID, RENAME_NOTE_TEXT_INPUT_ID,
     },
 };
 
@@ -193,10 +193,21 @@ pub fn update(state: &mut NotesPage, message: NotesPageMessage) -> Task<Message>
         NotesPageMessage::SaveNote => {
             if state.note_is_dirty {
                 if let Some(current_file) = state.current_file.clone() {
+                    let current_file_crdt = current_file.parent().unwrap().join(format!(
+                        ".{}.loro",
+                        current_file
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                    ));
                     let note_text = state.editor_content.text();
+                    let note_crdt_export = state.note_crdt.export_snapshot();
                     return Task::done(Message::Notes(NotesPageMessage::LoadFolderAsNotesList))
                         .chain(Task::perform(
-                            async { fs::write(current_file, note_text) },
+                            async {
+                                let _ = fs::write(current_file, note_text);
+                                fs::write(current_file_crdt, note_crdt_export)
+                            },
                             |result| match result {
                                 Ok(_) => Message::None,
                                 Err(err) => Message::ShowToast(
