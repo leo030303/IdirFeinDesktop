@@ -76,6 +76,7 @@ pub fn update(state: &mut GalleryPage, message: GalleryPageMessage) -> Task<Mess
                                 .filter(|path| {
                                     path.extension().is_some_and(|extension_os_str| {
                                         extension_os_str.to_str().is_some_and(|extension| {
+                                            let extension = extension.to_lowercase();
                                             extension == "jpg"
                                                 || extension == "jpeg"
                                                 || extension == "png"
